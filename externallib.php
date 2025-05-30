@@ -7689,14 +7689,31 @@ class local_custom_service_external extends external_api
                     }
                 }
 
+                $detailActivity = core_course_external::get_course_module($module['id']);
+
                 $activities[] = [
                     'id' => $module['id'],
                     'name' => $module['name'],
                     'description' => $moduleDetailDecode->intro,
                     'modname' => $module['modname'],
                     'completed' => $is_completed,
-                    'availability' => $availability // Thêm thông tin về availability
+                    'availability' => $availability, // Thêm thông tin về availability
+                    'visible' => $detailActivity['cm']->visible,
+                    'completiongradeitemnumber' => $detailActivity['cm']->completiongradeitemnumber,
+                    'completionview' => $detailActivity['cm']->completionview,
+                    'completionexpected' => $detailActivity['cm']->completionexpected,
+                    'completionpassgrade' => $detailActivity['cm']->completionpassgrade,
+                    'grade' => $detailActivity['cm']->grade ?? 0,
+                    'gradepass' => $detailActivity['cm']->gradepass ?? 0,
                 ];
+
+                // if(isset($detailActivity['cm']->grade)){
+                //     $activities[]['grade'] = $detailActivity['cm']->grade;
+                // }
+
+                // if(isset($detailActivity['cm']->gradepass)){
+                //     $activities[]['gradepass'] = $detailActivity['cm']->gradepass;
+                // }
             }
 
             // Tính phần trăm hoàn thành
@@ -7720,6 +7737,8 @@ class local_custom_service_external extends external_api
                 'topics' => $result
             ]
         ];
+        // var_dump('<pre>');
+        // var_dump($dataResponse);die;
 
         return $dataResponse;
     }
@@ -7751,7 +7770,7 @@ class local_custom_service_external extends external_api
                         'name' => new external_value(PARAM_RAW, 'Section Name'),
                         'total_activity' => new external_value(PARAM_INT, 'Total activities in section'),
                         'total_activity_completion' => new external_value(PARAM_INT, 'Total completed activities in section'),
-                        'completion_percentage' => new external_value(PARAM_FLOAT, 'Completion percentage'), // ✅ Thêm vào API
+                        'completion_percentage' => new external_value(PARAM_FLOAT, 'Completion percentage'),
                         'activities' => new external_multiple_structure(
                             new external_single_structure([
                                 'id' => new external_value(PARAM_INT, 'Activity ID'),
@@ -7765,7 +7784,14 @@ class local_custom_service_external extends external_api
                                         'name' => new external_value(PARAM_RAW, 'Required Activity Name'),
                                         'modname' => new external_value(PARAM_RAW, 'Required Activity Type')
                                     ])
-                                )
+                                ),
+                                'visible' => new external_value(PARAM_RAW, 'Trạng thái hiển thị của activity'),
+                                'completiongradeitemnumber' => new external_value(PARAM_RAW, 'Yêu cầu điểm số để hoàn thành', VALUE_OPTIONAL),
+                                'completionview' => new external_value(PARAM_RAW, 'Yêu cầu xem activity để hoàn thành', VALUE_OPTIONAL),
+                                'completionexpected' => new external_value(PARAM_RAW, 'Ngày mong đợi hoàn thành', VALUE_OPTIONAL),
+                                'completionpassgrade' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm đạt chuẩn để hoàn thành', VALUE_OPTIONAL),
+                                'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
+                                'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
                             ])
                         )
                     ]), 'Danh sách chủ đề', VALUE_OPTIONAL

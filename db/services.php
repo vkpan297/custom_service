@@ -473,7 +473,25 @@ $functions = array(
         'description' => 'Get User By Emails',
         'type'        => 'write',
         'ajax'        => true,
-    )
+    ),
+    'local_custom_service_get_h5p_embed_url' => [
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'get_h5p_embed_url',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Lấy link nhúng H5P activity',
+        'type'        => 'read',
+        'ajax'        => true,
+        'capabilities' => 'mod/h5pactivity:view'
+    ],
+    'local_custom_service_get_h5p_result' => [
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'get_h5p_result',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Lấy kết quả làm bài từ attempt ID',
+        'type'        => 'read',
+        'ajax'        => true,
+        'capabilities' => 'mod/h5pactivity:submit'
+    ]
 );
 
 $services = array(

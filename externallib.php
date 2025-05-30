@@ -7690,6 +7690,8 @@ class local_custom_service_external extends external_api
                 }
 
                 $detailActivity = core_course_external::get_course_module($module['id']);
+                
+                $detailModule = json_decode(self::get_detail_module($module['id'], $module['modname'])['data']);
 
                 $activities[] = [
                     'id' => $module['id'],
@@ -7703,9 +7705,11 @@ class local_custom_service_external extends external_api
                     'completionview' => $detailActivity['cm']->completionview,
                     'completionexpected' => $detailActivity['cm']->completionexpected,
                     'completionpassgrade' => $detailActivity['cm']->completionpassgrade,
+                    'completionminattempts' => $detailModule->completionminattempts,
                     'grade' => $detailActivity['cm']->grade ?? 0,
                     'gradepass' => $detailActivity['cm']->gradepass ?? 0,
                 ];
+                
 
                 // if(isset($detailActivity['cm']->grade)){
                 //     $activities[]['grade'] = $detailActivity['cm']->grade;
@@ -7790,6 +7794,7 @@ class local_custom_service_external extends external_api
                                 'completionview' => new external_value(PARAM_RAW, 'Yêu cầu xem activity để hoàn thành', VALUE_OPTIONAL),
                                 'completionexpected' => new external_value(PARAM_RAW, 'Ngày mong đợi hoàn thành', VALUE_OPTIONAL),
                                 'completionpassgrade' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm đạt chuẩn để hoàn thành', VALUE_OPTIONAL),
+                                'completionminattempts' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm nộp bài để hoàn thành', VALUE_OPTIONAL),
                                 'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
                                 'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
                             ])

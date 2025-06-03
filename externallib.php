@@ -9223,5 +9223,76 @@ class local_custom_service_external extends external_api
         ]);
     }
 
+    public static function submit_h5p_result_parameters() {
+        return new external_function_parameters([
+            'cmid'     => new external_value(PARAM_INT, 'Course module ID of H5P activity'),
+            'email'    => new external_value(PARAM_TEXT, 'Email of the user submitting'),
+            'score'    => new external_value(PARAM_FLOAT, 'Score achieved'),
+            'maxscore' => new external_value(PARAM_FLOAT, 'Maximum score'),
+            'duration' => new external_value(PARAM_INT, 'Duration in seconds'),
+        ]);
+    }
+
+    public static function submit_h5p_result($cmid, $email, $score, $maxscore, $duration) {
+        global $DB;
+
+        $params = self::validate_parameters(self::submit_h5p_result_parameters(), compact('cmid', 'email', 'score', 'maxscore', 'duration'));
+
+        // Lấy user từ email
+        $user = $DB->get_record('user', ['email' => $params['email']], '*', MUST_EXIST);
+
+        // Lấy course module -> h5pactivityid
+        $cm = get_coursemodule_from_id('h5pactivity', $params['cmid'], 0, false, MUST_EXIST);
+        $activity = $DB->get_record('h5pactivity', ['id' => $cm->instance], '*', MUST_EXIST);
+
+        // Kiểm tra xem đã có attempt chưa
+        $attempt = $DB->get_record('h5pactivity_attempts', [
+            'h5pactivityid' => $activity->id,
+            'userid' => $user->id,
+        ]);
+
+        if (!$attempt) {
+            // Tạo mới attempt
+            $attempt = (object)[
+                'h5pactivityid' => $activity->id,
+                'userid' => $user->id,
+                'timecreated' => time(),
+                'timemodified' => time()
+            ];
+            $attempt->id = $DB->insert_record('h5pactivity_attempts', $attempt);
+        }
+
+        // Kiểm tra xem đã có result chưa
+        $result = $DB->get_record('h5pactivity_attempts_results', ['attemptid' => $attempt->id]);
+
+        if ($result) {
+            // Cập nhật kết quả
+            $result->rawscore = $params['score'];
+            $result->maxscore = $params['maxscore'];
+            $result->duration = $params['duration'];
+            $DB->update_record('h5pactivity_attempts_results', $result);
+        } else {
+            // Thêm mới kết quả
+            $result = (object)[
+                'attemptid' => $attempt->id,
+                'rawscore' => $params['score'],
+                'maxscore' => $params['maxscore'],
+                'duration' => $params['duration']
+            ];
+            $DB->insert_record('h5pactivity_attempts_results', $result);
+        }
+
+        return [
+            'status' => true,
+            'message' => 'Gửi kết quả thành công'
+        ];
+    }
+
+    public static function submit_h5p_result_returns() {
+        return new external_single_structure([
+            'status' => new external_value(PARAM_BOOL, 'Trạng thái'),
+            'message' => new external_value(PARAM_TEXT, 'Thông báo')
+        ]);
+    }
 }
 

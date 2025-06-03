@@ -491,7 +491,17 @@ $functions = array(
         'type'        => 'read',
         'ajax'        => true,
         'capabilities' => 'mod/h5pactivity:submit'
-    ]
+    ],
+    'local_custom_service_submit_h5p_result' => [
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'submit_h5p_result',
+        'classpath'   => '',
+        'description' => 'Submit H5P result to Moodle from external client',
+        'type'        => 'write',
+        'ajax'        => true,
+        'capabilities' => '',
+    ],
+
 );
 
 $services = array(
@@ -555,7 +565,8 @@ $services = array(
             'local_custom_service_check_enrolled_user_course_by_courseids',
             'local_custom_service_save_definitions_custom_service',
             'local_custom_service_reorder_category',
-            'local_custom_service_get_user_info_by_emails'
+            'local_custom_service_get_user_info_by_emails',
+            'local_custom_service_submit_h5p_result'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

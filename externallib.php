@@ -9042,23 +9042,42 @@ class local_custom_service_external extends external_api
         }
 
         // Query users theo emails
-        list($inSql, $inParams) = $DB->get_in_or_equal($params['user_emails'], SQL_PARAMS_NAMED);
+        // list($inSql, $inParams) = $DB->get_in_or_equal($params['user_emails'], SQL_PARAMS_NAMED);
 
-        $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
+        // $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
 
-        // Trả về dưới dạng mảng
-        $result = [];
-        foreach ($users as $user) {
-            $result[] = [
-                'id' => $user->id,
-                'username' => $user->username,
-                'firstname' => $user->firstname,
-                'lastname' => $user->lastname,
-                'email' => $user->email,
-            ];
+        // // Trả về dưới dạng mảng
+        // $result = [];
+        // foreach ($users as $user) {
+        //     $result[] = [
+        //         'id' => $user->id,
+        //         'username' => $user->username,
+        //         'firstname' => $user->firstname,
+        //         'lastname' => $user->lastname,
+        //         'email' => $user->email,
+        //     ];
+        // }
+
+        $allUsers = [];
+        $chunks = array_chunk($params['user_emails'], 1000); // batch size <= 1000
+
+        foreach ($chunks as $chunk) {
+            list($inSql, $inParams) = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
+
+            foreach ($users as $user) {
+                $allUsers[] = [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'firstname' => $user->firstname,
+                    'lastname' => $user->lastname,
+                    'email' => $user->email,
+                    'count_email' => count($params['user_emails'])
+                ];
+            }
         }
 
-        return $result;
+        return $allUsers;
     }
 
     public static function get_user_info_by_emails_returns()
@@ -9071,6 +9090,7 @@ class local_custom_service_external extends external_api
                     'firstname' => new external_value(PARAM_NOTAGS, 'First name'),
                     'lastname' => new external_value(PARAM_NOTAGS, 'Last name'),
                     'email' => new external_value(PARAM_EMAIL, 'Email'),
+                    'count_email' => new external_value(PARAM_INT, 'Count Email'),
                 )
             )
         );

@@ -3877,6 +3877,257 @@ class local_custom_service_external extends external_api
         );
     }
 
+    // public static function get_enrolled_courses($user_emails)
+    // {
+    //     global $DB;
+
+    //     $user_emails_array = $user_emails;
+
+    //     if (empty($user_emails_array)) {
+    //         throw new invalid_parameter_exception('User emails cannot be empty');
+    //     }
+
+    //     // Kiểm tra nếu json_decode thất bại, vì vậy ta cần làm sạch chuỗi theo cách thủ công
+    //     $emailsString = implode("','", $user_emails_array);
+    //     $emailsString = "'" . $emailsString . "'";
+        
+    //     // // Lấy danh sách khóa học mà người dùng đã enroll
+    //     $sql = "SELECT 
+    //         c.id as course_id,
+    //         c.fullname as course_name,
+    //         COUNT(DISTINCT CASE WHEN r.archetype = 'student' THEN u.id END) AS total_students,
+    //         COUNT(DISTINCT CASE WHEN r.archetype IN ('editingteacher','teacher') THEN u.id END) AS total_teachers
+    //         FROM mdl_user u
+    //         JOIN mdl_user_enrolments uem ON uem.userid = u.id
+    //         JOIN mdl_enrol e ON e.id = uem.enrolid
+    //         JOIN mdl_course c ON e.courseid = c.id
+    //         JOIN mdl_role_assignments ra ON ra.userid = u.id
+    //         JOIN mdl_role r ON ra.roleid = r.id
+    //         WHERE u.email IN ($emailsString)
+    //         AND (c.id, c.timemodified) IN (
+    //                 SELECT 
+    //                     id, MAX(timemodified) AS max_timemodified
+    //                 FROM 
+    //                     mdl_course
+    //                 GROUP BY 
+    //                     id
+    //             )
+    //         GROUP BY c.fullname, c.id
+    //         ORDER BY course_id ASC";
+        
+    //     $enrolled_courses = $DB->get_records_sql($sql);
+    //     // Tổ chức lại dữ liệu
+    //     $courses_enrolled = [];
+    //     $course_ids = [];
+    //     foreach ($enrolled_courses as $course) {
+    //         $groupQuery = "SELECT g.id AS group_id, g.name AS group_name
+    //             FROM mdl_groups g
+    //             WHERE g.courseid = :course_id";
+
+    //         $groups = $DB->get_records_sql($groupQuery, ['course_id' => $course->course_id]);
+                    
+    //         $group_list = [];
+    //         foreach ($groups as $group) {
+    //             $studentsQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
+    //                 FROM mdl_user u
+    //                 JOIN mdl_role_assignments ra ON ra.userid = u.id
+    //                 JOIN mdl_role r ON ra.roleid = r.id
+    //                 JOIN mdl_groups_members gm ON gm.userid = u.id
+    //                 JOIN mdl_groups g ON g.id = gm.groupid
+    //                 WHERE g.id = :group_id AND r.archetype = 'student' AND u.email IN ($emailsString)";
+
+    //             $students = $DB->get_records_sql($studentsQuery, ['group_id' => $group->group_id]);
+
+    //             $student_list = [];
+    //             foreach ($students as $student) {
+    //                 $student_list[] = [
+    //                     'id' => $student->id,
+    //                     'firstname' => $student->firstname,
+    //                     'lastname' => $student->lastname,
+    //                     'email' => $student->email
+    //                 ];
+    //             }
+
+    //             // Lấy giáo viên trong nhóm
+    //             $teachersQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
+    //                 FROM mdl_user u
+    //                 JOIN mdl_role_assignments ra ON ra.userid = u.id
+    //                 JOIN mdl_role r ON ra.roleid = r.id
+    //                 JOIN mdl_groups_members gm ON gm.userid = u.id
+    //                 JOIN mdl_groups g ON g.id = gm.groupid
+    //                 WHERE g.id = :group_id AND r.archetype IN ('editingteacher','teacher') AND u.email IN ($emailsString)";
+
+    //             $teachers = $DB->get_records_sql($teachersQuery, ['group_id' => $group->group_id]);
+
+    //             $teacher_list = [];
+    //             foreach ($teachers as $teacher) {
+    //                 $teacher_list[] = [
+    //                     'id' => $teacher->id,
+    //                     'firstname' => $teacher->firstname,
+    //                     'lastname' => $teacher->lastname,
+    //                     'email' => $teacher->email
+    //                 ];
+    //             }
+    //             // Lấy participants từ student_list và teacher_list
+    //             $participants = array_merge(
+    //                 array_map(fn($s) => array_merge($s, ['role' => 'student']), $student_list),
+    //                 array_map(fn($t) => array_merge($t, ['role' => 'teacher']), $teacher_list)
+    //             );
+    //             $group_list[] = [
+    //                 'group_id' => $group->group_id,
+    //                 'group_name' => $group->group_name,
+    //                 'students' => $student_list,
+    //                 'teachers' => $teacher_list,
+    //                 'participants' => $participants
+    //             ];
+    //         }
+
+    //         $studentsQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
+    //             FROM mdl_user u
+    //             JOIN mdl_role_assignments ra ON ra.userid = u.id
+    //             JOIN mdl_role r ON ra.roleid = r.id
+    //             JOIN mdl_context ctx ON ra.contextid = ctx.id
+    //             JOIN mdl_course c ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+    //             WHERE u.email in ($emailsString)
+    //             AND r.archetype = 'student'
+    //             AND c.id = :course_id
+    //         ";
+
+    //         $students = $DB->get_records_sql($studentsQuery, ['course_id' => $course->course_id]);
+                                
+    //         $student_list = [];
+    //         foreach ($students as $student) {
+    //             $student_list[] = [
+    //                 'id' => $student->id,
+    //                 'firstname' => $student->firstname,
+    //                 'lastname' => $student->lastname,
+    //                 'email' => $student->email
+    //             ];
+    //         }
+
+    //         $teachersQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
+    //             FROM mdl_user u
+    //             JOIN mdl_role_assignments ra ON ra.userid = u.id
+    //             JOIN mdl_role r ON ra.roleid = r.id
+    //             JOIN mdl_context ctx ON ra.contextid = ctx.id
+    //             JOIN mdl_course c ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+    //             WHERE u.email in ($emailsString)
+    //             AND r.archetype IN ('editingteacher','teacher')
+    //             AND c.id = :course_id
+    //         ";
+
+    //         $teachers = $DB->get_records_sql($teachersQuery, ['course_id' => $course->course_id]);
+                                
+    //         $teacher_list = [];
+    //         foreach ($teachers as $teacher) {
+    //             $teacher_list[] = [
+    //                 'id' => $teacher->id,
+    //                 'firstname' => $teacher->firstname,
+    //                 'lastname' => $teacher->lastname,
+    //                 'email' => $teacher->email
+    //             ];
+    //         }
+
+    //         $participants = array_merge(
+    //             array_map(fn($s) => array_merge($s, ['role' => 'student']), $student_list),
+    //             array_map(fn($t) => array_merge($t, ['role' => 'teacher']), $teacher_list)
+    //         );
+
+    //         $courses_enrolled[] = [
+    //             'course_id' => $course->course_id,
+    //             'course_name' => $course->course_name,
+    //             'total_students' => $course->total_students,
+    //             'total_teachers' => $course->total_teachers,
+    //             'groups' => $group_list,
+    //             'students' => $student_list,
+    //             'teachers' => $teacher_list,
+    //             'participants' => $participants
+    //         ];
+    //         $course_ids[] = $course->course_id;
+    //     }
+
+    //     $remainingCourses = [];
+    //     if (!empty($course_ids)) {
+    //         // Chuyển mảng course_ids thành chuỗi để sử dụng trong câu truy vấn
+    //         $course_ids_str = implode(',', $course_ids);
+
+    //         // Truy vấn các khóa học còn lại không nằm trong danh sách đã lấy
+    //         $queryRemainingCourses = "
+    //         SELECT DISTINCT c.id as course_id, c.fullname as course_name
+    //         FROM mdl_course c
+    //         WHERE c.id NOT IN ($course_ids_str)
+    //         AND c.id != 1
+    //         AND (c.id, c.timemodified) IN (
+    //             SELECT 
+    //                 id, MAX(timemodified) AS max_timemodified
+    //             FROM 
+    //                 mdl_course
+    //             GROUP BY 
+    //                 id
+    //         )
+    //         ORDER BY course_id ASC
+    //         ";
+
+    //         $resultRemainingCourses = $DB->get_records_sql($queryRemainingCourses);
+    //     } else {
+    //         // Nếu không có khóa học nào trong danh sách enrolled_courses
+    //         $queryRemainingCourses = "
+    //         SELECT DISTINCT c.id as course_id, c.fullname as course_name
+    //         FROM mdl_course c
+    //         WHERE c.id != 1
+    //         AND (c.id, c.timemodified) IN (
+    //             SELECT 
+    //                 id, MAX(timemodified) AS max_timemodified
+    //             FROM 
+    //                 mdl_course
+    //             GROUP BY 
+    //                 id
+    //         )
+    //         ORDER BY course_id ASC
+    //         ";
+        
+    //         $resultRemainingCourses = $DB->get_records_sql($queryRemainingCourses);
+    //     }
+
+    //     foreach ($resultRemainingCourses as $course) {
+    //         $groupQuery = "SELECT g.id AS group_id, g.name AS group_name
+    //             FROM mdl_groups g
+    //             WHERE g.courseid = :course_id";
+    
+    //         $groups = $DB->get_records_sql($groupQuery, ['course_id' => $course->course_id]);
+    
+    //         $group_list = [];
+    //         foreach ($groups as $group) {
+    //             $group_list[] = [
+    //                 'group_id' => $group->group_id,
+    //                 'group_name' => $group->group_name
+    //             ];
+    //         }
+
+    //         $remainingCourses[] = [
+    //             'course_id' => $course->course_id,
+    //             'course_name' => $course->course_name,
+    //             'groups' => $group_list
+    //         ];
+    //     }
+
+    //     return [
+    //         'enrolled_courses' => $courses_enrolled,
+    //         'remaining_courses' => $remainingCourses
+    //     ];
+    // }
+
+    public static function unique_users_by_id(array $users): array {
+        $unique = [];
+        foreach ($users as $u) {
+            $uid = is_array($u) ? $u['id'] : $u->user_id; // hỗ trợ cả array và object
+            if (!isset($unique[$uid])) {
+                $unique[$uid] = $u;
+            }
+        }
+        return array_values($unique);
+    }
+
     public static function get_enrolled_courses($user_emails)
     {
         global $DB;
@@ -3888,185 +4139,185 @@ class local_custom_service_external extends external_api
         }
 
         // Kiểm tra nếu json_decode thất bại, vì vậy ta cần làm sạch chuỗi theo cách thủ công
-        $emailsString = implode("','", $user_emails_array);
-        $emailsString = "'" . $emailsString . "'";
-        
-        // // Lấy danh sách khóa học mà người dùng đã enroll
-        $sql = "SELECT 
-            c.id as course_id,
-            c.fullname as course_name,
-            COUNT(DISTINCT CASE WHEN r.archetype = 'student' THEN u.id END) AS total_students,
-            COUNT(DISTINCT CASE WHEN r.archetype IN ('editingteacher','teacher') THEN u.id END) AS total_teachers
+        // $emailsString = implode("','", $user_emails_array);
+        // $emailsString = "'" . $emailsString . "'";
+
+        $placeholders = implode(',', array_fill(0, count($user_emails_array), '?'));
+
+        // 1. Lấy danh sách course enrolled của user emails (và tổng số student/teacher theo course)
+        // Sử dụng :emails là mảng parameter được Moodle DB tự bind chuẩn
+        $sql_courses = "
+            SELECT 
+                c.id AS course_id,
+                c.fullname AS course_name,
+                COUNT(DISTINCT CASE WHEN r.archetype = 'student' THEN u.id END) AS total_students,
+                COUNT(DISTINCT CASE WHEN r.archetype IN ('editingteacher','teacher') THEN u.id END) AS total_teachers
             FROM mdl_user u
             JOIN mdl_user_enrolments uem ON uem.userid = u.id
             JOIN mdl_enrol e ON e.id = uem.enrolid
             JOIN mdl_course c ON e.courseid = c.id
             JOIN mdl_role_assignments ra ON ra.userid = u.id
             JOIN mdl_role r ON ra.roleid = r.id
-            WHERE u.email IN ($emailsString)
-            AND (c.id, c.timemodified) IN (
-                    SELECT 
-                        id, MAX(timemodified) AS max_timemodified
-                    FROM 
-                        mdl_course
-                    GROUP BY 
-                        id
-                )
-            GROUP BY c.fullname, c.id
-            ORDER BY course_id ASC";
-        
-        $enrolled_courses = $DB->get_records_sql($sql);
-        // Tổ chức lại dữ liệu
+            WHERE u.email IN ($placeholders)
+            GROUP BY c.id, c.fullname
+            ORDER BY c.id ASC
+        ";
+
+        $params = $user_emails_array;
+        $enrolled_courses = $DB->get_records_sql($sql_courses, $params);
+        if (!$enrolled_courses) {
+            $enrolled_courses = [];
+        }
+
+        $course_ids = array_map(fn($c) => $c->course_id, $enrolled_courses);
+        if (empty($course_ids)) {
+            $course_ids = [0]; // tránh lỗi IN ()
+        }
+        // 2. Lấy tất cả groups của các khóa học này trong 1 query duy nhất
+        $sql_groups = "
+            SELECT g.id AS group_id, g.courseid AS course_id, g.name AS group_name
+            FROM mdl_groups g
+            WHERE g.courseid IN (" . implode(',', array_map('intval', $course_ids)) . ")
+        ";
+        $groups = $DB->get_records_sql($sql_groups);
+
+        // Gom groups theo course_id
+        $groups_by_course = [];
+        foreach ($groups as $g) {
+            $groups_by_course[$g->course_id][] = $g;
+        }
+
+        // 3. Lấy tất cả thành viên groups (student + teacher) trong 1 query duy nhất
+        $sql_group_members = "
+            SELECT 
+                CONCAT(g.courseid, '_', u.id, '_', r.id) AS unique_key,
+                g.courseid AS course_id,
+                g.id AS group_id,
+                u.id AS user_id,
+                u.firstname,
+                u.lastname,
+                u.email,
+                r.archetype
+            FROM mdl_groups_members gm
+            JOIN mdl_groups g ON g.id = gm.groupid
+            JOIN mdl_user u ON u.id = gm.userid
+            JOIN mdl_role_assignments ra ON ra.userid = u.id
+            JOIN mdl_role r ON ra.roleid = r.id
+            WHERE g.courseid IN (" . implode(',', array_map('intval', $course_ids)) . ")
+            AND u.email IN ($placeholders)
+            AND r.archetype IN ('student','editingteacher','teacher')
+        ";
+        $group_members = $DB->get_records_sql($sql_group_members, $params);
+
+
+        // Gom thành viên nhóm theo course_id => group_id
+        $members_by_course_group = [];
+        foreach ($group_members as $m) {
+            $members_by_course_group[$m->course_id][$m->group_id][] = $m;
+        }
+
+        // 4. Lấy thành viên theo course (không theo group)
+        $sql_course_members = "
+            SELECT 
+                CONCAT(c.id, '_', u.id, '_', r.id) AS unique_key,
+                c.id AS course_id,
+                u.id AS user_id,
+                u.firstname,
+                u.lastname,
+                u.email,
+                r.archetype
+            FROM mdl_user u
+            JOIN mdl_role_assignments ra ON ra.userid = u.id
+            JOIN mdl_role r ON ra.roleid = r.id
+            JOIN mdl_context ctx ON ra.contextid = ctx.id AND ctx.contextlevel = 50
+            JOIN mdl_course c ON ctx.instanceid = c.id
+            WHERE c.id IN (" . implode(',', array_map('intval', $course_ids)) . ")
+            AND u.email IN ($placeholders)
+            AND r.archetype IN ('student','editingteacher','teacher')
+        ";
+        $course_members = $DB->get_records_sql($sql_course_members, $params);
+
+        // var_dump($course_members);die;
+        // Gom thành viên theo course_id và role
+        $members_by_course_role = [];
+        foreach ($course_members as $m) {
+            $members_by_course_role[$m->course_id][$m->archetype][] = $m;
+        }
+        // 5. Build kết quả
         $courses_enrolled = [];
-        $course_ids = [];
+
         foreach ($enrolled_courses as $course) {
-            // $userGroupsQuery = "SELECT DISTINCT g.id AS group_id,
-            //     g.name AS group_name
-            //     FROM mdl_groups g
-            //     JOIN mdl_groups_members gm ON gm.groupid = g.id
-            //     JOIN mdl_user u ON u.id = gm.userid
-            //     WHERE u.email IN ($emailsString)
-            //     AND g.courseid = :course_id
-            //     AND g.timemodified = (
-            //         SELECT MAX(g2.timemodified)
-            //         FROM mdl_groups g2
-            //         WHERE g2.name = g.name
-            //         AND g2.courseid = g.courseid
-            //     );";
+            $course_id = $course->course_id;
 
-            $groupQuery = "SELECT g.id AS group_id, g.name AS group_name
-                FROM mdl_groups g
-                WHERE g.courseid = :course_id";
-
-            $groups = $DB->get_records_sql($groupQuery, ['course_id' => $course->course_id]);
-                    
+            // Lấy groups trong course
             $group_list = [];
-            foreach ($groups as $group) {
-                $studentsQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
-                    FROM mdl_user u
-                    JOIN mdl_role_assignments ra ON ra.userid = u.id
-                    JOIN mdl_role r ON ra.roleid = r.id
-                    JOIN mdl_groups_members gm ON gm.userid = u.id
-                    JOIN mdl_groups g ON g.id = gm.groupid
-                    WHERE g.id = :group_id AND r.archetype = 'student' AND u.email IN ($emailsString)";
+            if (isset($groups_by_course[$course_id])) {
+                foreach ($groups_by_course[$course_id] as $group) {
+                    $student_list = [];
+                    $teacher_list = [];
 
-                $students = $DB->get_records_sql($studentsQuery, ['group_id' => $group->group_id]);
+                    // Lấy member theo group và phân loại role
+                    if (isset($members_by_course_group[$course_id][$group->group_id])) {
+                        foreach ($members_by_course_group[$course_id][$group->group_id] as $member) {
+                            $user_info = [
+                                'id' => $member->user_id,
+                                'firstname' => $member->firstname,
+                                'lastname' => $member->lastname,
+                                'email' => $member->email,
+                            ];
+                            if ($member->archetype === 'student') {
+                                $student_list[] = $user_info;
+                            } else {
+                                $teacher_list[] = $user_info;
+                            }
+                        }
+                    }
 
-                $student_list = [];
-                foreach ($students as $student) {
-                    $student_list[] = [
-                        'id' => $student->id,
-                        'firstname' => $student->firstname,
-                        'lastname' => $student->lastname,
-                        'email' => $student->email
+                    $participants = array_merge(
+                        array_map(fn($s) => array_merge($s, ['role' => 'student']), $student_list),
+                        array_map(fn($t) => array_merge($t, ['role' => 'teacher']), $teacher_list)
+                    );
+
+                    $teacher_list = self::unique_users_by_id($teacher_list);
+                    $student_list = self::unique_users_by_id($student_list);
+                    $participants = self::unique_users_by_id($participants);
+
+                    $group_list[] = [
+                        'group_id' => $group->group_id,
+                        'group_name' => $group->group_name,
+                        'students' => $student_list,
+                        'teachers' => $teacher_list,
+                        'participants' => $participants,
                     ];
                 }
-
-                // Lấy giáo viên trong nhóm
-                $teachersQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
-                    FROM mdl_user u
-                    JOIN mdl_role_assignments ra ON ra.userid = u.id
-                    JOIN mdl_role r ON ra.roleid = r.id
-                    JOIN mdl_groups_members gm ON gm.userid = u.id
-                    JOIN mdl_groups g ON g.id = gm.groupid
-                    WHERE g.id = :group_id AND r.archetype IN ('editingteacher','teacher') AND u.email IN ($emailsString)";
-
-                $teachers = $DB->get_records_sql($teachersQuery, ['group_id' => $group->group_id]);
-
-                $teacher_list = [];
-                foreach ($teachers as $teacher) {
-                    $teacher_list[] = [
-                        'id' => $teacher->id,
-                        'firstname' => $teacher->firstname,
-                        'lastname' => $teacher->lastname,
-                        'email' => $teacher->email
-                    ];
-                }
-                // Lấy participants từ student_list và teacher_list
-                $participants = array_merge(
-                    array_map(fn($s) => array_merge($s, ['role' => 'student']), $student_list),
-                    array_map(fn($t) => array_merge($t, ['role' => 'teacher']), $teacher_list)
-                );
-                $group_list[] = [
-                    'group_id' => $group->group_id,
-                    'group_name' => $group->group_name,
-                    'students' => $student_list,
-                    'teachers' => $teacher_list,
-                    'participants' => $participants
-                ];
             }
 
-            // $studentsQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
-            //     FROM mdl_user u
-            //     JOIN mdl_role_assignments ra ON ra.userid = u.id
-            //     JOIN mdl_role r ON ra.roleid = r.id
-            //     JOIN mdl_user_enrolments uem ON uem.userid = u.id
-            //     JOIN mdl_enrol e ON e.id = uem.enrolid
-            //     JOIN mdl_course c ON e.courseid = c.id
-            //     WHERE u.email IN ($emailsString)
-            //     AND r.archetype = 'student' AND c.id = :course_id;
-            // ";
+            // Thành viên course (không theo group)
+            $student_list = $members_by_course_role[$course_id]['student'] ?? [];
+            $teacher_list = array_merge(
+                $members_by_course_role[$course_id]['teacher'] ?? [],
+                $members_by_course_role[$course_id]['editingteacher'] ?? []
+            );
 
-            $studentsQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
-                FROM mdl_user u
-                JOIN mdl_role_assignments ra ON ra.userid = u.id
-                JOIN mdl_role r ON ra.roleid = r.id
-                JOIN mdl_context ctx ON ra.contextid = ctx.id
-                JOIN mdl_course c ON ctx.instanceid = c.id AND ctx.contextlevel = 50
-                WHERE u.email in ($emailsString)
-                AND r.archetype = 'student'
-                AND c.id = :course_id
-            ";
+            // Map lại định dạng
+            $map_user = fn($user) => [
+                'id' => $user->user_id,
+                'firstname' => $user->firstname,
+                'lastname' => $user->lastname,
+                'email' => $user->email,
+            ];
 
-            $students = $DB->get_records_sql($studentsQuery, ['course_id' => $course->course_id]);
-                                
-            $student_list = [];
-            foreach ($students as $student) {
-                $student_list[] = [
-                    'id' => $student->id,
-                    'firstname' => $student->firstname,
-                    'lastname' => $student->lastname,
-                    'email' => $student->email
-                ];
-            }
-
-            // $teachersQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
-            //     FROM mdl_user u
-            //     JOIN mdl_role_assignments ra ON ra.userid = u.id
-            //     JOIN mdl_role r ON ra.roleid = r.id
-            //     JOIN mdl_user_enrolments uem ON uem.userid = u.id
-            //     JOIN mdl_enrol e ON e.id = uem.enrolid
-            //     JOIN mdl_course c ON e.courseid = c.id
-            //     WHERE u.email IN ($emailsString)
-            //     AND r.archetype IN ('editingteacher','teacher') AND c.id = :course_id;
-            // ";
-            $teachersQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
-                FROM mdl_user u
-                JOIN mdl_role_assignments ra ON ra.userid = u.id
-                JOIN mdl_role r ON ra.roleid = r.id
-                JOIN mdl_context ctx ON ra.contextid = ctx.id
-                JOIN mdl_course c ON ctx.instanceid = c.id AND ctx.contextlevel = 50
-                WHERE u.email in ($emailsString)
-                AND r.archetype IN ('editingteacher','teacher')
-                AND c.id = :course_id
-            ";
-
-            $teachers = $DB->get_records_sql($teachersQuery, ['course_id' => $course->course_id]);
-                                
-            $teacher_list = [];
-            foreach ($teachers as $teacher) {
-                $teacher_list[] = [
-                    'id' => $teacher->id,
-                    'firstname' => $teacher->firstname,
-                    'lastname' => $teacher->lastname,
-                    'email' => $teacher->email
-                ];
-            }
+            $student_list = array_map($map_user, $student_list);
+            $teacher_list = array_map($map_user, $teacher_list);
 
             $participants = array_merge(
                 array_map(fn($s) => array_merge($s, ['role' => 'student']), $student_list),
                 array_map(fn($t) => array_merge($t, ['role' => 'teacher']), $teacher_list)
             );
+
+            $student_list = self::unique_users_by_id($student_list);
+            $teacher_list = self::unique_users_by_id($teacher_list);
+            $participants = self::unique_users_by_id($participants);
 
             $courses_enrolled[] = [
                 'course_id' => $course->course_id,
@@ -4076,73 +4327,54 @@ class local_custom_service_external extends external_api
                 'groups' => $group_list,
                 'students' => $student_list,
                 'teachers' => $teacher_list,
-                'participants' => $participants
+                'participants' => $participants,
             ];
-            $course_ids[] = $course->course_id;
+        }
+
+        // 6. Lấy các khóa học còn lại (không enroll user)
+        $sql_remaining = "
+            SELECT c.id AS course_id, c.fullname AS course_name
+            FROM mdl_course c
+            WHERE c.id != 1
+            AND c.id NOT IN (" . implode(',', array_map('intval', $course_ids)) . ")
+            ORDER BY c.id ASC
+        ";
+        $remaining_courses = $DB->get_records_sql($sql_remaining);
+
+        // Lấy groups cho các khóa học còn lại
+        $remaining_course_ids = array_map(fn($c) => $c->course_id, $remaining_courses);
+        $remaining_groups = [];
+        if (!empty($remaining_course_ids)) {
+            $sql_rem_groups = "
+                SELECT g.id AS group_id, g.courseid AS course_id, g.name AS group_name
+                FROM mdl_groups g
+                WHERE g.courseid IN (" . implode(',', array_map('intval', $remaining_course_ids)) . ")
+            ";
+            $remaining_groups = $DB->get_records_sql($sql_rem_groups);
+        }
+
+        // Gom groups theo course_id
+        $remaining_groups_by_course = [];
+        foreach ($remaining_groups as $g) {
+            $remaining_groups_by_course[$g->course_id][] = $g;
         }
 
         $remainingCourses = [];
-        if (!empty($course_ids)) {
-            // Chuyển mảng course_ids thành chuỗi để sử dụng trong câu truy vấn
-            $course_ids_str = implode(',', $course_ids);
-
-            // Truy vấn các khóa học còn lại không nằm trong danh sách đã lấy
-            $queryRemainingCourses = "
-            SELECT DISTINCT c.id as course_id, c.fullname as course_name
-            FROM mdl_course c
-            WHERE c.id NOT IN ($course_ids_str)
-            AND c.id != 1
-            AND (c.id, c.timemodified) IN (
-                SELECT 
-                    id, MAX(timemodified) AS max_timemodified
-                FROM 
-                    mdl_course
-                GROUP BY 
-                    id
-            )
-            ORDER BY course_id ASC
-            ";
-
-            $resultRemainingCourses = $DB->get_records_sql($queryRemainingCourses);
-        } else {
-            // Nếu không có khóa học nào trong danh sách enrolled_courses
-            $queryRemainingCourses = "
-            SELECT DISTINCT c.id as course_id, c.fullname as course_name
-            FROM mdl_course c
-            WHERE c.id != 1
-            AND (c.id, c.timemodified) IN (
-                SELECT 
-                    id, MAX(timemodified) AS max_timemodified
-                FROM 
-                    mdl_course
-                GROUP BY 
-                    id
-            )
-            ORDER BY course_id ASC
-            ";
-        
-            $resultRemainingCourses = $DB->get_records_sql($queryRemainingCourses);
-        }
-
-        foreach ($resultRemainingCourses as $course) {
-            $groupQuery = "SELECT g.id AS group_id, g.name AS group_name
-                FROM mdl_groups g
-                WHERE g.courseid = :course_id";
-    
-            $groups = $DB->get_records_sql($groupQuery, ['course_id' => $course->course_id]);
-    
+        foreach ($remaining_courses as $course) {
             $group_list = [];
-            foreach ($groups as $group) {
-                $group_list[] = [
-                    'group_id' => $group->group_id,
-                    'group_name' => $group->group_name
-                ];
+            if (isset($remaining_groups_by_course[$course->course_id])) {
+                foreach ($remaining_groups_by_course[$course->course_id] as $group) {
+                    $group_list[] = [
+                        'group_id' => $group->group_id,
+                        'group_name' => $group->group_name,
+                    ];
+                }
             }
 
             $remainingCourses[] = [
                 'course_id' => $course->course_id,
                 'course_name' => $course->course_name,
-                'groups' => $group_list
+                'groups' => $group_list,
             ];
         }
 
@@ -9042,23 +9274,42 @@ class local_custom_service_external extends external_api
         }
 
         // Query users theo emails
-        list($inSql, $inParams) = $DB->get_in_or_equal($params['user_emails'], SQL_PARAMS_NAMED);
+        // list($inSql, $inParams) = $DB->get_in_or_equal($params['user_emails'], SQL_PARAMS_NAMED);
 
-        $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
+        // $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
 
-        // Trả về dưới dạng mảng
-        $result = [];
-        foreach ($users as $user) {
-            $result[] = [
-                'id' => $user->id,
-                'username' => $user->username,
-                'firstname' => $user->firstname,
-                'lastname' => $user->lastname,
-                'email' => $user->email,
-            ];
+        // // Trả về dưới dạng mảng
+        // $result = [];
+        // foreach ($users as $user) {
+        //     $result[] = [
+        //         'id' => $user->id,
+        //         'username' => $user->username,
+        //         'firstname' => $user->firstname,
+        //         'lastname' => $user->lastname,
+        //         'email' => $user->email,
+        //     ];
+        // }
+
+        $allUsers = [];
+        $chunks = array_chunk($params['user_emails'], 1000); // batch size <= 1000
+
+        foreach ($chunks as $chunk) {
+            list($inSql, $inParams) = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
+
+            foreach ($users as $user) {
+                $allUsers[] = [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'firstname' => $user->firstname,
+                    'lastname' => $user->lastname,
+                    'email' => $user->email,
+                    'count_email' => count($params['user_emails'])
+                ];
+            }
         }
 
-        return $result;
+        return $allUsers;
     }
 
     public static function get_user_info_by_emails_returns()
@@ -9071,6 +9322,7 @@ class local_custom_service_external extends external_api
                     'firstname' => new external_value(PARAM_NOTAGS, 'First name'),
                     'lastname' => new external_value(PARAM_NOTAGS, 'Last name'),
                     'email' => new external_value(PARAM_EMAIL, 'Email'),
+                    'count_email' => new external_value(PARAM_INT, 'Count Email'),
                 )
             )
         );

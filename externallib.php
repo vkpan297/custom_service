@@ -9331,56 +9331,60 @@ class local_custom_service_external extends external_api
     // 1️⃣ API lấy embed URL của H5P activity
     public static function get_h5p_embed_url_parameters() {
         return new external_function_parameters([
-            'cmid' => new external_value(PARAM_INT, 'Course Module ID (cmid) of the H5P activity')
+            'cmid' => new external_value(PARAM_INT, 'Course Module ID (cmid) of the H5P activity'),
+            'modtype' => new external_value(PARAM_TEXT, 'Type of H5P module: hvp or h5pactivity')
         ]);
     }
 
-    public static function get_h5p_embed_url($cmid) {
+    // 2️⃣ Hàm xử lý
+    public static function get_h5p_embed_url($cmid, $modtype) {
         global $DB, $CFG;
-    
+
         $params = self::validate_parameters(self::get_h5p_embed_url_parameters(), [
-            'cmid' => $cmid
+            'cmid' => $cmid,
+            'modtype' => $modtype
         ]);
-    
-        // Lấy course module
-        $cm = get_coursemodule_from_id('h5pactivity', $params['cmid'], 0, false, MUST_EXIST);
-    
-        // Lấy instance
-        $h5pactivity = $DB->get_record('h5pactivity', ['id' => $cm->instance], '*', MUST_EXIST);
-    
-        // Lấy context đúng
-        $context = context_module::instance($cm->id);
-    
-        // Lấy file .h5p từ file_storage
-        $fs = get_file_storage();
-        $files = $fs->get_area_files($context->id, 'mod_h5pactivity', 'package', 0, 'itemid, filepath, filename', false);
-    
-        // Kiểm tra có file không
-        if (empty($files)) {
-            throw new moodle_exception('nofilefound', 'error', '', null, 'No .h5p file found in activity');
+
+        $modtype = trim(strtolower($params['modtype']));
+        if (!in_array($modtype, ['h5pactivity', 'hvp'])) {
+            throw new moodle_exception('invalidmodtype', 'error', '', null, 'modtype must be "h5pactivity" or "hvp"');
         }
-    
-        // Lấy file đầu tiên (thường chỉ có 1)
-        $file = reset($files);
-        $filename = $file->get_filename();
-    
-        // Tạo pluginfile URL có tên file
-        $fileurl = moodle_url::make_pluginfile_url(
-            $context->id,
-            'mod_h5pactivity',
-            'package',
-            0,
-            '/',
-            $filename
-        );
-    
-        // Encode
-        $encodedurl = urlencode($fileurl);
-    
-        // Tạo URL nhúng
-        $embedurl = $CFG->wwwroot . "/h5p/embed.php?url={$encodedurl}&component=mod_h5pactivity";
-        $resizer_script = $CFG->wwwroot . "/h5p/h5plib/v127/joubel/core/js/h5p-resizer.js";
-    
+
+        // Lấy course module đúng theo modtype
+        $cm = get_coursemodule_from_id($modtype, $params['cmid'], 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+
+        // Tạo URL nhúng & script theo modtype
+        if ($modtype === 'h5pactivity') {
+            // Lấy file .h5p từ file_storage
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'mod_h5pactivity', 'package', 0, 'itemid, filepath, filename', false);
+
+            if (empty($files)) {
+                throw new moodle_exception('nofilefound', 'error', '', null, 'No .h5p file found in h5pactivity');
+            }
+
+            $file = reset($files);
+            $filename = $file->get_filename();
+
+            $fileurl = moodle_url::make_pluginfile_url(
+                $context->id,
+                'mod_h5pactivity',
+                'package',
+                0,
+                '/',
+                $filename
+            );
+
+            $encodedurl = urlencode($fileurl);
+            $embedurl = $CFG->wwwroot . "/h5p/embed.php?url={$encodedurl}&component=mod_h5pactivity";
+            $resizer_script = $CFG->wwwroot . "/h5p/h5plib/v127/joubel/core/js/h5p-resizer.js";
+
+        } else { // modtype === 'hvp'
+            $embedurl = $CFG->wwwroot . "/mod/hvp/embed.php?id={$cm->id}";
+            $resizer_script = $CFG->wwwroot . "/mod/hvp/library/js/h5p-resizer.js";
+        }
+
         return [
             'status' => true,
             'embed_url' => $embedurl,
@@ -9388,85 +9392,147 @@ class local_custom_service_external extends external_api
         ];
     }
 
+    // 3️⃣ Kiểu dữ liệu trả về
     public static function get_h5p_embed_url_returns() {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Status'),
-            'embed_url' => new external_value(PARAM_URL, 'URL nhúng'),
-            'resizer_script' => new external_value(PARAM_URL, 'resizer script')
+            'embed_url' => new external_value(PARAM_URL, 'Embed URL'),
+            'resizer_script' => new external_value(PARAM_URL, 'H5P resizer script URL')
         ]);
     }
 
-    // 2️⃣ API lấy kết quả làm bài theo email và cmid
+    // ⚙️ 1. Thêm tham số modtype
     public static function get_h5p_result_parameters() {
         return new external_function_parameters([
             'email' => new external_value(PARAM_TEXT, 'User email'),
-            'cmid' => new external_value(PARAM_INT, 'Course Module ID')
+            'cmid' => new external_value(PARAM_INT, 'Course Module ID'),
+            'modtype' => new external_value(PARAM_TEXT, 'Loại module: h5pactivity hoặc hvp')
         ]);
     }
-    
-    public static function get_h5p_result($email, $cmid) {
+
+    public static function get_h5p_result($email, $cmid, $modtype) {
         global $DB;
-    
+
         $params = self::validate_parameters(self::get_h5p_result_parameters(), [
             'email' => $email,
-            'cmid' => $cmid
+            'cmid' => $cmid,
+            'modtype' => $modtype
         ]);
-    
+
         // 1. Lấy user theo email
         $user = $DB->get_record('user', ['email' => $params['email']], '*', IGNORE_MISSING);
         if (!$user) {
             return ['status' => false, 'message' => 'Không tìm thấy người dùng với email này', 'attempts' => []];
         }
-    
-        // 2. Lấy instance H5P từ cmid
-        $cm = get_coursemodule_from_id('h5pactivity', $params['cmid'], 0, false, MUST_EXIST);
-        $h5pactivityid = $cm->instance;
-    
-        // 3. Lấy tất cả các attempts của user cho activity này
-        $attempts = $DB->get_records('h5pactivity_attempts', [
-            'h5pactivityid' => $h5pactivityid,
-            'userid' => $user->id
-        ], 'timecreated ASC'); // sắp xếp theo thời gian
-    
-        if (!$attempts) {
-            return ['status' => false, 'message' => 'Người dùng chưa làm bài', 'attempts' => []];
-        }
-    
-        // 4. Lấy kết quả cho từng attempt
-        $resultList = [];
-        foreach ($attempts as $attempt) {
-            // $result = $DB->get_record('h5pactivity_attempts_results', ['attemptid' => $attempt->id], '*', IGNORE_MISSING);
-    
-            // if ($result) {
-            //     $resultList[] = [
-            //         'attemptid' => $attempt->id,
-            //         'attempt' => $attempt->attempt,
-            //         'score' => $result->rawscore,
-            //         'maxscore' => $result->maxscore,
-            //         'duration' => $result->duration,
-            //         'timecreated' => $attempt->timecreated,
-            //         'timemodified' => $attempt->timemodified
-            //     ];
-            // }
 
-            $resultList[] = [
-                'attemptid' => $attempt->id,
-                'attempt' => $attempt->attempt,
-                'score' => $attempt->rawscore,
-                'maxscore' => $attempt->maxscore,
-                'duration' => $attempt->duration,
-                'timecreated' => $attempt->timecreated,
-                'timemodified' => $attempt->timemodified
+        // 2. Kiểm tra loại hoạt động
+        $modtype = $params['modtype'];
+        $cmid = $params['cmid'];
+
+        if ($modtype === 'h5pactivity') {
+            // 🔁 Code hiện tại giữ nguyên
+            $cm = get_coursemodule_from_id('h5pactivity', $cmid, 0, false, MUST_EXIST);
+            $h5pactivityid = $cm->instance;
+
+            $attempts = $DB->get_records('h5pactivity_attempts', [
+                'h5pactivityid' => $h5pactivityid,
+                'userid' => $user->id
+            ], 'timecreated ASC');
+
+            if (!$attempts) {
+                return ['status' => false, 'message' => 'Người dùng chưa làm bài', 'attempts' => []];
+            }
+
+            $resultList = [];
+            foreach ($attempts as $attempt) {
+                $resultList[] = [
+                    'attemptid' => $attempt->id,
+                    'attempt' => $attempt->attempt,
+                    'score' => $attempt->rawscore,
+                    'maxscore' => $attempt->maxscore,
+                    'duration' => $attempt->duration,
+                    'timecreated' => $attempt->timecreated,
+                    'timemodified' => $attempt->timemodified
+                ];
+            }
+
+            return [
+                'status' => true,
+                'message' => 'Lấy tất cả kết quả thành công',
+                'attempts' => $resultList
             ];
+
+        } elseif ($modtype === 'hvp') {
+            $cm = get_coursemodule_from_id('hvp', $cmid, 0, false, MUST_EXIST);
+            $hvpinstanceid = $cm->instance;
+        
+            $results = $DB->get_records('hvp_xapi_results', [
+                'content_id' => $hvpinstanceid,
+                'user_id' => $user->id
+            ], 'id ASC');
+        
+            if (!$results) {
+                return ['status' => false, 'message' => 'Người dùng chưa làm bài', 'attempts' => []];
+            }
+        
+            // Nhóm theo parent_id (attempts)
+            $groupedAttempts = [];
+            foreach ($results as $res) {
+                // Nếu là compound (parent_id = NULL)
+                if ($res->parent_id === null) {
+                    $groupedAttempts[$res->id]['parent'] = $res;
+                    $groupedAttempts[$res->id]['children'] = [];
+                } else {
+                    // Nếu là con, tìm parent_id
+                    if (!isset($groupedAttempts[$res->parent_id])) {
+                        $groupedAttempts[$res->parent_id]['parent'] = null;
+                        $groupedAttempts[$res->parent_id]['children'] = [];
+                    }
+                    $groupedAttempts[$res->parent_id]['children'][] = $res;
+                }
+            }
+        
+            $resultList = [];
+            $attemptIndex = 1;
+            foreach ($groupedAttempts as $group) {
+                $score = 0;
+                $maxscore = 0;
+        
+                foreach ($group['children'] as $child) {
+                    $score += isset($child->raw_score) ? (float)$child->raw_score : 0;
+                    $maxscore += isset($child->max_score) ? (float)$child->max_score : 0;
+                }
+        
+                // Nếu có parent compound, ưu tiên lấy điểm từ đó
+                if ($group['parent']) {
+                    $attemptid = $group['parent']->id;
+                    $score = isset($group['parent']->raw_score) ? (float)$group['parent']->raw_score : $score;
+                    $maxscore = isset($group['parent']->max_score) ? (float)$group['parent']->max_score : $maxscore;
+                } else {
+                    $attemptid = $group['children'][0]->id; // fallback
+                }
+        
+                $resultList[] = [
+                    'attemptid' => $attemptid,
+                    'attempt' => $attemptIndex++,
+                    'score' => $score,
+                    'maxscore' => $maxscore,
+                    'duration' => 0,
+                    'timecreated' => 0,
+                    'timemodified' => 0
+                ];
+            }
+
+            return [
+                'status' => true,
+                'message' => 'Lấy tất cả kết quả thành công',
+                'attempts' => $resultList
+            ];
+        } else {
+            return ['status' => false, 'message' => 'Loại hoạt động không được hỗ trợ', 'attempts' => []];
         }
-    
-        return [
-            'status' => true,
-            'message' => 'Lấy tất cả kết quả thành công',
-            'attempts' => $resultList
-        ];
     }
-    
+
     public static function get_h5p_result_returns() {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái'),
@@ -9546,6 +9612,62 @@ class local_custom_service_external extends external_api
     }
 
     public static function submit_h5p_result_returns() {
+        return new external_single_structure([
+            'status'  => new external_value(PARAM_BOOL, 'Trạng thái ghi thành công hay không'),
+            'message' => new external_value(PARAM_TEXT, 'Thông báo')
+        ]);
+    }
+
+    public static function submit_hvp_result_parameters() {
+        return new external_function_parameters([
+            'cmid'     => new external_value(PARAM_INT, 'Course module ID of H5P activity'),
+            'email'    => new external_value(PARAM_TEXT, 'Email of the user submitting'),
+            'score'    => new external_value(PARAM_FLOAT, 'Raw score'),
+            'maxscore' => new external_value(PARAM_FLOAT, 'Maximum score'),
+            'duration' => new external_value(PARAM_INT, 'Duration in seconds'),
+            'completion' => new external_value(PARAM_BOOL, 'Completed or not'),
+            'success'    => new external_value(PARAM_BOOL, 'Success or not'),
+            'interaction_type' => new external_value(PARAM_TEXT, 'Type of interaction', VALUE_OPTIONAL),
+            'description' => new external_value(PARAM_RAW, 'Question or activity description', VALUE_OPTIONAL),
+            'correct_responses_pattern' => new external_value(PARAM_RAW, 'Correct answer(s)', VALUE_OPTIONAL),
+            'response' => new external_value(PARAM_RAW, 'Learner\'s response', VALUE_OPTIONAL),
+            'additionals' => new external_value(PARAM_RAW, 'Additional data (JSON or other)', VALUE_OPTIONAL),
+        ]);
+    }
+
+    public static function submit_hvp_result($cmid, $email, $score, $maxscore, $duration, $completion, $success) {
+        global $DB;
+
+        $params = self::validate_parameters(self::submit_hvp_result_parameters(), compact('cmid', 'email', 'score', 'maxscore', 'duration', 'completion', 'success'));
+
+        // Lấy user từ email
+        $user = $DB->get_record('user', ['email' => $params['email']], '*', MUST_EXIST);
+
+        // Lấy course module và activity
+        $cm = get_coursemodule_from_id('hvp', $params['cmid'], 0, false, MUST_EXIST);
+        $hvp = $DB->get_record('hvp', ['id' => $cm->instance], '*', MUST_EXIST);
+
+        $result = (object)[
+            'content_id' => $cm->instance,
+            'user_id'    => $user->id,
+            'interaction_type' => $params['interaction_type'] ?? '',
+            'description' => $params['description'] ?? '',
+            'correct_responses_pattern' => $params['correct_responses_pattern'] ?? '',
+            'response' => $params['response'] ?? '',
+            'additionals' => $params['additionals'] ?? '',
+            'raw_score' => $params['score'],
+            'max_score' => $params['maxscore']
+        ];
+    
+        $DB->insert_record('hvp_xapi_results', $result);
+
+        return [
+            'status' => true,
+            'message' => 'Kết quả H5P đã được ghi nhận thành công.'
+        ];
+    }
+
+    public static function submit_hvp_result_returns() {
         return new external_single_structure([
             'status'  => new external_value(PARAM_BOOL, 'Trạng thái ghi thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo')

@@ -501,7 +501,15 @@ $functions = array(
         'ajax'        => true,
         'capabilities' => '',
     ],
-
+    'local_custom_service_submit_hvp_result' => [
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'submit_hvp_result',
+        'classpath'   => '',
+        'description' => 'Submit HVP result to Moodle from external client',
+        'type'        => 'write',
+        'ajax'        => true,
+        'capabilities' => '',
+    ],
 );
 
 $services = array(
@@ -566,7 +574,8 @@ $services = array(
             'local_custom_service_save_definitions_custom_service',
             'local_custom_service_reorder_category',
             'local_custom_service_get_user_info_by_emails',
-            'local_custom_service_submit_h5p_result'
+            'local_custom_service_submit_h5p_result',
+            'local_custom_service_submit_hvp_result'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

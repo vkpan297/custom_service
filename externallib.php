@@ -4197,12 +4197,15 @@ class local_custom_service_external extends external_api
                 u.firstname,
                 u.lastname,
                 u.email,
-                r.archetype
+                r.archetype,
+                uem.timecreated AS enroll_time
             FROM mdl_groups_members gm
             JOIN mdl_groups g ON g.id = gm.groupid
             JOIN mdl_user u ON u.id = gm.userid
             JOIN mdl_role_assignments ra ON ra.userid = u.id
             JOIN mdl_role r ON ra.roleid = r.id
+            JOIN mdl_user_enrolments uem ON uem.userid = u.id
+            JOIN mdl_enrol e ON e.id = uem.enrolid AND e.courseid = g.courseid
             WHERE g.courseid IN (" . implode(',', array_map('intval', $course_ids)) . ")
             AND u.email IN ($placeholders)
             AND r.archetype IN ('student','editingteacher','teacher')
@@ -4225,12 +4228,15 @@ class local_custom_service_external extends external_api
                 u.firstname,
                 u.lastname,
                 u.email,
-                r.archetype
+                r.archetype,
+                uem.timecreated AS enroll_time
             FROM mdl_user u
             JOIN mdl_role_assignments ra ON ra.userid = u.id
             JOIN mdl_role r ON ra.roleid = r.id
             JOIN mdl_context ctx ON ra.contextid = ctx.id AND ctx.contextlevel = 50
             JOIN mdl_course c ON ctx.instanceid = c.id
+            JOIN mdl_user_enrolments uem ON uem.userid = u.id
+            JOIN mdl_enrol e ON e.id = uem.enrolid AND e.courseid = c.id
             WHERE c.id IN (" . implode(',', array_map('intval', $course_ids)) . ")
             AND u.email IN ($placeholders)
             AND r.archetype IN ('student','editingteacher','teacher')
@@ -4264,6 +4270,8 @@ class local_custom_service_external extends external_api
                                 'firstname' => $member->firstname,
                                 'lastname' => $member->lastname,
                                 'email' => $member->email,
+                                'enroll_time' => $member->enroll_time,
+                                'enroll_date' => date('Y-m-d H:i:s', $member->enroll_time)
                             ];
                             if ($member->archetype === 'student') {
                                 $student_list[] = $user_info;
@@ -4305,6 +4313,8 @@ class local_custom_service_external extends external_api
                 'firstname' => $user->firstname,
                 'lastname' => $user->lastname,
                 'email' => $user->email,
+                'enroll_time' => $user->enroll_time,
+                'enroll_date' => date('Y-m-d H:i:s', $user->enroll_time)
             ];
 
             $student_list = array_map($map_user, $student_list);
@@ -4406,7 +4416,9 @@ class local_custom_service_external extends external_api
                                                     'id' => new external_value(PARAM_INT, 'Student ID'),
                                                     'firstname' => new external_value(PARAM_TEXT, 'First name'),
                                                     'lastname' => new external_value(PARAM_TEXT, 'Last name'),
-                                                    'email' => new external_value(PARAM_TEXT, 'Email')
+                                                    'email' => new external_value(PARAM_TEXT, 'Email'),
+                                                    'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                                    'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
                                                 )
                                             )
                                         ),
@@ -4416,7 +4428,9 @@ class local_custom_service_external extends external_api
                                                     'id' => new external_value(PARAM_INT, 'Teacher ID'),
                                                     'firstname' => new external_value(PARAM_TEXT, 'First name'),
                                                     'lastname' => new external_value(PARAM_TEXT, 'Last name'),
-                                                    'email' => new external_value(PARAM_TEXT, 'Email')
+                                                    'email' => new external_value(PARAM_TEXT, 'Email'),
+                                                    'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                                    'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
                                                 )
                                             )
                                         ),
@@ -4427,7 +4441,9 @@ class local_custom_service_external extends external_api
                                                     'firstname' => new external_value(PARAM_TEXT, 'First name'),
                                                     'lastname' => new external_value(PARAM_TEXT, 'Last name'),
                                                     'email' => new external_value(PARAM_TEXT, 'Email'),
-                                                    'role' => new external_value(PARAM_TEXT, 'Role (student or teacher)')
+                                                    'role' => new external_value(PARAM_TEXT, 'Role (student or teacher)'),
+                                                    'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                                    'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
                                                 )
                                             )
                                         )
@@ -4440,7 +4456,9 @@ class local_custom_service_external extends external_api
                                         'id' => new external_value(PARAM_INT, 'Student ID'),
                                         'firstname' => new external_value(PARAM_TEXT, 'First name'),
                                         'lastname' => new external_value(PARAM_TEXT, 'Last name'),
-                                        'email' => new external_value(PARAM_TEXT, 'Email')
+                                        'email' => new external_value(PARAM_TEXT, 'Email'),
+                                        'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                        'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
                                     )
                                 )
                             ),
@@ -4450,7 +4468,9 @@ class local_custom_service_external extends external_api
                                         'id' => new external_value(PARAM_INT, 'Teacher ID'),
                                         'firstname' => new external_value(PARAM_TEXT, 'First name'),
                                         'lastname' => new external_value(PARAM_TEXT, 'Last name'),
-                                        'email' => new external_value(PARAM_TEXT, 'Email')
+                                        'email' => new external_value(PARAM_TEXT, 'Email'),
+                                        'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                        'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
                                     )
                                 )
                             ),
@@ -4461,7 +4481,9 @@ class local_custom_service_external extends external_api
                                         'firstname' => new external_value(PARAM_TEXT, 'First name'),
                                         'lastname' => new external_value(PARAM_TEXT, 'Last name'),
                                         'email' => new external_value(PARAM_TEXT, 'Email'),
-                                        'role' => new external_value(PARAM_TEXT, 'Role (student or teacher)')
+                                        'role' => new external_value(PARAM_TEXT, 'Role (student or teacher)'),
+                                        'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                        'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
                                     )
                                 )
                             )

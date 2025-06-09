@@ -3882,7 +3882,8 @@ class local_custom_service_external extends external_api
             array(
                 'user_emails' => new external_multiple_structure(
                     new external_value(PARAM_TEXT, 'User email')
-                )
+                ),
+                'courseid' => new external_value(PARAM_INT, 'Optional course ID to filter', VALUE_DEFAULT, null)
             )
         );
     }
@@ -4138,7 +4139,7 @@ class local_custom_service_external extends external_api
         return array_values($unique);
     }
 
-    public static function get_enrolled_courses($user_emails)
+    public static function get_enrolled_courses($user_emails, $courseid = null)
     {
         global $DB;
 
@@ -4153,6 +4154,13 @@ class local_custom_service_external extends external_api
         // $emailsString = "'" . $emailsString . "'";
 
         $placeholders = implode(',', array_fill(0, count($user_emails_array), '?'));
+        $params = $user_emails_array;
+
+        $course_filter = '';
+        if (!empty($courseid)) {
+            $course_filter = ' AND c.id = ?';
+            $params[] = $courseid;
+        }
 
         // 1. Lấy danh sách course enrolled của user emails (và tổng số student/teacher theo course)
         // Sử dụng :emails là mảng parameter được Moodle DB tự bind chuẩn
@@ -4169,11 +4177,11 @@ class local_custom_service_external extends external_api
             JOIN mdl_role_assignments ra ON ra.userid = u.id
             JOIN mdl_role r ON ra.roleid = r.id
             WHERE u.email IN ($placeholders)
+            $course_filter
             GROUP BY c.id, c.fullname
             ORDER BY c.id ASC
         ";
-
-        $params = $user_emails_array;
+        
         $enrolled_courses = $DB->get_records_sql($sql_courses, $params);
         if (!$enrolled_courses) {
             $enrolled_courses = [];

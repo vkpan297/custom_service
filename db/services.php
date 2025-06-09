@@ -510,6 +510,14 @@ $functions = array(
         'ajax'        => true,
         'capabilities' => '',
     ],
+    'local_custom_service_update_activity_cmsh5ptool' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'update_activity_cmsh5ptool',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Update Activity CMS H5P Tool',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:update',
+    ),
 );
 
 $services = array(
@@ -575,7 +583,8 @@ $services = array(
             'local_custom_service_reorder_category',
             'local_custom_service_get_user_info_by_emails',
             'local_custom_service_submit_h5p_result',
-            'local_custom_service_submit_hvp_result'
+            'local_custom_service_submit_hvp_result',
+            'local_custom_service_update_activity_cmsh5ptool'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

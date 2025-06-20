@@ -999,7 +999,8 @@ class local_custom_service_external extends external_api
         JOIN mdl_context ctx ON ra.contextid = ctx.id
         JOIN mdl_role r ON ra.roleid = r.id
         JOIN mdl_course c ON ctx.instanceid = c.id
-        WHERE u.id = :userid AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        WHERE u.id = :userid AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')
+        AND c.visible = 1";
 
         $params = ['userid' => $userid];
 
@@ -1023,7 +1024,8 @@ class local_custom_service_external extends external_api
         JOIN mdl_context ctx ON ra.contextid = ctx.id
         JOIN mdl_role r ON ra.roleid = r.id
         JOIN mdl_course c ON ctx.instanceid = c.id
-        WHERE u.id = :userid AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        WHERE u.id = :userid AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')
+        AND c.visible = 1";
 
         $params = ['userid' => $userid];
 
@@ -4177,6 +4179,7 @@ class local_custom_service_external extends external_api
             JOIN mdl_role_assignments ra ON ra.userid = u.id
             JOIN mdl_role r ON ra.roleid = r.id
             WHERE u.email IN ($placeholders)
+            AND c.visible = 1
             $course_filter
             GROUP BY c.id, c.fullname
             ORDER BY c.id ASC
@@ -4256,6 +4259,7 @@ class local_custom_service_external extends external_api
             JOIN mdl_user_enrolments uem ON uem.userid = u.id
             JOIN mdl_enrol e ON e.id = uem.enrolid AND e.courseid = c.id
             WHERE c.id IN (" . implode(',', array_map('intval', $course_ids)) . ")
+            AND c.visible = 1
             AND u.email IN ($placeholders)
             AND r.archetype IN ('student','editingteacher','teacher')
         ";
@@ -4364,6 +4368,7 @@ class local_custom_service_external extends external_api
             SELECT c.id AS course_id, c.fullname AS course_name
             FROM mdl_course c
             WHERE c.id != 1
+            AND c.visible = 1
             AND c.id NOT IN (" . implode(',', array_map('intval', $course_ids)) . ")
             ORDER BY c.id ASC
         ";
@@ -4577,7 +4582,8 @@ class local_custom_service_external extends external_api
         JOIN mdl_context ctx ON ra.contextid = ctx.id
         JOIN mdl_role r ON ra.roleid = r.id
         JOIN mdl_course c ON ctx.instanceid = c.id
-        WHERE u.id = $userid";
+        WHERE u.id = $userid
+        AND c.visible = 1";
 
         if ($role == 'student') {
             $sql_2_count .= " and r.shortname = 'student'";
@@ -4609,7 +4615,8 @@ class local_custom_service_external extends external_api
         LEFT JOIN mdl_files f ON f.contextid = ctx.id AND f.component = 'course' AND f.filearea = 'overviewfiles' AND f.filename <> '.'
         LEFT JOIN mdl_user_lastaccess l ON l.courseid = c.id AND l.userid = u.id
         JOIN mdl_course_categories cat ON c.category = cat.id
-        WHERE u.id = $userid";
+        WHERE u.id = $userid
+        AND c.visible = 1";
 
         if ($role == 'student') {
             $sql_2 .= " and r.shortname = 'student'";
@@ -7007,6 +7014,7 @@ class local_custom_service_external extends external_api
                 AND cm.deletioninprogress != 1
                 AND cm.completion != :completion_disabled
                 AND m.name != 'vedubotleanbothoctap'
+                AND c.visible = 1
                 $roleCondition
             ORDER BY 
                 cmc.timemodified DESC
@@ -7064,6 +7072,8 @@ class local_custom_service_external extends external_api
             JOIN 
                 {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50
             JOIN 
+                {course} c ON c.id = ctx.instanceid
+            JOIN 
                 {role} r ON ra.roleid = r.id
             JOIN 
                 {user_enrolments} ue ON ue.userid = cmc.userid
@@ -7075,6 +7085,7 @@ class local_custom_service_external extends external_api
                 AND cm.deletioninprogress != 1
                 AND cm.completion != :completion_disabled
                 AND m.name != 'vedubotleanbothoctap'
+                AND c.visible = 1
                 $roleCondition";
     
         $totalActivities = $DB->count_records_sql($countSql, $params);
@@ -7206,6 +7217,7 @@ class local_custom_service_external extends external_api
                 AND (cmc.completionstate IS NULL OR cmc.completionstate = :completionstate OR cmc.coursemoduleid IS NULL) -- Điều kiện lọc các hoạt động chưa có hoàn thành
                 AND ue.userid = :userid -- Điều kiện khóa học người dùng tham gia
                 AND m.name != 'vedubotleanbothoctap'
+                AND c.visible = 1
                 $roleCondition
             $limitClause";
 
@@ -7273,6 +7285,8 @@ class local_custom_service_external extends external_api
             JOIN 
                 {context} ctx ON ctx.id = ra.contextid AND ctx.contextlevel = 50 -- Lọc theo khóa học
             JOIN 
+                {course} c ON c.id = ctx.instanceid
+            JOIN 
                 {user_enrolments} ue ON ue.userid = :userid3
             JOIN 
                 {enrol} e ON e.id = ue.enrolid AND e.courseid = cm.course -- Lọc khóa học người dùng tham gia
@@ -7282,6 +7296,7 @@ class local_custom_service_external extends external_api
                 AND (cmc.completionstate IS NULL OR cmc.completionstate = :completionstate OR cmc.coursemoduleid IS NULL) -- Điều kiện lọc các hoạt động chưa có hoàn thành
                 AND ue.userid = :userid -- Điều kiện khóa học người dùng tham gia
                 AND m.name != 'vedubotleanbothoctap'
+                AND c.visible = 1
                 $roleCondition
         ";
         $totalActivities = $DB->count_records_sql($countSql, $params);
@@ -7371,7 +7386,8 @@ class local_custom_service_external extends external_api
         LEFT JOIN mdl_files f ON f.contextid = ctx.id AND f.component = 'course' AND f.filearea = 'overviewfiles' AND f.filename <> '.'
         LEFT JOIN mdl_user_lastaccess l ON l.courseid = c.id AND l.userid = u.id
         JOIN mdl_course_categories cat ON c.category = cat.id
-        WHERE u.id = $userid";
+        WHERE u.id = $userid
+        AND c.visible = 1";
 
         if ($role == 'student') {
             $enrolledCoursesSql .= " and r.shortname = 'student'";
@@ -7489,7 +7505,8 @@ class local_custom_service_external extends external_api
         JOIN mdl_context ctx ON ra.contextid = ctx.id
         JOIN mdl_role r ON ra.roleid = r.id
         JOIN mdl_course c ON ctx.instanceid = c.id
-        WHERE u.id = $userid";
+        WHERE u.id = $userid
+        AND c.visible = 1";
 
         if ($role == 'student') {
             $totalCoursesSql .= " and r.shortname = 'student'";

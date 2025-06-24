@@ -4211,7 +4211,7 @@ class local_custom_service_external extends external_api
         // 3. Lấy tất cả thành viên groups (student + teacher) trong 1 query duy nhất
         $sql_group_members = "
             SELECT 
-                CONCAT(g.courseid, '_', u.id, '_', r.id) AS unique_key,
+                CONCAT(g.courseid, '_', u.id, '_', r.id, '_', g.id) AS unique_key,
                 g.courseid AS course_id,
                 g.id AS group_id,
                 u.id AS user_id,

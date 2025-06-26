@@ -5800,10 +5800,30 @@ class local_custom_service_external extends external_api
             $plugin_config = $DB->get_records('assign_plugin_config', ['assignment' => $cm->instance]);
         }
 
+        // Nếu là resource thì lấy file URLs
+        $file_urls = [];
+        if ($params['modulename'] === 'resource') {
+            $context = context_module::instance($cm->id);
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'itemid, filepath, filename', false);
+
+            foreach ($files as $file) {
+                $file_urls[] = moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                )->out(false);
+            }
+        }
+
         return [
             'status' => 'success',
             'data' => json_encode($module),
-            'plugin_config' => $plugin_config
+            'plugin_config' => $plugin_config,
+            'file_urls' => $file_urls
         ];
     }
 
@@ -5825,6 +5845,12 @@ class local_custom_service_external extends external_api
                     'name' => new external_value(PARAM_TEXT, 'Tên cấu hình'),
                     'value' => new external_value(PARAM_RAW, 'Giá trị cấu hình')
                 ])
+            ),
+            'file_urls' => new external_multiple_structure(
+                new external_value(PARAM_URL, 'URL của file đã upload'),
+                'Danh sách URL file',
+                VALUE_DEFAULT,
+                []
             )
         ]);
     }
@@ -9899,6 +9925,152 @@ class local_custom_service_external extends external_api
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
             'cmsh5ptoolid' => new external_value(PARAM_INT, 'ID của cmsh5ptool đã cập nhật'),
             'cmid' => new external_value(PARAM_INT, 'Course module ID của cmsh5ptool')
+        ]);
+    }
+
+
+    //update_activity_hvp
+    public static function update_activity_hvp_parameters() {
+        return new external_function_parameters([
+            'cmid' => new external_value(PARAM_INT, 'Course module ID của url cần cập nhật'),
+            'fields' => new external_multiple_structure(
+                new external_single_structure([
+                    'name' => new external_value(PARAM_TEXT, 'Tên url', VALUE_OPTIONAL),
+                    'intro' => new external_value(PARAM_RAW, 'Mô tả url', VALUE_OPTIONAL),
+                    'introformat' => new external_value(PARAM_INT, 'introformat', VALUE_OPTIONAL),
+                    'display' => new external_value(PARAM_INT, 'display', VALUE_OPTIONAL),
+                    'section' => new external_value(PARAM_INT, 'ID của section chứa quiz', VALUE_OPTIONAL),
+                    'visible' => new external_value(PARAM_INT, 'Trạng thái hiển thị của quiz (0 = ẩn, 1 = hiện)', VALUE_OPTIONAL),
+                    'completion' => new external_value(PARAM_INT, 'Completion tracking', VALUE_OPTIONAL),
+                    'completionview' => new external_value(PARAM_INT, 'Require view', VALUE_OPTIONAL),
+                    'completionexpected' => new external_value(PARAM_INT, 'Expect completed on', VALUE_OPTIONAL),
+                    'showdescription' => new external_value(PARAM_INT, 'Show Description', VALUE_OPTIONAL),
+                    'availability' => new external_single_structure([
+                        'timeopen' => new external_value(PARAM_INT, 'Thời gian mở quiz (timestamp)', VALUE_OPTIONAL),
+                        'timeclose' => new external_value(PARAM_INT, 'Thời gian đóng quiz (timestamp)', VALUE_OPTIONAL),
+                        'gradeitemid' => new external_value(PARAM_INT, 'ID của mục điểm (grade item)', VALUE_OPTIONAL),
+                        'min' => new external_value(PARAM_FLOAT, 'Điểm tối thiểu', VALUE_OPTIONAL),
+                        'max' => new external_value(PARAM_FLOAT, 'Điểm tối đa', VALUE_OPTIONAL),
+                        'completioncmid' => new external_multiple_structure(
+                            new external_value(PARAM_INT, 'ID của activity cần hoàn thành'),
+                            'Danh sách ID của các activity cần hoàn thành',
+                            VALUE_OPTIONAL
+                        )
+                    ], 'Restrict access settings', VALUE_OPTIONAL)
+                ]),
+                'Danh sách các trường cần cập nhật',
+                VALUE_DEFAULT,
+                []
+            )
+        ]);
+    }
+    
+
+    /**
+     * Function to create a quiz activity in a course.
+     */
+    public static function update_activity_hvp($cmid, $fields) {
+        global $DB;
+    
+        $params = self::validate_parameters(self::update_activity_hvp_parameters(), [
+            'cmid' => $cmid,
+            'fields' => $fields
+        ]);
+    
+        $hvpid = self::get_moduleid_from_cmid($cmid, 'hvp');
+    
+        if (!$DB->record_exists('hvp', ['id' => $hvpid])) {
+            throw new moodle_exception('invalidhvpid', 'mdl_hvp', '', $hvpid);
+        }
+    
+        $hvp = $DB->get_record('hvp', ['id' => $hvpid], '*', MUST_EXIST);
+    
+        foreach ($params['fields'] as $field_data) {
+            foreach ($field_data as $field => $value) {
+                if (isset($value) && $field !== 'availability' && property_exists($hvp, $field)) {
+                    $hvp->{$field} = $value;
+                }
+            }
+        }
+    
+        $result = $DB->update_record('hvp', $hvp);
+    
+        if (!empty($params['fields'][0]['availability'])) {
+            $availability_params = $params['fields'][0]['availability'];
+            $completioncmids = $availability_params['completioncmid'] ?? [];
+    
+            if (!is_array($completioncmids)) {
+                $completioncmids = [$completioncmids];
+            }
+    
+            $availability_json = self::generate_availability_conditions(
+                $availability_params['timeopen'] ?? null,
+                $availability_params['timeclose'] ?? null,
+                $availability_params['gradeitemid'] ?? null,
+                $availability_params['min'] ?? null,
+                $availability_params['max'] ?? null,
+                $completioncmids
+            );
+    
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = $availability_json;
+            $DB->update_record('course_modules', $cm);
+        }
+    
+        $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+        $section = $DB->get_record('course_sections', ['course' => $cm1->course, 'section' => $params['fields'][0]['section']]);
+    
+        if (isset($params['fields'][0]['section']) && $section->id != $cm1->section) {
+            self::move_activity_to_section($cm1->course, $cmid, $params['fields'][0]['section']);
+        }
+    
+        if (isset($params['fields'][0]['visible'])) {
+            $cm1->visible = $params['fields'][0]['visible'];
+        }
+    
+        $completion = 0;
+        $completionview = 0;
+        $completionexpected = 0;
+        if (!empty($params['fields'][0]['completion'])) {
+            if ($params['fields'][0]['completion'] == 1) {
+                $completion = $params['fields'][0]['completion'];
+                $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
+            }
+    
+            if ($params['fields'][0]['completion'] == 2) {
+                $completion = $params['fields'][0]['completion'];
+                $completionview = $params['fields'][0]['completionview'] ?? 0;
+                $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
+            }
+        }
+    
+        $cm1->completion = $completion;
+        $cm1->completionview = $completionview;
+        $cm1->completionexpected = $completionexpected;
+        $cm1->showdescription = $params['fields'][0]['showdescription'] ?? 0;
+    
+        $DB->update_record('course_modules', $cm1);
+        rebuild_course_cache($cm1->course, true);
+    
+        return [
+            'status' => 'success',
+            'message' => 'hvp updated successfully',
+            'hvpid' => $hvpid,
+            'cmid' => $cmid
+        ];
+    }
+
+    /**
+     * Return description for update_activity_hvp().
+     *
+     * @return external_single_structure.
+     */
+    public static function update_activity_hvp_returns() {
+        return new external_single_structure([
+            'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
+            'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
+            'hvpid' => new external_value(PARAM_INT, 'ID của hvp đã cập nhật'),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID của hvp')
         ]);
     }
 }

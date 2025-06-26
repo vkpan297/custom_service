@@ -518,6 +518,14 @@ $functions = array(
         'type'        => 'write',
         'capabilities'=> 'moodle/course:update',
     ),
+    'local_custom_service_update_activity_hvp' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'update_activity_hvp',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Update Activity HVP',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:update',
+    ),
 );
 
 $services = array(
@@ -584,7 +592,8 @@ $services = array(
             'local_custom_service_get_user_info_by_emails',
             'local_custom_service_submit_h5p_result',
             'local_custom_service_submit_hvp_result',
-            'local_custom_service_update_activity_cmsh5ptool'
+            'local_custom_service_update_activity_cmsh5ptool',
+            'local_custom_service_update_activity_hvp'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

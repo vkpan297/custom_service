@@ -7949,19 +7949,30 @@ class local_custom_service_external extends external_api
                         foreach ($availability_data['c'] as $condition) {
                             if ($condition['type'] === 'completion' && isset($condition['cm'])) {
 
-                                $required_module = core_course_external::get_course_module($condition['cm']);
-
-                                $availability[] = [
-                                    'id' => $required_module['cm']->id,
-                                    'name' => $required_module['cm']->name ?? 'Unknown',  // Trả về tên module nếu có, nếu không có thì trả về 'Unknown'
-                                    'modname' => $required_module['cm']->modname ?? 'Unknown' // Tên module (modname) lấy từ bảng modules
-                                ];
+                                try {
+                                    $required_module = core_course_external::get_course_module($condition['cm']);
+                                    $availability[] = [
+                                        'id' => $required_module['cm']->id,
+                                        'name' => $required_module['cm']->name ?? 'Unknown',
+                                        'modname' => $required_module['cm']->modname ?? 'Unknown'
+                                    ];
+                                } catch (Exception $e) {
+                                    // Nếu module không tồn tại, ghi log và bỏ qua
+                                    debugging("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());
+                                    // var_dump("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());die;
+                                }
                             }
                         }
                     }
                 }
 
-                $detailActivity = core_course_external::get_course_module($module['id']);
+                try {
+                    $detailActivity = core_course_external::get_course_module($module['id']);
+                } catch (Exception $e) {
+                    debugging("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());
+                    // var_dump("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());die;
+                    continue; // Bỏ qua module không tồn tại
+                }
                 
                 $detailModule = json_decode(self::get_detail_module($module['id'], $module['modname'])['data']);
 

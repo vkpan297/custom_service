@@ -3094,7 +3094,11 @@ class local_custom_service_external extends external_api
         }
 
         if ($role == 'teacher') {
-            $sql_2_count .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $sql_2_count .= " and r.shortname = 'teacher'";
+        }
+
+        if ($role == 'editingteacher') {
+            $sql_2_count .= " and r.shortname = 'editingteacher'";
         }
 
         if (!empty($courseid)) {
@@ -3125,8 +3129,16 @@ class local_custom_service_external extends external_api
             $sql_2 .= " and r.shortname = 'student'";
         }
 
+        // if ($role == 'teacher') {
+        //     $sql_2 .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
+
         if ($role == 'teacher') {
-            $sql_2 .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $sql_2 .= " and r.shortname = 'teacher'";
+        }
+
+        if ($role == 'editingteacher') {
+            $sql_2 .= " and r.shortname = 'editingteacher'";
         }
 
         if (!empty($courseid)) {
@@ -3244,9 +3256,17 @@ class local_custom_service_external extends external_api
         if ($role == 'student') {
             $query .= " AND r.shortname = 'student'";
         }
+        // if ($role == 'teacher') {
+        //     $query .= " AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
         if ($role == 'teacher') {
-            $query .= " AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $query .= " AND r.shortname = 'teacher'";
         }
+
+        if ($role == 'editingteacher') {
+            $query .= " AND r.shortname = 'editingteacher'";
+        }
+        
         if (!empty($courseid)) {
             $query .= " AND c.id = :courseid";
         }
@@ -4589,8 +4609,16 @@ class local_custom_service_external extends external_api
             $sql_2_count .= " and r.shortname = 'student'";
         }
 
+        // if ($role == 'teacher') {
+        //     $sql_2_count .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
+
         if ($role == 'teacher') {
-            $sql_2_count .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $sql_2_count .= " and r.shortname = 'teacher'"; // Teacher
+        }
+
+        if ($role == 'editingteacher') {
+            $sql_2_count .= " and r.shortname = 'editingteacher'"; // Non-editing teacher
         }
 
         if (!empty($courseid)) {
@@ -4622,8 +4650,16 @@ class local_custom_service_external extends external_api
             $sql_2 .= " and r.shortname = 'student'";
         }
 
+        // if ($role == 'teacher') {
+        //     $sql_2 .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
+
         if ($role == 'teacher') {
-            $sql_2 .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $sql_2 .= " and r.shortname = 'teacher'"; // Teacher
+        }
+
+        if ($role == 'editingteacher') {
+            $sql_2 .= " and r.shortname = 'editingteacher'"; // Non-editing teacher
         }
 
         if (!empty($courseid)) {
@@ -6994,7 +7030,9 @@ class local_custom_service_external extends external_api
         if ($role === 'student') {
             $roleCondition = "AND r.shortname = 'student'";
         } elseif ($role === 'teacher') {
-            $roleCondition = "AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $roleCondition = "AND r.shortname = 'teacher'";
+        }elseif ($role === 'editingteacher') {
+            $roleCondition = "AND r.shortname = 'editingteacher'";
         }
 
         // $enrolledCourses = enrol_get_users_courses($userid);
@@ -7202,7 +7240,9 @@ class local_custom_service_external extends external_api
         if ($role === 'student') {
             $roleCondition = "AND r.shortname = 'student'";
         } elseif ($role === 'teacher') {
-            $roleCondition = "AND (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $roleCondition = "AND r.shortname = 'teacher'";
+        } elseif ($role === 'editingteacher') {
+            $roleCondition = "AND r.shortname = 'editingteacher'";
         }
 
         $sql = "
@@ -7419,8 +7459,16 @@ class local_custom_service_external extends external_api
             $enrolledCoursesSql .= " and r.shortname = 'student'";
         }
 
+        // if ($role == 'teacher') {
+        //     $enrolledCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
+        
         if ($role == 'teacher') {
-            $enrolledCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $enrolledCoursesSql .= " and r.shortname = 'teacher'"; // Teacher
+        }
+
+        if ($role == 'editingteacher') {
+            $enrolledCoursesSql .= " and r.shortname = 'editingteacher'"; // Non-editing teacher
         }
 
         if (!empty($courseid)) {
@@ -7538,8 +7586,16 @@ class local_custom_service_external extends external_api
             $totalCoursesSql .= " and r.shortname = 'student'";
         }
 
+        // if ($role == 'teacher') {
+        //     $totalCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
+
         if ($role == 'teacher') {
-            $totalCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $totalCoursesSql .= " and r.shortname = 'teacher'"; // Teacher
+        }
+
+        if ($role == 'editingteacher') {
+            $totalCoursesSql .= " and r.shortname = 'editingteacher'"; // Non-editing teacher
         }
 
         if (!empty($courseid)) {
@@ -7686,8 +7742,16 @@ class local_custom_service_external extends external_api
             $enrolledCoursesSql .= " and r.shortname = 'student'";
         }
 
+        // if ($role == 'teacher') {
+        //     $enrolledCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
+
         if ($role == 'teacher') {
-            $enrolledCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $enrolledCoursesSql .= " and r.shortname = 'teacher'"; // Teacher
+        }
+
+        if ($role == 'editingteacher') {
+            $enrolledCoursesSql .= " and r.shortname = 'editingteacher'"; // Non-editing teacher
         }
 
         if (!empty($courseid)) {
@@ -7805,8 +7869,16 @@ class local_custom_service_external extends external_api
             $totalCoursesSql .= " and r.shortname = 'student'";
         }
 
+        // if ($role == 'teacher') {
+        //     $totalCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+        // }
+
         if ($role == 'teacher') {
-            $totalCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+            $totalCoursesSql .= " and r.shortname = 'teacher'"; // Teacher
+        }
+
+        if ($role == 'editingteacher') {
+            $totalCoursesSql .= " and r.shortname = 'editingteacher'"; // Non-editing teacher
         }
 
         if (!empty($courseid)) {

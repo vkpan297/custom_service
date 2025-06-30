@@ -4223,10 +4223,11 @@ class local_custom_service_external extends external_api
             FROM mdl_groups_members gm
             JOIN mdl_groups g ON g.id = gm.groupid
             JOIN mdl_user u ON u.id = gm.userid
-            JOIN mdl_role_assignments ra ON ra.userid = u.id
-            JOIN mdl_role r ON ra.roleid = r.id
             JOIN mdl_user_enrolments uem ON uem.userid = u.id
             JOIN mdl_enrol e ON e.id = uem.enrolid AND e.courseid = g.courseid
+            JOIN mdl_role_assignments ra ON ra.userid = u.id
+            JOIN mdl_context cx ON cx.id = ra.contextid AND cx.instanceid = g.courseid AND cx.contextlevel = 50 -- contextlevel 50 là CONTEXT_COURSE
+            JOIN mdl_role r ON ra.roleid = r.id
             WHERE g.courseid IN (" . implode(',', array_map('intval', $course_ids)) . ")
             AND u.email IN ($placeholders)
             AND r.archetype IN ('student','editingteacher','teacher')

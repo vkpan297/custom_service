@@ -17,6 +17,7 @@ require_once($CFG->dirroot . '/blocks/html/block_html.php');
 require_once($CFG->dirroot . '/mod/book/lib.php');
 require_once($CFG->dirroot . '/user/externallib.php');
 require_once($CFG->dirroot . '/course/classes/category.php');
+require_once($CFG->dirroot . '/tag/lib.php');
 
 use external_api;
 use external_function_parameters;
@@ -10073,5 +10074,103 @@ class local_custom_service_external extends external_api
             'hvpid' => new external_value(PARAM_INT, 'ID của hvp đã cập nhật'),
             'cmid' => new external_value(PARAM_INT, 'Course module ID của hvp')
         ]);
+    }
+
+    public static function update_course_tags_parameters() {
+        return new external_function_parameters(
+            array(
+                'filecontent' => new external_value(PARAM_RAW, 'Base64 encoded content of the Excel file'),
+            )
+        );
+    }
+
+    /**
+     * Deletes old tags and adds new tags to courses from an Excel file.
+     *
+     * @param string $filecontent Base64 encoded content of the Excel file.
+     * @return array
+     * @throws moodle_exception
+     */
+    public static function update_course_tags($filecontent) {
+        global $DB, $CFG;
+
+        $updated_courses = 0;
+        $failed_courses = [];
+        // var_dump($filecontent);die;
+        // Decode file content.
+        $decoded_file = base64_decode($filecontent);
+        $temp_file = tempnam(sys_get_temp_dir(), 'excel');
+        file_put_contents($temp_file, $decoded_file);
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($temp_file);
+            $sheet = $spreadsheet->getActiveSheet();
+            $highestRow = $sheet->getHighestRow();
+
+            // Loop through each row of the Excel file.
+            for ($row = 2; $row <= $highestRow; $row++) { // Start from row 2 to skip header.
+                $course_id = $sheet->getCell('A' . $row)->getValue();
+                $new_tags_string = $sheet->getCell('B' . $row)->getValue();
+                if (empty($course_id)) {
+                    continue; // Skip empty rows.
+                }
+
+                if (!$DB->record_exists('course', array('id' => $course_id))) {
+                    $failed_courses[] = "Course ID {$course_id} not found.";
+                    continue;
+                }
+
+                $tags_array = array_map('trim', explode(',', $new_tags_string));
+                $tags_array = array_filter($tags_array); // Remove empty values.
+
+                // Start transaction to ensure atomicity.
+                $transaction = $DB->start_delegated_transaction();
+                try {
+                    $context = \context_course::instance($course_id);
+                    // Bước 1: Xóa tất cả các tag hiện có cho khóa học bằng phương thức chính xác
+                    \core_tag_tag::remove_all_item_tags('core', 'course', $course_id);
+
+                    // Bước 2: Thêm các tag mới từ tệp Excel.
+                    foreach ($tags_array as $tag_name) {
+                        if (!empty($tag_name)) {
+                            // Tạo tag nếu chưa tồn tại
+                            \core_tag_tag::add_item_tag('core', 'course', $course_id, $context, $tag_name);
+                        }
+                    }
+                    $updated_courses++;
+                    $transaction->allow_commit();
+                } catch (Exception $e) {
+                    $transaction->rollback($e);
+                    $failed_courses[] = "Failed to update tags for Course ID {$course_id}: " . $e->getMessage();
+                }
+            }
+        } catch (\PhpOffice\PhpSpreadsheet\Reader\Exception $e) {
+            unlink($temp_file);
+            throw new moodle_exception('errorreadingexcel', '', '', null, $e->getMessage());
+        }
+
+        unlink($temp_file);
+
+        return [
+            'updatedcount' => $updated_courses,
+            'failedcourses' => $failed_courses,
+        ];
+    }
+
+    /**
+     * Define return structure for the API function.
+     *
+     * @return external_single_structure
+     */
+    public static function update_course_tags_returns() {
+        return new \core_external\external_single_structure(
+            array(
+                'updatedcount' => new \core_external\external_value(PARAM_INT, 'Number of courses successfully updated'),
+                'failedcourses' => new \core_external\external_multiple_structure(
+                    new \core_external\external_value(PARAM_TEXT, 'Error message for a failed course'),
+                    'List of course IDs that failed to update with error messages'
+                ),
+            )
+        );
     }
 }

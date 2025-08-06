@@ -18,6 +18,8 @@ require_once($CFG->dirroot . '/mod/book/lib.php');
 require_once($CFG->dirroot . '/user/externallib.php');
 require_once($CFG->dirroot . '/course/classes/category.php');
 require_once($CFG->dirroot . '/tag/lib.php');
+// require_once("$CFG->libdir/phpspreadsheet/vendor/autoload.php");
+require_once(__DIR__ . '/vendor/autoload.php');
 
 use external_api;
 use external_function_parameters;
@@ -26,6 +28,7 @@ use external_single_structure;
 use moodle_exception;
 use core\event\course_module_created;
 use core_external\util;
+use \PhpOffice\PhpSpreadsheet\IOFactory;
 
 define('QUIZ_REVIEW_IMMEDIATELY_AFTER_ATTEMPT', 4096);
 define('QUIZ_REVIEW_IMMEDIATELY_WHETHER_CORRECT', 4096);
@@ -10093,7 +10096,6 @@ class local_custom_service_external extends external_api
      */
     public static function update_course_tags($filecontent) {
         global $DB, $CFG;
-
         $updated_courses = 0;
         $failed_courses = [];
         // var_dump($filecontent);die;
@@ -10103,7 +10105,7 @@ class local_custom_service_external extends external_api
         file_put_contents($temp_file, $decoded_file);
 
         try {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($temp_file);
+            $spreadsheet = IOFactory::load($temp_file);
             $sheet = $spreadsheet->getActiveSheet();
             $highestRow = $sheet->getHighestRow();
 
@@ -10144,7 +10146,7 @@ class local_custom_service_external extends external_api
                     $failed_courses[] = "Failed to update tags for Course ID {$course_id}: " . $e->getMessage();
                 }
             }
-        } catch (\PhpOffice\PhpSpreadsheet\Reader\Exception $e) {
+        } catch (Exception $e) {
             unlink($temp_file);
             throw new moodle_exception('errorreadingexcel', '', '', null, $e->getMessage());
         }
@@ -10163,11 +10165,11 @@ class local_custom_service_external extends external_api
      * @return external_single_structure
      */
     public static function update_course_tags_returns() {
-        return new \core_external\external_single_structure(
+        return new external_function_parameters(
             array(
-                'updatedcount' => new \core_external\external_value(PARAM_INT, 'Number of courses successfully updated'),
-                'failedcourses' => new \core_external\external_multiple_structure(
-                    new \core_external\external_value(PARAM_TEXT, 'Error message for a failed course'),
+                'updatedcount' => new external_value(PARAM_INT, 'Number of courses successfully updated'),
+                'failedcourses' => new external_multiple_structure(
+                    new external_value(PARAM_TEXT, 'Error message for a failed course'),
                     'List of course IDs that failed to update with error messages'
                 ),
             )

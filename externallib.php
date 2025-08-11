@@ -10176,7 +10176,6 @@ class local_custom_service_external extends external_api
         );
     }
 
-    //update_activity_hvp
     public static function get_enrolled_courses_by_school_id_parameters() {
         return new external_function_parameters([
             'schoolId' => new external_value(PARAM_INT, 'School ID'),
@@ -10195,7 +10194,10 @@ class local_custom_service_external extends external_api
         // var_dump($user_emails_array, $schoolId);die;
 
         if (empty($user_emails_array)) {
-            throw new invalid_parameter_exception('User emails cannot be empty');
+            return [
+                'enrolled_courses' => [],
+                'remaining_courses' => []
+            ];
         }
 
         // Kiểm tra nếu json_decode thất bại, vì vậy ta cần làm sạch chuỗi theo cách thủ công
@@ -10580,6 +10582,84 @@ class local_custom_service_external extends external_api
                             )
                         )
                     )
+                )
+            )
+        );
+    }
+
+
+    //get student info by emails
+    public static function get_list_user_by_school_id_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'schoolId' => new external_value(PARAM_INT, 'School ID'),
+            )
+        );
+    }
+
+    public static function get_list_user_by_school_id($schoolId)
+    {
+        global $DB;
+
+        // Validate parameters
+        $user_emails_array = get_user_email_by_school_id($schoolId);
+        // var_dump($user_emails_array, $schoolId);die;
+
+        if (empty($user_emails_array)) {
+            return [];
+        }
+
+        // Query users theo emails
+        // list($inSql, $inParams) = $DB->get_in_or_equal($params['user_emails'], SQL_PARAMS_NAMED);
+
+        // $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
+
+        // // Trả về dưới dạng mảng
+        // $result = [];
+        // foreach ($users as $user) {
+        //     $result[] = [
+        //         'id' => $user->id,
+        //         'username' => $user->username,
+        //         'firstname' => $user->firstname,
+        //         'lastname' => $user->lastname,
+        //         'email' => $user->email,
+        //     ];
+        // }
+
+        $allUsers = [];
+        $chunks = array_chunk($user_emails_array, 1000); // batch size <= 1000
+
+        foreach ($chunks as $chunk) {
+            list($inSql, $inParams) = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED);
+            $users = $DB->get_records_select('user', "email $inSql", $inParams, '', 'id, username, firstname, lastname, email');
+
+            foreach ($users as $user) {
+                $allUsers[] = [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'firstname' => $user->firstname,
+                    'lastname' => $user->lastname,
+                    'email' => $user->email,
+                    'count_email' => count($params['user_emails'])
+                ];
+            }
+        }
+
+        return $allUsers;
+    }
+
+    public static function get_list_user_by_school_id_returns()
+    {
+        return new external_multiple_structure(
+            new external_single_structure(
+                array(
+                    'id' => new external_value(PARAM_INT, 'User ID'),
+                    'username' => new external_value(PARAM_RAW, 'Username'),
+                    'firstname' => new external_value(PARAM_NOTAGS, 'First name'),
+                    'lastname' => new external_value(PARAM_NOTAGS, 'Last name'),
+                    'email' => new external_value(PARAM_EMAIL, 'Email'),
+                    'count_email' => new external_value(PARAM_INT, 'Count Email'),
                 )
             )
         );

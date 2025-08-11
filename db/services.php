@@ -542,6 +542,14 @@ $functions = array(
         'type'        => 'write',
         'capabilities'=> 'moodle/course:update',
     ),
+    'local_custom_service_get_list_user_by_school_id' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'get_list_user_by_school_id',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Get List User By School Id',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:update',
+    ),
 );
 
 $services = array(
@@ -582,6 +590,7 @@ $services = array(
             'local_custom_service_update_activity',
             'local_custom_service_get_enrolled_courses',
             'local_custom_service_get_enrolled_courses_by_school_id',
+            'local_custom_service_get_list_user_by_school_id',
             'local_custom_service_get_user_enrol_course_by_teacher',
             'local_custom_service_create_activity_quiz',
             'local_custom_service_get_user_data_certificate',

@@ -770,3 +770,13 @@ function get_data_slide_by_code($data)
     $response = json_decode(execute_curl_custome_service_function($url, $data, false, false, $method), true);
     return $response;
 }
+
+function get_user_email_by_school_id($schoolId)
+{
+    global $CFG;
+    require_once($CFG->dirroot . '/local/custom_service/config/config.php');
+    $url = $urlApiGetUserBySchoolId . '?schoolId=' . $schoolId;
+    $method = 'GET';
+    $response = json_decode(execute_curl_custome_service_function($url, false, false, false, $method), true);
+    return $response;
+}

@@ -10175,4 +10175,413 @@ class local_custom_service_external extends external_api
             )
         );
     }
+
+    //update_activity_hvp
+    public static function get_enrolled_courses_by_school_id_parameters() {
+        return new external_function_parameters([
+            'schoolId' => new external_value(PARAM_INT, 'School ID'),
+            'courseid' => new external_value(PARAM_INT, 'Optional course ID to filter', VALUE_DEFAULT, null)
+        ]);
+    }
+    
+
+    /**
+     * Function to create a quiz activity in a course.
+     */
+    public static function get_enrolled_courses_by_school_id($schoolId, $courseid) {
+        global $DB;
+
+        $user_emails_array = get_user_email_by_school_id($schoolId);
+        // var_dump($user_emails_array, $schoolId);die;
+
+        if (empty($user_emails_array)) {
+            throw new invalid_parameter_exception('User emails cannot be empty');
+        }
+
+        // Kiểm tra nếu json_decode thất bại, vì vậy ta cần làm sạch chuỗi theo cách thủ công
+        // $emailsString = implode("','", $user_emails_array);
+        // $emailsString = "'" . $emailsString . "'";
+
+        $placeholders = implode(',', array_fill(0, count($user_emails_array), '?'));
+        $params = $user_emails_array;
+
+        $course_filter = '';
+        if (!empty($courseid)) {
+            $course_filter = ' AND c.id = ?';
+            $params[] = $courseid;
+        }
+
+        // 1. Lấy danh sách course enrolled của user emails (và tổng số student/teacher theo course)
+        // Sử dụng :emails là mảng parameter được Moodle DB tự bind chuẩn
+        $sql_courses = "
+            SELECT 
+                c.id AS course_id,
+                c.fullname AS course_name,
+                COUNT(DISTINCT CASE WHEN r.archetype = 'student' THEN u.id END) AS total_students,
+                COUNT(DISTINCT CASE WHEN r.archetype IN ('editingteacher','teacher') THEN u.id END) AS total_teachers
+            FROM mdl_user u
+            JOIN mdl_user_enrolments uem ON uem.userid = u.id
+            JOIN mdl_enrol e ON e.id = uem.enrolid
+            JOIN mdl_course c ON e.courseid = c.id
+            JOIN mdl_role_assignments ra ON ra.userid = u.id
+            JOIN mdl_role r ON ra.roleid = r.id
+            WHERE u.email IN ($placeholders)
+            AND c.visible = 1
+            $course_filter
+            GROUP BY c.id, c.fullname
+            ORDER BY c.id ASC
+        ";
+        
+        $enrolled_courses = $DB->get_records_sql($sql_courses, $params);
+        if (!$enrolled_courses) {
+            $enrolled_courses = [];
+        }
+
+        $course_ids = array_map(fn($c) => $c->course_id, $enrolled_courses);
+        if (empty($course_ids)) {
+            $course_ids = [0]; // tránh lỗi IN ()
+        }
+        // 2. Lấy tất cả groups của các khóa học này trong 1 query duy nhất
+        $sql_groups = "
+            SELECT g.id AS group_id, g.courseid AS course_id, g.name AS group_name
+            FROM mdl_groups g
+            WHERE g.courseid IN (" . implode(',', array_map('intval', $course_ids)) . ")
+        ";
+        $groups = $DB->get_records_sql($sql_groups);
+
+        // Gom groups theo course_id
+        $groups_by_course = [];
+        foreach ($groups as $g) {
+            $groups_by_course[$g->course_id][] = $g;
+        }
+
+        // 3. Lấy tất cả thành viên groups (student + teacher) trong 1 query duy nhất
+        $sql_group_members = "
+            SELECT 
+                CONCAT(g.courseid, '_', u.id, '_', r.id, '_', g.id) AS unique_key,
+                g.courseid AS course_id,
+                g.id AS group_id,
+                u.id AS user_id,
+                u.firstname,
+                u.lastname,
+                u.email,
+                r.archetype,
+                uem.timecreated AS enroll_time
+            FROM mdl_groups_members gm
+            JOIN mdl_groups g ON g.id = gm.groupid
+            JOIN mdl_user u ON u.id = gm.userid
+            JOIN mdl_user_enrolments uem ON uem.userid = u.id
+            JOIN mdl_enrol e ON e.id = uem.enrolid AND e.courseid = g.courseid
+            JOIN mdl_role_assignments ra ON ra.userid = u.id
+            JOIN mdl_context cx ON cx.id = ra.contextid AND cx.instanceid = g.courseid AND cx.contextlevel = 50 -- contextlevel 50 là CONTEXT_COURSE
+            JOIN mdl_role r ON ra.roleid = r.id
+            WHERE g.courseid IN (" . implode(',', array_map('intval', $course_ids)) . ")
+            AND u.email IN ($placeholders)
+            AND r.archetype IN ('student','editingteacher','teacher')
+        ";
+        $group_members = $DB->get_records_sql($sql_group_members, $params);
+
+
+        // Gom thành viên nhóm theo course_id => group_id
+        $members_by_course_group = [];
+        foreach ($group_members as $m) {
+            $members_by_course_group[$m->course_id][$m->group_id][] = $m;
+        }
+
+        // 4. Lấy thành viên theo course (không theo group)
+        $sql_course_members = "
+            SELECT 
+                CONCAT(c.id, '_', u.id, '_', r.id) AS unique_key,
+                c.id AS course_id,
+                u.id AS user_id,
+                u.firstname,
+                u.lastname,
+                u.email,
+                r.archetype,
+                uem.timecreated AS enroll_time
+            FROM mdl_user u
+            JOIN mdl_role_assignments ra ON ra.userid = u.id
+            JOIN mdl_role r ON ra.roleid = r.id
+            JOIN mdl_context ctx ON ra.contextid = ctx.id AND ctx.contextlevel = 50
+            JOIN mdl_course c ON ctx.instanceid = c.id
+            JOIN mdl_user_enrolments uem ON uem.userid = u.id
+            JOIN mdl_enrol e ON e.id = uem.enrolid AND e.courseid = c.id
+            WHERE c.id IN (" . implode(',', array_map('intval', $course_ids)) . ")
+            AND c.visible = 1
+            AND u.email IN ($placeholders)
+            AND r.archetype IN ('student','editingteacher','teacher')
+        ";
+        $course_members = $DB->get_records_sql($sql_course_members, $params);
+
+        // var_dump($course_members);die;
+        // Gom thành viên theo course_id và role
+        $members_by_course_role = [];
+        foreach ($course_members as $m) {
+            $members_by_course_role[$m->course_id][$m->archetype][] = $m;
+        }
+        // 5. Build kết quả
+        $courses_enrolled = [];
+
+        foreach ($enrolled_courses as $course) {
+            $course_id = $course->course_id;
+
+            // Lấy groups trong course
+            $group_list = [];
+            if (isset($groups_by_course[$course_id])) {
+                foreach ($groups_by_course[$course_id] as $group) {
+                    $student_list = [];
+                    $teacher_list = [];
+
+                    // Lấy member theo group và phân loại role
+                    if (isset($members_by_course_group[$course_id][$group->group_id])) {
+                        foreach ($members_by_course_group[$course_id][$group->group_id] as $member) {
+                            $user_info = [
+                                'id' => $member->user_id,
+                                'firstname' => $member->firstname,
+                                'lastname' => $member->lastname,
+                                'email' => $member->email,
+                                'enroll_time' => $member->enroll_time,
+                                'enroll_date' => date('Y-m-d H:i:s', $member->enroll_time)
+                            ];
+                            if ($member->archetype === 'student') {
+                                $student_list[] = $user_info;
+                            } else {
+                                $teacher_list[] = $user_info;
+                            }
+                        }
+                    }
+
+                    $participants = array_merge(
+                        array_map(fn($s) => array_merge($s, ['role' => 'student']), $student_list),
+                        array_map(fn($t) => array_merge($t, ['role' => 'teacher']), $teacher_list)
+                    );
+
+                    $teacher_list = self::unique_users_by_id($teacher_list);
+                    $student_list = self::unique_users_by_id($student_list);
+                    $participants = self::unique_users_by_id($participants);
+
+                    $group_list[] = [
+                        'group_id' => $group->group_id,
+                        'group_name' => $group->group_name,
+                        'students' => $student_list,
+                        'teachers' => $teacher_list,
+                        'participants' => $participants,
+                    ];
+                }
+            }
+
+            // Thành viên course (không theo group)
+            $student_list = $members_by_course_role[$course_id]['student'] ?? [];
+            $teacher_list = array_merge(
+                $members_by_course_role[$course_id]['teacher'] ?? [],
+                $members_by_course_role[$course_id]['editingteacher'] ?? []
+            );
+
+            // Map lại định dạng
+            $map_user = fn($user) => [
+                'id' => $user->user_id,
+                'firstname' => $user->firstname,
+                'lastname' => $user->lastname,
+                'email' => $user->email,
+                'enroll_time' => $user->enroll_time,
+                'enroll_date' => date('Y-m-d H:i:s', $user->enroll_time)
+            ];
+
+            $student_list = array_map($map_user, $student_list);
+            $teacher_list = array_map($map_user, $teacher_list);
+
+            $participants = array_merge(
+                array_map(fn($s) => array_merge($s, ['role' => 'student']), $student_list),
+                array_map(fn($t) => array_merge($t, ['role' => 'teacher']), $teacher_list)
+            );
+
+            $student_list = self::unique_users_by_id($student_list);
+            $teacher_list = self::unique_users_by_id($teacher_list);
+            $participants = self::unique_users_by_id($participants);
+
+            $courses_enrolled[] = [
+                'course_id' => $course->course_id,
+                'course_name' => $course->course_name,
+                'total_students' => $course->total_students,
+                'total_teachers' => $course->total_teachers,
+                'groups' => $group_list,
+                'students' => $student_list,
+                'teachers' => $teacher_list,
+                'participants' => $participants,
+            ];
+        }
+
+        // 6. Lấy các khóa học còn lại (không enroll user)
+        $sql_remaining = "
+            SELECT c.id AS course_id, c.fullname AS course_name
+            FROM mdl_course c
+            WHERE c.id != 1
+            AND c.visible = 1
+            AND c.id NOT IN (" . implode(',', array_map('intval', $course_ids)) . ")
+            ORDER BY c.id ASC
+        ";
+        $remaining_courses = $DB->get_records_sql($sql_remaining);
+
+        // Lấy groups cho các khóa học còn lại
+        $remaining_course_ids = array_map(fn($c) => $c->course_id, $remaining_courses);
+        $remaining_groups = [];
+        if (!empty($remaining_course_ids)) {
+            $sql_rem_groups = "
+                SELECT g.id AS group_id, g.courseid AS course_id, g.name AS group_name
+                FROM mdl_groups g
+                WHERE g.courseid IN (" . implode(',', array_map('intval', $remaining_course_ids)) . ")
+            ";
+            $remaining_groups = $DB->get_records_sql($sql_rem_groups);
+        }
+
+        // Gom groups theo course_id
+        $remaining_groups_by_course = [];
+        foreach ($remaining_groups as $g) {
+            $remaining_groups_by_course[$g->course_id][] = $g;
+        }
+
+        $remainingCourses = [];
+        foreach ($remaining_courses as $course) {
+            $group_list = [];
+            if (isset($remaining_groups_by_course[$course->course_id])) {
+                foreach ($remaining_groups_by_course[$course->course_id] as $group) {
+                    $group_list[] = [
+                        'group_id' => $group->group_id,
+                        'group_name' => $group->group_name,
+                    ];
+                }
+            }
+
+            $remainingCourses[] = [
+                'course_id' => $course->course_id,
+                'course_name' => $course->course_name,
+                'groups' => $group_list,
+            ];
+        }
+
+        return [
+            'enrolled_courses' => $courses_enrolled,
+            'remaining_courses' => $remainingCourses
+        ];
+    }
+
+    /**
+     * Return description for update_activity_hvp().
+     *
+     * @return external_single_structure.
+     */
+    public static function get_enrolled_courses_by_school_id_returns() {
+        return new external_single_structure(
+            array(
+                'enrolled_courses' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'course_id' => new external_value(PARAM_INT, 'Course ID'),
+                            'course_name' => new external_value(PARAM_TEXT, 'Course name'),
+                            'total_students' => new external_value(PARAM_INT, 'Total number of students'),
+                            'total_teachers' => new external_value(PARAM_INT, 'Total number of teachers'),
+                            'groups' => new external_multiple_structure(
+                                new external_single_structure(
+                                    array(
+                                        'group_id' => new external_value(PARAM_INT, 'Group ID'),
+                                        'group_name' => new external_value(PARAM_TEXT, 'Group name'),
+                                        'students' => new external_multiple_structure(
+                                            new external_single_structure(
+                                                array(
+                                                    'id' => new external_value(PARAM_INT, 'Student ID'),
+                                                    'firstname' => new external_value(PARAM_TEXT, 'First name'),
+                                                    'lastname' => new external_value(PARAM_TEXT, 'Last name'),
+                                                    'email' => new external_value(PARAM_TEXT, 'Email'),
+                                                    'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                                    'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
+                                                )
+                                            )
+                                        ),
+                                        'teachers' => new external_multiple_structure(
+                                            new external_single_structure(
+                                                array(
+                                                    'id' => new external_value(PARAM_INT, 'Teacher ID'),
+                                                    'firstname' => new external_value(PARAM_TEXT, 'First name'),
+                                                    'lastname' => new external_value(PARAM_TEXT, 'Last name'),
+                                                    'email' => new external_value(PARAM_TEXT, 'Email'),
+                                                    'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                                    'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
+                                                )
+                                            )
+                                        ),
+                                        'participants' => new external_multiple_structure(
+                                            new external_single_structure(
+                                                array(
+                                                    'id' => new external_value(PARAM_INT, 'Participant ID'),
+                                                    'firstname' => new external_value(PARAM_TEXT, 'First name'),
+                                                    'lastname' => new external_value(PARAM_TEXT, 'Last name'),
+                                                    'email' => new external_value(PARAM_TEXT, 'Email'),
+                                                    'role' => new external_value(PARAM_TEXT, 'Role (student or teacher)'),
+                                                    'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                                    'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            ),
+                            'students' => new external_multiple_structure(
+                                new external_single_structure(
+                                    array(
+                                        'id' => new external_value(PARAM_INT, 'Student ID'),
+                                        'firstname' => new external_value(PARAM_TEXT, 'First name'),
+                                        'lastname' => new external_value(PARAM_TEXT, 'Last name'),
+                                        'email' => new external_value(PARAM_TEXT, 'Email'),
+                                        'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                        'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
+                                    )
+                                )
+                            ),
+                            'teachers' => new external_multiple_structure(
+                                new external_single_structure(
+                                    array(
+                                        'id' => new external_value(PARAM_INT, 'Teacher ID'),
+                                        'firstname' => new external_value(PARAM_TEXT, 'First name'),
+                                        'lastname' => new external_value(PARAM_TEXT, 'Last name'),
+                                        'email' => new external_value(PARAM_TEXT, 'Email'),
+                                        'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                        'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
+                                    )
+                                )
+                            ),
+                            'participants' => new external_multiple_structure(
+                                new external_single_structure(
+                                    array(
+                                        'id' => new external_value(PARAM_INT, 'Participant ID'),
+                                        'firstname' => new external_value(PARAM_TEXT, 'First name'),
+                                        'lastname' => new external_value(PARAM_TEXT, 'Last name'),
+                                        'email' => new external_value(PARAM_TEXT, 'Email'),
+                                        'role' => new external_value(PARAM_TEXT, 'Role (student or teacher)'),
+                                        'enroll_time' => new external_value(PARAM_RAW, 'Enroll Time'),
+                                        'enroll_date' => new external_value(PARAM_TEXT, 'Enroll Date')
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+                'remaining_courses' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'course_id' => new external_value(PARAM_INT, 'Remaining course ID'),
+                            'course_name' => new external_value(PARAM_TEXT, 'Remaining course name'),
+                            'groups' => new external_multiple_structure(
+                                new external_single_structure(
+                                    array(
+                                        'group_id' => new external_value(PARAM_INT, 'Group ID'),
+                                        'group_name' => new external_value(PARAM_TEXT, 'Group name')
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        );
+    }
 }

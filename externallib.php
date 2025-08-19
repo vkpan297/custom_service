@@ -12,14 +12,19 @@ require_once($CFG->dirroot . '/mod/label/lib.php');
 require_once($CFG->dirroot . '/enrol/manual/externallib.php');
 require_once($CFG->libdir . '/questionlib.php');
 require_once($CFG->libdir . '/accesslib.php');
+require_once($CFG->libdir . '/gradelib.php');
+// require_once($CFG->libdir . '/cachelib.php');
 require_once($CFG->dirroot . '/completion/classes/external.php');
 require_once($CFG->dirroot . '/blocks/html/block_html.php');
 require_once($CFG->dirroot . '/mod/book/lib.php');
+require_once($CFG->dirroot . '/mod/quiz/lib.php');
+require_once($CFG->dirroot . '/mod/quiz/attemptlib.php');
+require_once($CFG->dirroot . '/mod/assign/lib.php');
 require_once($CFG->dirroot . '/user/externallib.php');
 require_once($CFG->dirroot . '/course/classes/category.php');
 require_once($CFG->dirroot . '/tag/lib.php');
 // require_once("$CFG->libdir/phpspreadsheet/vendor/autoload.php");
-require_once(__DIR__ . '/vendor/autoload.php');
+// require_once(__DIR__ . '/vendor/autoload.php');
 
 use external_api;
 use external_function_parameters;
@@ -10661,6 +10666,446 @@ class local_custom_service_external extends external_api
                     'email' => new external_value(PARAM_EMAIL, 'Email'),
                     'count_email' => new external_value(PARAM_INT, 'Count Email'),
                 )
+            )
+        );
+    }
+
+    /**
+     * Parameter description for update_activity_completion().
+     *
+     * @return external_function_parameters.
+     */
+    public static function update_activity_completion_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'userid' => new external_value(PARAM_INT, 'User ID'),
+                'cmid' => new external_value(PARAM_INT, 'Course module ID'),
+                'completionstate' => new external_value(PARAM_INT, 'Completion state (0=incomplete, 1=complete, 2=complete_pass, 3=complete_fail)'),
+                'forcecompletion' => new external_value(PARAM_BOOL, 'Force completion even without meeting criteria (for quiz with grade requirements)', VALUE_DEFAULT, false)
+            )
+        );
+    }
+
+    /**
+     * Handle common completion requirements for all modules
+     */
+    private static function handle_common_completion_requirements($cm, $course, $params, &$warnings, $DB) {
+        // Handle grade requirements for any module that supports grading
+        if ($cm->completiongradeitemnumber !== null || $cm->completionpassgrade) {
+            self::handle_grade_completion($cm, $course, $params, $warnings, $DB);
+        }
+    }
+
+    /**
+     * Handle quiz completion requirements
+     */
+    private static function handle_quiz_completion($cm, $course, $params, &$warnings, $DB) {
+        // Handle grade completion first
+        self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
+        
+        // Handle minimum attempts requirement
+        $quiz = $DB->get_record('quiz', array('id' => $cm->instance), 'id, completionminattempts');
+        if ($quiz && $quiz->completionminattempts > 0) {
+            $required_attempts = $quiz->completionminattempts;
+            
+            // Get user's finished attempts
+            $attempts = quiz_get_user_attempts($cm->instance, $params['userid'], 'finished', false);
+            $current_attempts = count($attempts);
+
+            if ($current_attempts < $required_attempts) {
+                if ($params['forcecompletion']) {
+                    // Force completion by creating fake attempt records
+                    $attempts_to_create = $required_attempts - $current_attempts;
+                    
+                    for ($i = 0; $i < $attempts_to_create; $i++) {
+                        $attempt = new stdClass();
+                        $attempt->quiz = $cm->instance;
+                        $attempt->userid = $params['userid'];
+                        $attempt->attempt = $current_attempts + $i + 1;
+                        $attempt->uniqueid = $DB->get_field_sql('SELECT COALESCE(MAX(uniqueid), 0) + 1 FROM {quiz_attempts}');
+                        $attempt->layout = '';
+                        $attempt->currentpage = 0;
+                        $attempt->preview = 0;
+                        $attempt->state = 'finished';
+                        $attempt->timestart = time() - 3600;
+                        $attempt->timefinish = time() - 3600 + 300;
+                        $attempt->timemodified = time();
+                        $attempt->timecheckstate = 0;
+                        $attempt->sumgrades = 0;
+                        
+                        $DB->insert_record('quiz_attempts', $attempt);
+                    }
+                    
+                    $warnings[] = "Created {$attempts_to_create} fake attempt(s) to satisfy minimum attempts requirement ({$required_attempts} attempts required).";
+                } else {
+                    $warnings[] = "Quiz requires minimum {$required_attempts} attempts but user only has {$current_attempts}. Use forcecompletion=true.";
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle assignment completion requirements
+     */
+    private static function handle_assignment_completion($cm, $course, $params, &$warnings, $DB) {
+        // Handle grade completion first
+        self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
+        
+        // Handle submission requirement - completionsubmit is stored in assign table, NOT course module
+        $assign = $DB->get_record('assign', array('id' => $cm->instance));
+
+        if ($assign && $assign->completionsubmit) {
+            // Check if user has made a submission
+            $submission = $DB->get_record('assign_submission', array(
+                'assignment' => $assign->id,
+                'userid' => $params['userid'],
+                'status' => 'submitted'
+            ));
+            
+            if (!$submission && $params['completionstate'] == COMPLETION_COMPLETE) {
+                if ($params['forcecompletion']) {
+                    // Create a fake submission record
+                    $submission = new stdClass();
+                    $submission->assignment = $assign->id;
+                    $submission->userid = $params['userid'];
+                    $submission->timecreated = time();
+                    $submission->timemodified = time();
+                    $submission->status = 'submitted';
+                    $submission->groupid = 0;
+                    $submission->attemptnumber = 0;
+                    $submission->latest = 1;
+                    
+                    $DB->insert_record('assign_submission', $submission);
+                    $warnings[] = 'Submission record created to satisfy assignment completion criteria.';
+                } else {
+                    $warnings[] = 'Assignment requires submission but user has not submitted. Use forcecompletion=true.';
+                }
+            }
+        }
+    }
+
+    /**
+     * Handle resource completion requirements  
+     */
+    private static function handle_resource_completion($cm, $course, $params, &$warnings, $DB) {
+        // Handle grade completion (if applicable)
+        self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
+        
+        // Resource typically only requires view completion, which is handled in the main function
+    }
+
+    /**
+     * Handle URL completion requirements
+     */
+    private static function handle_url_completion($cm, $course, $params, &$warnings, $DB) {
+        // Handle grade completion (if applicable)
+        self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
+        
+        // URL typically only requires view completion, which is handled in the main function
+    }
+
+    /**
+     * Handle grade completion requirements for modules that support grading
+     */
+    private static function handle_grade_completion($cm, $course, $params, &$warnings, $DB) {
+        if ($cm->completiongradeitemnumber !== null || $cm->completionpassgrade) {
+            $grade_item = grade_item::fetch(array(
+                'courseid'    => $course->id,
+                'itemtype'    => 'mod',
+                'itemmodule'  => $cm->modname,
+                'iteminstance'=> $cm->instance
+            ));
+
+            if ($grade_item) {
+                $grade = grade_grade::fetch(array(
+                    'itemid' => $grade_item->id,
+                    'userid' => $params['userid']
+                ));
+
+                // Only create/update grade if it doesn't exist or if forcing completion
+                if ((!$grade || $grade->finalgrade === null) && $params['forcecompletion']) {
+                    // Get module record to determine max grade
+                    $module_record = $DB->get_record($cm->modname, array('id' => $cm->instance));
+                    if ($module_record) {
+                        $max_grade = 100; // Default
+                        
+                        // Get max grade based on module type
+                        if (isset($module_record->grade) && $module_record->grade > 0) {
+                            $max_grade = $module_record->grade;
+                        } elseif (isset($module_record->scale) && $module_record->scale > 0) {
+                            $max_grade = $module_record->scale;
+                        }
+                        
+                        $pass_grade = $cm->completionpassgrade
+                            ? ($max_grade * 0.6)  // 60% for passing grade
+                            : ($max_grade * 0.1); // 10% for just receiving a grade
+
+                        if (!$grade) {
+                            $grade = new grade_grade();
+                            $grade->itemid = $grade_item->id;
+                            $grade->userid = $params['userid'];
+                        }
+
+                        $grade->finalgrade = $pass_grade;
+                        $grade->timemodified = time();
+                        $grade->information = 'Created by local_custom_service';
+
+                        if ($grade->id) {
+                            $grade->update('local_custom_service');
+                        } else {
+                            $grade->insert('local_custom_service');
+                        }
+
+                        $warnings[] = "Grade record created to satisfy {$cm->modname} completion criteria (grade: " .
+                                      round($pass_grade, 2) . ").";
+                    }
+                } elseif (!$grade || $grade->finalgrade === null) {
+                    $requirements = array();
+                    if ($cm->completiongradeitemnumber !== null) {
+                        $requirements[] = 'receive a grade';
+                    }
+                    if ($cm->completionpassgrade) {
+                        $requirements[] = 'receive a passing grade';
+                    }
+                    $warnings[] = ucfirst($cm->modname) . " requires " . implode(' and ', $requirements) . ". Use forcecompletion=true.";
+                }
+            }
+        }
+    }
+
+    /**
+     * Update activity completion status for a user.
+     * 
+     * Supports various activity types: Quiz, Assignment, Resource, URL and others.
+     * Handles specific completion requirements for each module type:
+     * - Quiz: grade requirements, passing grade, minimum attempts
+     * - Assignment: submission requirements, grade requirements, passing grade
+     * - Resource/URL: view requirements, grade requirements (if applicable)
+     * - Common: view requirements for all modules
+     *
+     * @param int $userid User ID
+     * @param int $cmid Course module ID  
+     * @param int $completionstate Completion state (0=incomplete, 1=complete, 2=complete_pass, 3=complete_fail)
+     * @param bool $forcecompletion Force completion even without meeting criteria (creates fake records if needed)
+     * @return array Result of the operation with success status, message, and completion details
+     */
+    public static function update_activity_completion($userid, $cmid, $completionstate, $forcecompletion = false) {
+        global $DB, $CFG;
+    
+        require_once($CFG->libdir . '/completionlib.php');
+    
+        // Validate parameters
+        $params = self::validate_parameters(self::update_activity_completion_parameters(), array(
+            'userid'          => $userid,
+            'cmid'            => $cmid,
+            'completionstate' => $completionstate,
+            'forcecompletion' => $forcecompletion
+        ));
+    
+        // Validate completion state values
+        $valid_states = array(
+            COMPLETION_INCOMPLETE,      // 0
+            COMPLETION_COMPLETE,        // 1
+            COMPLETION_COMPLETE_PASS,   // 2
+            COMPLETION_COMPLETE_FAIL    // 3
+        );
+    
+        if (!in_array($params['completionstate'], $valid_states)) {
+            throw new moodle_exception(
+                'invalidcompletionstate',
+                'local_custom_service',
+                '',
+                null,
+                'Invalid completion state. Must be 0 (incomplete), 1 (complete), 2 (complete_pass), or 3 (complete_fail)'
+            );
+        }
+    
+        try {
+            // Get course module
+            $cm = get_coursemodule_from_id('', $params['cmid'], 0, false, MUST_EXIST);
+        
+            // Get course
+            $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+        
+            // Check if user exists
+            $user = $DB->get_record('user', array('id' => $params['userid']), '*', MUST_EXIST);
+        
+            // Check if completion is enabled for this course
+            $completion = new completion_info($course);
+            if (!$completion->is_enabled()) {
+                throw new moodle_exception(
+                    'completiondisabled',
+                    'local_custom_service',
+                    '',
+                    null,
+                    'Completion is not enabled for this course'
+                );
+            }
+        
+            // Check if completion is enabled for this activity
+            if (!$completion->is_enabled($cm)) {
+                throw new moodle_exception(
+                    'activitycompletiondisabled',
+                    'local_custom_service',
+                    '',
+                    null,
+                    'Completion is not enabled for this activity'
+                );
+            }
+        
+            // Check if user is enrolled in the course
+            $context = context_course::instance($course->id);
+            if (!is_enrolled($context, $user)) {
+                throw new moodle_exception(
+                    'usernotenrolled',
+                    'local_custom_service',
+                    '',
+                    null,
+                    'User is not enrolled in this course'
+                );
+            }
+        
+            // Get current completion data
+            $current        = $completion->get_data($cm, false, $params['userid']);
+            $previous_state = $current->completionstate ?? 0;
+        
+            // Result messages
+            $warnings        = array();
+            $success_message = 'Activity completion status updated successfully';
+        
+            // Handle automatic completion
+            if ($cm->completion == COMPLETION_TRACKING_AUTOMATIC) {
+                // Only process requirements if forcing completion or if not already completed
+                if ($params['completionstate'] == COMPLETION_COMPLETE) {
+                    // Handle different module types
+                    switch ($cm->modname) {
+                        case 'quiz':
+                            self::handle_quiz_completion($cm, $course, $params, $warnings, $DB);
+                            break;
+                        case 'assign':
+                            self::handle_assignment_completion($cm, $course, $params, $warnings, $DB);
+                            break;
+                        case 'resource':
+                            self::handle_resource_completion($cm, $course, $params, $warnings, $DB);
+                            break;
+                        case 'url':
+                            self::handle_url_completion($cm, $course, $params, $warnings, $DB);
+                            break;
+                        default:
+                            // For other modules, handle common completion requirements
+                            self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
+                            break;
+                    }
+                }
+            }
+        
+            // ✅ Bỏ dấu `}` thừa ở đây
+        
+            // Check completion view requirement
+            if ($cm->completionview == COMPLETION_VIEW_REQUIRED) {
+                $viewed = $DB->get_record('course_modules_viewed', array(
+                    'coursemoduleid' => $cm->id,
+                    'userid'         => $params['userid']
+                ));
+        
+                if (!$viewed && $params['completionstate'] == COMPLETION_COMPLETE) {
+                    $view_record                 = new stdClass();
+                    $view_record->coursemoduleid = $cm->id;
+                    $view_record->userid         = $params['userid'];
+                    $view_record->timecreated    = time();
+        
+                    $DB->insert_record('course_modules_viewed', $view_record);
+        
+                    $warnings[] = 'Activity marked as viewed to satisfy completion criteria.';
+                }
+            }
+        
+            // Check current completion state before updating
+            $current_completion = $completion->get_data($cm, false, $params['userid']);
+        
+            // Only update if the state is actually changing or if we're forcing completion
+            if ($current_completion->completionstate != $params['completionstate'] || $params['forcecompletion']) {
+                // For automatic completion, manually set the completion data
+                if ($cm->completion == COMPLETION_TRACKING_AUTOMATIC) {
+                    // Create or update completion record directly
+                    $completion_record = $DB->get_record('course_modules_completion', array(
+                        'coursemoduleid' => $cm->id,
+                        'userid' => $params['userid']
+                    ));
+        
+                    if (!$completion_record) {
+                        $completion_record = new stdClass();
+                        $completion_record->coursemoduleid = $cm->id;
+                        $completion_record->userid = $params['userid'];
+                        $completion_record->completionstate = $params['completionstate'];
+                        $completion_record->viewed = 1;
+                        $completion_record->timemodified = time();
+        
+                        $DB->insert_record('course_modules_completion', $completion_record);
+                    } else {
+                        $completion_record->completionstate = $params['completionstate'];
+                        $completion_record->timemodified = time();
+        
+                        $DB->update_record('course_modules_completion', $completion_record);
+                    }
+                } else {
+                    // For manual completion, use the standard method
+                    $completion->update_state($cm, $params['completionstate'], $params['userid']);
+                }
+            } else {
+                $warnings[] = 'Completion state already matches requested state - no update needed.';
+            }
+        
+            if (!empty($warnings)) {
+                $success_message .= ' Warnings: ' . implode(' ', $warnings);
+            }
+        
+            return array(
+                'success'        => true,
+                'message'        => $success_message,
+                'userid'         => $params['userid'],
+                'cmid'           => $params['cmid'],
+                'courseid'       => $cm->course,
+                'previous_state' => $previous_state,
+                'new_state'      => $params['completionstate'],
+                'timemodified'   => time(),
+                'forcecompletion'=> $params['forcecompletion']
+            );
+        
+        } catch (Exception $e) {
+            return array(
+                'success'        => false,
+                'message'        => $e->getMessage(),
+                'userid'         => $params['userid'],
+                'cmid'           => $params['cmid'],
+                'courseid'       => 0,
+                'previous_state' => 0,
+                'new_state'      => $params['completionstate'],
+                'timemodified'   => time(),
+                'forcecompletion'=> $params['forcecompletion']
+            );
+        }
+    }
+
+    /**
+     * Return description for update_activity_completion().
+     *
+     * @return external_single_structure.
+     */
+    public static function update_activity_completion_returns()
+    {
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Operation success status'),
+                'message' => new external_value(PARAM_TEXT, 'Result message'),
+                'userid' => new external_value(PARAM_INT, 'User ID'),
+                'cmid' => new external_value(PARAM_INT, 'Course module ID'),
+                'courseid' => new external_value(PARAM_INT, 'Course ID'),
+                'previous_state' => new external_value(PARAM_INT, 'Previous completion state'),
+                'new_state' => new external_value(PARAM_INT, 'New completion state'),
+                'timemodified' => new external_value(PARAM_INT, 'Time when completion was modified'),
+                'forcecompletion' => new external_value(PARAM_BOOL, 'Whether force completion was used')
             )
         );
     }

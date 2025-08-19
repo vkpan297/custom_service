@@ -550,6 +550,15 @@ $functions = array(
         'type'        => 'write',
         'capabilities'=> 'moodle/course:update',
     ),
+    'local_custom_service_update_activity_completion' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'update_activity_completion',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Update activity completion status for a user',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:view',
+        'ajax'        => true,
+    ),
 );
 
 $services = array(
@@ -620,7 +629,8 @@ $services = array(
             'local_custom_service_submit_hvp_result',
             'local_custom_service_update_activity_cmsh5ptool',
             'local_custom_service_update_activity_hvp',
-            'local_custom_service_update_course_tags'
+            'local_custom_service_update_course_tags',
+            'local_custom_service_update_activity_completion'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

@@ -2,5 +2,5 @@
 
 defined('MOODLE_INTERNAL') || die();
 $plugin->component = 'local_custom_service';
-$plugin->version  = 2022071750;
+$plugin->version  = 2022071752;
 $plugin->requires = 2016052314;

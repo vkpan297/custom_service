@@ -559,6 +559,14 @@ $functions = array(
         'capabilities'=> 'moodle/course:view',
         'ajax'        => true,
     ),
+    'local_custom_service_get_users_by_school_id' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'get_users_by_school_id',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Get Users By School Id',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:update',
+    ),
 );
 
 $services = array(
@@ -630,7 +638,8 @@ $services = array(
             'local_custom_service_update_activity_cmsh5ptool',
             'local_custom_service_update_activity_hvp',
             'local_custom_service_update_course_tags',
-            'local_custom_service_update_activity_completion'
+            'local_custom_service_update_activity_completion',
+            'local_custom_service_get_users_by_school_id'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

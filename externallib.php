@@ -11109,4 +11109,90 @@ class local_custom_service_external extends external_api
             )
         );
     }
+
+    public static function get_users_by_school_id_parameters() {
+        return new external_function_parameters([
+            'schoolId' => new external_value(PARAM_INT, 'School ID'),
+        ]);
+    }
+    
+
+    /**
+     * Function to create a quiz activity in a course.
+     */
+    public static function get_users_by_school_id($schoolId) {
+        global $DB;
+
+        $user_emails_array = get_user_email_by_school_id($schoolId);
+
+        if (empty($user_emails_array)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($user_emails_array), '?'));
+        $params = $user_emails_array;
+
+        // Lấy thông tin user dựa theo email
+        $sql_users = "
+            SELECT 
+                u.id,
+                u.username,
+                u.firstname,
+                u.lastname,
+                u.email,
+                u.firstaccess,
+                u.lastaccess,
+                u.lastlogin,
+                u.timecreated,
+                u.timemodified
+            FROM mdl_user u
+            WHERE u.email IN ($placeholders)
+            AND u.deleted = 0
+            ORDER BY u.id ASC
+        ";
+        
+        $users = $DB->get_records_sql($sql_users, $params);
+
+        $result = [];
+        foreach ($users as $user) {
+            $result[] = [
+                'id' => $user->id,
+                'username' => $user->username,
+                'firstname' => $user->firstname,
+                'lastname' => $user->lastname,
+                'email' => $user->email,
+                'firstaccess' => $user->firstaccess ? date('Y-m-d H:i:s', $user->firstaccess) : null,
+                'lastaccess' => $user->lastaccess ? date('Y-m-d H:i:s', $user->lastaccess) : null,
+                'lastlogin' => $user->lastlogin ? date('Y-m-d H:i:s', $user->lastlogin) : null,
+                'timecreated' => $user->timecreated ? date('Y-m-d H:i:s', $user->timecreated) : null,
+                'timemodified' => $user->timemodified ? date('Y-m-d H:i:s', $user->timemodified) : null
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Return description for get_users_by_school_id().
+     *
+     * @return external_multiple_structure.
+     */
+    public static function get_users_by_school_id_returns() {
+        return new external_multiple_structure(
+            new external_single_structure(
+                array(
+                    'id' => new external_value(PARAM_INT, 'User ID'),
+                    'username' => new external_value(PARAM_TEXT, 'Username'),
+                    'firstname' => new external_value(PARAM_TEXT, 'First name'),
+                    'lastname' => new external_value(PARAM_TEXT, 'Last name'),
+                    'email' => new external_value(PARAM_TEXT, 'Email'),
+                    'firstaccess' => new external_value(PARAM_TEXT, 'First access date', VALUE_OPTIONAL),
+                    'lastaccess' => new external_value(PARAM_TEXT, 'Last access date', VALUE_OPTIONAL),
+                    'lastlogin' => new external_value(PARAM_TEXT, 'Last login date', VALUE_OPTIONAL),
+                    'timecreated' => new external_value(PARAM_TEXT, 'Account creation date', VALUE_OPTIONAL),
+                    'timemodified' => new external_value(PARAM_TEXT, 'Last modification date', VALUE_OPTIONAL)
+                )
+            )
+        );
+    }
 }

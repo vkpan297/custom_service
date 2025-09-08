@@ -2142,7 +2142,8 @@ class local_custom_service_external extends external_api
                                 'response_text' => $step->response_text ?? 'Continue',
                                 'storage_path' => $step->storage_path ?? '',
                                 'sortorder' => $step->sortorder,
-                                'timecreated' => $step->timecreated
+                                'timecreated' => $step->timecreated,
+                                'paragraphs' => [] // Default empty array
                             ];
                             
                             // Process content_paragraphs for text type
@@ -2164,6 +2165,7 @@ class local_custom_service_external extends external_api
                         $module_data['steps'] = $processed_steps;
                         $module_data['total_steps'] = count($processed_steps);
                         $module_data['url_type'] = 'stepbystep';
+                        $module_data['contents'] = []; // Add empty contents array
                         
                         // Add to listStepbystep
                         $section_data[$section_id]['listStepbystep'][] = $module_data;
@@ -2210,7 +2212,7 @@ class local_custom_service_external extends external_api
                 'listSection' => $listSection
             ];
         }
-
+        
         // Return the result
         return $result;
     }
@@ -2339,6 +2341,9 @@ class local_custom_service_external extends external_api
                                 'modicon' => new external_value(PARAM_RAW, 'Module Icon URL'),
                                 'modname' => new external_value(PARAM_RAW, 'Module Type'),
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
+                                'contents' => new external_multiple_structure(
+                                    new external_value(PARAM_RAW, 'Content'), VALUE_OPTIONAL
+                                ),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
                                 'total_steps' => new external_value(PARAM_INT, 'Total Steps'),
                                 'steps' => new external_multiple_structure(

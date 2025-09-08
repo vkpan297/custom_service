@@ -30,6 +30,7 @@ use external_api;
 use external_function_parameters;
 use external_value;
 use external_single_structure;
+use external_multiple_structure;
 use moodle_exception;
 use core\event\course_module_created;
 use core_external\util;
@@ -2055,6 +2056,7 @@ class local_custom_service_external extends external_api
                         'listVideo' => [],
                         'listUrl' => [],
                         'listPDF' => [],
+                        'listStepbystep' => [],
                         'listOther' => []
                     ];
                 }
@@ -2116,6 +2118,56 @@ class local_custom_service_external extends external_api
                     }
                     $module_data['url_type'] = 'link'; // Change to link or url
                     $section_data[$section_id]['listUrl'][] = $module_data;
+                } elseif ($record->module_name == 'stepbystep') {
+                    // Handle stepbystep module
+                    $stepbystep_content = $DB->get_record('stepbystep', ['id' => $record->instance_id]);
+                    if ($stepbystep_content) {
+                        // Get all steps for this stepbystep activity
+                        $steps = $DB->get_records('stepbystep_content', 
+                            ['stepbystep_id' => $record->instance_id], 'sortorder ASC');
+                        
+                        // Process steps data
+                        $processed_steps = [];
+                        foreach ($steps as $step) {
+                            $step_data = [
+                                'id' => $step->id,
+                                'type' => $step->type,
+                                'main_title' => $step->main_title ?? '',
+                                'sub_heading' => $step->sub_heading ?? '',
+                                'content_paragraphs' => $step->content_paragraphs ?? '',
+                                'term' => $step->term ?? '',
+                                'definition' => $step->definition ?? '',
+                                'example' => $step->example ?? '',
+                                'audio_file' => $step->audio_file ?? '',
+                                'response_text' => $step->response_text ?? 'Continue',
+                                'storage_path' => $step->storage_path ?? '',
+                                'sortorder' => $step->sortorder,
+                                'timecreated' => $step->timecreated
+                            ];
+                            
+                            // Process content_paragraphs for text type
+                            if ($step->type === 'text' && !empty($step->content_paragraphs)) {
+                                $paragraphs = json_decode($step->content_paragraphs, true);
+                                if (is_array($paragraphs)) {
+                                    $step_data['paragraphs'] = $paragraphs;
+                                } else {
+                                    // Fallback: treat as plain text with line breaks
+                                    $paragraphs = explode("\n", $step->content_paragraphs);
+                                    $step_data['paragraphs'] = array_filter(array_map('trim', $paragraphs));
+                                }
+                            }
+                            
+                            $processed_steps[] = $step_data;
+                        }
+                        
+                        // Add steps data to module
+                        $module_data['steps'] = $processed_steps;
+                        $module_data['total_steps'] = count($processed_steps);
+                        $module_data['url_type'] = 'stepbystep';
+                        
+                        // Add to listStepbystep
+                        $section_data[$section_id]['listStepbystep'][] = $module_data;
+                    }
                 } else {
                     $section_data[$section_id]['listOther'][] = $module_data; // Default to video nếu không khớp với các trường hợp khác
                 }
@@ -2270,6 +2322,43 @@ class local_custom_service_external extends external_api
                                         'userid' => new external_value(PARAM_INT, 'User ID'),
                                         'author' => new external_value(PARAM_RAW, 'Author'),
                                         'license' => new external_value(PARAM_RAW, 'License')
+                                    ])
+                                )
+                            ])
+                        ),
+                        'listStepbystep' => new external_multiple_structure(
+                            new external_single_structure([
+                                'id' => new external_value(PARAM_INT, 'Module ID'),
+                                'url' => new external_value(PARAM_RAW, 'Module URL'),
+                                'name' => new external_value(PARAM_RAW, 'Module Name'),
+                                'instance' => new external_value(PARAM_INT, 'Instance ID'),
+                                'contextid' => new external_value(PARAM_INT, 'Context ID', VALUE_OPTIONAL),
+                                'visible' => new external_value(PARAM_INT, 'Visible'),
+                                'uservisible' => new external_value(PARAM_BOOL, 'User Visible'),
+                                'visibleoncoursepage' => new external_value(PARAM_INT, 'Visible on Course Page'),
+                                'modicon' => new external_value(PARAM_RAW, 'Module Icon URL'),
+                                'modname' => new external_value(PARAM_RAW, 'Module Type'),
+                                'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
+                                'url_type' => new external_value(PARAM_RAW, 'Url Type'),
+                                'total_steps' => new external_value(PARAM_INT, 'Total Steps'),
+                                'steps' => new external_multiple_structure(
+                                    new external_single_structure([
+                                        'id' => new external_value(PARAM_INT, 'Step ID'),
+                                        'type' => new external_value(PARAM_RAW, 'Step Type'),
+                                        'main_title' => new external_value(PARAM_RAW, 'Main Title'),
+                                        'sub_heading' => new external_value(PARAM_RAW, 'Sub Heading'),
+                                        'content_paragraphs' => new external_value(PARAM_RAW, 'Content Paragraphs'),
+                                        'paragraphs' => new external_multiple_structure(
+                                            new external_value(PARAM_RAW, 'Paragraph Text'), VALUE_OPTIONAL
+                                        ),
+                                        'term' => new external_value(PARAM_RAW, 'Term'),
+                                        'definition' => new external_value(PARAM_RAW, 'Definition'),
+                                        'example' => new external_value(PARAM_RAW, 'Example'),
+                                        'audio_file' => new external_value(PARAM_RAW, 'Audio File'),
+                                        'response_text' => new external_value(PARAM_RAW, 'Response Text'),
+                                        'storage_path' => new external_value(PARAM_RAW, 'Storage Path'),
+                                        'sortorder' => new external_value(PARAM_INT, 'Sort Order'),
+                                        'timecreated' => new external_value(PARAM_INT, 'Time Created')
                                     ])
                                 )
                             ])
@@ -5706,6 +5795,12 @@ class local_custom_service_external extends external_api
         
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
+        
+            // Cập nhật lại course_modules
+            $DB->update_record('course_modules', $cm); 
         }
         
         // Xử lý section và visible nếu được truyền
@@ -6076,6 +6171,12 @@ class local_custom_service_external extends external_api
         
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
+        
+            // Cập nhật lại course_modules
+            $DB->update_record('course_modules', $cm);
         }
         
         // Xử lý section và visible nếu được truyền
@@ -6304,6 +6405,8 @@ class local_custom_service_external extends external_api
                 $completioncmids
             );
             $moduleinfo->availability = $availability_json;
+        }else{
+            $moduleinfo->availability = '';
         }
 
         // Update completion settings
@@ -9873,6 +9976,10 @@ class local_custom_service_external extends external_api
         
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
+            $DB->update_record('course_modules', $cm);
         }
         
         // Xử lý section và visible nếu được truyền
@@ -10024,6 +10131,10 @@ class local_custom_service_external extends external_api
     
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = $availability_json;
+            $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
             $DB->update_record('course_modules', $cm);
         }
     
@@ -11194,5 +11305,333 @@ class local_custom_service_external extends external_api
                 )
             )
         );
+    }
+
+    // Functionset for create_activity_cmsvideo ******************************************************************************************.
+
+    /**
+     * Parameter description for create_activity_cmsvideo().
+     *
+     * @return external_function_parameters.
+     */
+    public static function create_activity_cmsvideo_parameters() {
+        return new external_function_parameters([
+            'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
+            'content' => new external_value(PARAM_RAW, 'Nội dung của activity'),
+            'name' => new external_value(PARAM_TEXT, 'Tên của activity'),
+            'module' => new external_value(PARAM_TEXT, 'Loại module: cmsvideo'),
+            'section' => new external_value(PARAM_INT, 'Số thứ tự của section để thêm activity', VALUE_DEFAULT, 0),
+            'display' => new external_value(PARAM_INT, 'Hiển thị', VALUE_DEFAULT, 0),
+            'visible' => new external_value(PARAM_INT, 'Trạng thái hiển thị', VALUE_DEFAULT, 1),
+        ]);
+    }
+
+    /**
+     * Function to create a cmsvideo activity in a course.
+     *
+     * @param int $courseid
+     * @param string $content
+     * @param string $name
+     * @param string $module
+     * @param int $section
+     * @param int $display
+     * @param int $visible
+     * @return array
+     * @throws moodle_exception
+     */
+    public static function create_activity_cmsvideo($courseid, $content, $name, $module, $section = 0, $display = 0, $visible = 1) {
+        global $DB, $USER;
+    
+        // Validate the parameters.
+        $params = self::validate_parameters(self::create_activity_cmsvideo_parameters(), [
+            'courseid' => $courseid,
+            'content' => $content,
+            'name' => $name,
+            'module' => $module,
+            'section' => $section,
+            'display' => $display,
+            'visible' => $visible,
+        ]);
+
+        // Get course info
+        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+        
+        // Get section info
+        if ($section == 0) {
+            $section = $DB->get_field_sql("SELECT MAX(section) FROM {course_sections} WHERE course = ?", [$courseid]);
+        }
+        
+        $sectionrecord = $DB->get_record('course_sections', ['course' => $courseid, 'section' => $section], '*', MUST_EXIST);
+        
+        // Get module info
+        $moduleid = $DB->get_field('modules', 'id', ['name' => 'cmsvideo']);
+        if (!$moduleid) {
+            throw new moodle_exception('Module cmsvideo not found. Please ensure the cmsvideo plugin is installed and enabled.');
+        }
+        
+        // Check if module is available
+        $module = $DB->get_record('modules', ['id' => $moduleid]);
+        if (!$module || !$module->visible) {
+            throw new moodle_exception('Module cmsvideo is not available or disabled.');
+        }
+
+        // Create cmsvideo instance
+        $cmsvideo = new stdClass();
+        $cmsvideo->course = $courseid;
+        $cmsvideo->name = $name;
+        $cmsvideo->intro = $content;
+        $cmsvideo->introformat = FORMAT_HTML;
+        $cmsvideo->source_path = '';
+        $cmsvideo->timecreated = time();
+        $cmsvideo->timemodified = time();
+        
+        $cmsvideoid = $DB->insert_record('cmsvideo', $cmsvideo);
+
+        // Create course module
+        $cm = new stdClass();
+        $cm->course = $courseid;
+        $cm->module = $moduleid;
+        $cm->instance = $cmsvideoid;
+        $cm->section = $sectionrecord->id;
+        $cm->idnumber = '';
+        $cm->added = time();
+        $cm->score = 0;
+        $cm->indent = 0;
+        $cm->visible = $visible;
+        $cm->visibleoncoursepage = $visible;
+        $cm->visibleold = $visible;
+        $cm->groupmode = 0;
+        $cm->groupingid = 0;
+        $cm->completion = 0;
+        $cm->completionview = 0;
+        $cm->completionexpected = 0;
+        $cm->showdescription = $display;
+        $cm->availability = null;
+        
+        $cmid = $DB->insert_record('course_modules', $cm);
+
+        // Update section sequence
+        if (empty($sectionrecord->sequence)) {
+            $sectionrecord->sequence = $cmid;
+        } else {
+            $sectionrecord->sequence = $sectionrecord->sequence . ',' . $cmid;
+        }
+        $DB->update_record('course_sections', $sectionrecord);
+
+        // Rebuild course cache
+        rebuild_course_cache($courseid, true);
+        
+        // Update course format
+        course_modinfo::clear_instance_cache($courseid);
+        
+        // Get course context
+        $context = context_course::instance($courseid);
+        
+        // Trigger event
+        $event = course_module_created::create([
+            'objectid' => $cmid,
+            'context' => context_module::instance($cmid),
+            'other' => [
+                'modulename' => 'cmsvideo',
+                'instanceid' => $cmsvideoid,
+                'name' => $name
+            ]
+        ]);
+        $event->add_record_snapshot('course_modules', $cm);
+        $event->add_record_snapshot('cmsvideo', $cmsvideo);
+        $event->trigger();
+
+        return [
+            'modulename' => 'cmsvideo',
+            'cmid' => $cmid,
+            'instanceid' => $cmsvideoid,
+            'name' => $name,
+            'content' => $content,
+            'section' => $section
+        ];
+    }
+
+    /**
+     * Return description for create_activity_cmsvideo().
+     *
+     * @return external_single_structure.
+     */
+    public static function create_activity_cmsvideo_returns() {
+        return new external_single_structure([
+            'modulename' => new external_value(PARAM_TEXT, 'Module name'),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID'),
+            'instanceid' => new external_value(PARAM_INT, 'Instance ID'),
+            'name' => new external_value(PARAM_TEXT, 'Tên của activity'),
+            'content' => new external_value(PARAM_RAW, 'Nội dung của activity'),
+            'section' => new external_value(PARAM_INT, 'Section number')
+        ]);
+    }
+
+    // Functionset for update_activity_cmsvideo ******************************************************************************************.
+
+    /**
+     * Parameter description for update_activity_cmsvideo().
+     *
+     * @return external_function_parameters.
+     */
+    public static function update_activity_cmsvideo_parameters() {
+        return new external_function_parameters([
+            'cmid' => new external_value(PARAM_INT, 'Course module ID của cmsvideo cần cập nhật'),
+            'fields' => new external_multiple_structure(
+                new external_single_structure([
+                    'name' => new external_value(PARAM_TEXT, 'Tên cmsvideo', VALUE_OPTIONAL),
+                    'intro' => new external_value(PARAM_RAW, 'Mô tả cmsvideo', VALUE_OPTIONAL),
+                    'introformat' => new external_value(PARAM_INT, 'Định dạng mô tả', VALUE_OPTIONAL),
+                    'source_path' => new external_value(PARAM_TEXT, 'Đường dẫn nguồn', VALUE_OPTIONAL),
+                    'section' => new external_value(PARAM_INT, 'Section number', VALUE_OPTIONAL),
+                    'visible' => new external_value(PARAM_INT, 'Hiển thị', VALUE_OPTIONAL),
+                    'completion' => new external_value(PARAM_INT, 'Completion tracking', VALUE_OPTIONAL),
+                    'completionview' => new external_value(PARAM_INT, 'Completion view', VALUE_OPTIONAL),
+                    'completionexpected' => new external_value(PARAM_INT, 'Completion expected', VALUE_OPTIONAL),
+                    'availability' => new external_single_structure([
+                        'completioncmid' => new external_multiple_structure(
+                            new external_value(PARAM_INT, 'Course module ID for completion'),
+                            'Completion course module IDs'
+                        ),
+                        'timeopen' => new external_value(PARAM_INT, 'Open time', VALUE_OPTIONAL),
+                        'timeclose' => new external_value(PARAM_INT, 'Close time', VALUE_OPTIONAL),
+                        'gradeitemid' => new external_value(PARAM_INT, 'Grade item ID', VALUE_OPTIONAL),
+                        'min' => new external_value(PARAM_FLOAT, 'Minimum grade', VALUE_OPTIONAL),
+                        'max' => new external_value(PARAM_FLOAT, 'Maximum grade', VALUE_OPTIONAL),
+                    ], 'Availability conditions', VALUE_OPTIONAL),
+                ]),
+                'Fields to update'
+            ),
+        ]);
+    }
+
+    /**
+     * Function to update a cmsvideo activity.
+     *
+     * @param int $cmid
+     * @param string $fields
+     * @return array
+     * @throws moodle_exception
+     */
+    public static function update_activity_cmsvideo($cmid, $fields) {
+        global $DB;
+    
+        // Validate parameters
+        $params = self::validate_parameters(self::update_activity_cmsvideo_parameters(), [
+            'cmid' => $cmid,
+            'fields' => $fields
+        ]);
+        
+        // Lấy cmsvideoid từ cmid
+        $cmsvideoid = self::get_moduleid_from_cmid($cmid, 'cmsvideo');
+        
+        // Kiểm tra cmsvideo có tồn tại không
+        if (!$DB->record_exists('cmsvideo', ['id' => $cmsvideoid])) {
+            throw new moodle_exception('invalidcmsvideoid', 'mdl_cmsvideo', '', $cmsvideoid);
+        }
+    
+        // Lấy thông tin cmsvideo hiện tại
+        $cmsvideo = $DB->get_record('cmsvideo', ['id' => $cmsvideoid], '*', MUST_EXIST);
+    
+        // Cập nhật các trường được cung cấp
+        foreach ($params['fields'] as $field_data) {
+            foreach ($field_data as $field => $value) {
+                if (isset($value) && $field !== 'availability' && property_exists($cmsvideo, $field)) {
+                    $cmsvideo->{$field} = $value;
+                }
+            }
+        }
+        // Cập nhật cmsvideo
+        $result = $DB->update_record('cmsvideo', $cmsvideo);
+        
+        // Lấy course_modules record trước khi xử lý availability
+        $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+        
+        // Xử lý restrict access (availability)
+        if (!empty($params['fields'][0]) && !empty($params['fields'][0]['availability'])) {
+            $availability_params = $params['fields'][0]['availability'];
+            $completioncmids = $availability_params['completioncmid'] ?? [];
+
+            if (!is_array($completioncmids)) {
+                $completioncmids = [$completioncmids];
+            }
+            $availability_json = self::generate_availability_conditions(
+                $availability_params['timeopen'] ?? null,
+                $availability_params['timeclose'] ?? null,
+                $availability_params['gradeitemid'] ?? null,
+                $availability_params['min'] ?? null,
+                $availability_params['max'] ?? null,
+                $completioncmids
+            );
+            // Cập nhật availability trong bảng course_modules
+            $cm->availability = $availability_json;
+        } else {
+            $cm->availability = '';
+        }
+        
+        // Cập nhật lại course_modules
+        $DB->update_record('course_modules', $cm);
+        
+        // Xử lý section và visible nếu được truyền
+        $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+
+        if (!empty($params['fields'][0]) && isset($params['fields'][0]['section'])) {
+            $section = $DB->get_record('course_sections', array('course' => $cm1->course, 'section' => $params['fields'][0]['section']));
+            
+            if ($section && $section->id != $cm1->section) {
+                // Cập nhật section mới
+                self::move_activity_to_section($cm1->course, $cmid, $params['fields'][0]['section']);
+            }
+        }
+
+        if (!empty($params['fields'][0]) && isset($params['fields'][0]['visible'])) {
+            $cm1->visible = $params['fields'][0]['visible'];
+        }
+
+        $completion = 0;
+        $completionview = 0;
+        $completionexpected = 0;
+        if (!empty($params['fields'][0]) && !empty($params['fields'][0]['completion'])) {
+            if($params['fields'][0]['completion'] == 1){
+                $completion = $params['fields'][0]['completion'];
+                $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
+            }
+
+            if($params['fields'][0]['completion'] == 2){
+                $completion = $params['fields'][0]['completion'];
+                $completionview = $params['fields'][0]['completionview'] ?? 0;
+                $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
+            }
+        }
+        $cm1->completion = $completion;
+        $cm1->completionview = $completionview;
+        $cm1->completionexpected = $completionexpected;
+
+        $cm1->showdescription = (!empty($params['fields'][0]) && isset($params['fields'][0]['showdescription'])) ? $params['fields'][0]['showdescription'] : 0;
+        
+        $DB->update_record('course_modules', $cm1);
+
+        rebuild_course_cache($cm1->course, true);
+    
+        return [
+            'status' => 'success',
+            'message' => 'cmsvideo updated successfully',
+            'cmsvideoid' => $cmsvideoid,
+            'cmid' => $cmid
+        ];
+    }
+
+    /**
+     * Return description for update_activity_cmsvideo().
+     *
+     * @return external_single_structure.
+     */
+    public static function update_activity_cmsvideo_returns() {
+        return new external_single_structure([
+            'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
+            'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
+            'cmsvideoid' => new external_value(PARAM_INT, 'ID của cmsvideo đã cập nhật'),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID của cmsvideo')
+        ]);
     }
 }

@@ -11639,4 +11639,403 @@ class local_custom_service_external extends external_api
             'cmid' => new external_value(PARAM_INT, 'Course module ID của cmsvideo')
         ]);
     }
+
+    /**
+     * Get Student Incomplete Activities Timeline with Sorting
+     * Parameters definition
+     */
+    public static function get_student_incomplete_activities_timeline_parameters() {
+        return new external_function_parameters([
+            'userid' => new external_value(PARAM_INT, 'User ID (default: current user)', VALUE_DEFAULT, 0),
+            'courseid' => new external_value(PARAM_INT, 'Course ID (default: all courses)', VALUE_DEFAULT, 0),
+            'status' => new external_value(PARAM_TEXT, 'Filter by status (current, overdue, upcoming, all)', VALUE_DEFAULT, 'all'),
+            'type' => new external_value(PARAM_TEXT, 'Filter by activity type (any valid Moodle activity type or "all")', VALUE_DEFAULT, 'all'),
+            'search' => new external_value(PARAM_TEXT, 'Search by activity name or type', VALUE_DEFAULT, ''),
+            'sortby' => new external_value(PARAM_TEXT, 'Sort by (date, course)', VALUE_DEFAULT, 'date'),
+            'sortorder' => new external_value(PARAM_TEXT, 'Sort order (asc, desc)', VALUE_DEFAULT, 'asc'),
+            'limit' => new external_value(PARAM_INT, 'Number of items to return', VALUE_DEFAULT, 50),
+            'offset' => new external_value(PARAM_INT, 'Offset for pagination', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    /**
+     * Get Student Incomplete Activities Timeline with Sorting
+     * Main implementation
+     */
+    public static function get_student_incomplete_activities_timeline(
+        $userid = 0,
+        $courseid = 0,
+        $status = 'all',
+        $type = 'all',
+        $search = '',
+        $sortby = 'date',
+        $sortorder = 'asc',
+        $limit = 50,
+        $offset = 0
+    ) {
+        global $DB, $USER, $CFG;
+
+        // Bước 1: Validation cơ bản
+        try {
+            // Validate parameters
+            $params = self::validate_parameters(self::get_student_incomplete_activities_timeline_parameters(), [
+                'userid' => $userid,
+                'courseid' => $courseid,
+                'status' => $status,
+                'type' => $type,
+                'search' => $search,
+                'sortby' => $sortby,
+                'sortorder' => $sortorder,
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+            
+            // Use current user if userid is 0
+            if ($userid == 0) {
+                $userid = $USER->id;
+            }
+
+            // Validate user exists
+            if (!$DB->record_exists('user', ['id' => $userid])) {
+                return [
+                    'success' => false,
+                    'message' => 'User not found',
+                    'data' => null
+                ];
+            }
+
+            // Bước 2: Thêm SQL query đơn giản
+            $sql = "
+                SELECT DISTINCT
+                    cm.id as activity_id,
+                    cm.instance as activity_instance_id,
+                    m.name as activity_type,
+                    c.id as course_id,
+                    c.fullname as course_fullname,
+                    c.shortname as course_shortname,
+                    cmc.completionstate,
+                    cmc.timemodified as completion_time
+                FROM {course_modules} cm
+                JOIN {course} c ON c.id = cm.course
+                JOIN {modules} m ON m.id = cm.module
+                LEFT JOIN {course_modules_completion} cmc ON cm.id = cmc.coursemoduleid AND cmc.userid = :userid
+                JOIN {user_enrolments} ue ON ue.userid = :userid2
+                JOIN {enrol} e ON e.id = ue.enrolid AND e.courseid = c.id
+                WHERE cm.deletioninprogress != 1
+                AND cm.completion != 0
+                AND c.visible = 1
+                AND m.name != 'vedubotleanbothoctap'
+                AND (cmc.completionstate IS NULL OR cmc.completionstate = 0)
+                ORDER BY m.name ASC, cm.id ASC
+                LIMIT " . intval($limit) . " OFFSET " . intval($offset) . "
+            ";
+
+            $queryParams = [
+                'userid' => $userid,
+                'userid2' => $userid
+            ];
+
+            // Execute query
+            $activities = $DB->get_records_sql($sql, $queryParams);
+
+            $arr = [
+                'success' => true,
+                'message' => 'API is working - Step 2 completed with ' . count($activities) . ' activities found',
+                'data' => [
+                    'activities' => [],
+                    'summary' => [
+                        'current' => 0,
+                        'overdue' => 0,
+                        'upcoming' => 0,
+                        'total' => 0
+                    ],
+                    'pagination' => [
+                        'total' => 0,
+                        'limit' => $limit,
+                        'offset' => $offset,
+                        'hasMore' => false
+                    ],
+                    'sorting' => [
+                        'sortBy' => $sortby,
+                        'sortOrder' => $sortorder
+                    ]
+                ]
+            ];
+            // Bước 4: Sử dụng SQL query đơn giản đã test thành công
+            $sql = "
+                SELECT DISTINCT
+                    cm.id as cmid,
+                    cm.instance as activity_id,
+                    m.name as modulename,
+                    c.id as courseid,
+                    c.fullname as coursefullname,
+                    c.shortname as courseshortname,
+                    CASE 
+                        WHEN m.name = 'assign' THEN a.name
+                        WHEN m.name = 'quiz' THEN q.name
+                        WHEN m.name = 'forum' THEN f.name
+                        WHEN m.name = 'lesson' THEN l.name
+                        WHEN m.name = 'resource' THEN r.name
+                        WHEN m.name = 'page' THEN p.name
+                        WHEN m.name = 'customcert' THEN cc.name
+                        WHEN m.name = 'book' THEN b.name
+                        WHEN m.name = 'h5pactivity' THEN ha.name
+                        ELSE CONCAT(UPPER(SUBSTRING(m.name, 1, 1)), SUBSTRING(m.name, 2))
+                    END as activity_name,
+                    CASE 
+                        WHEN m.name = 'assign' THEN a.duedate
+                        WHEN m.name = 'quiz' THEN q.timeclose
+                        WHEN m.name = 'forum' THEN f.duedate
+                        WHEN m.name = 'lesson' THEN l.deadline
+                        ELSE 0
+                    END as duedate
+                FROM {course_modules} cm
+                JOIN {course} c ON c.id = cm.course
+                JOIN {modules} m ON m.id = cm.module
+                LEFT JOIN {assign} a ON a.id = cm.instance AND m.name = 'assign'
+                LEFT JOIN {quiz} q ON q.id = cm.instance AND m.name = 'quiz'
+                LEFT JOIN {forum} f ON f.id = cm.instance AND m.name = 'forum'
+                LEFT JOIN {lesson} l ON l.id = cm.instance AND m.name = 'lesson'
+                LEFT JOIN {resource} r ON r.id = cm.instance AND m.name = 'resource'
+                LEFT JOIN {page} p ON p.id = cm.instance AND m.name = 'page'
+                LEFT JOIN {customcert} cc ON cc.id = cm.instance AND m.name = 'customcert'
+                LEFT JOIN {book} b ON b.id = cm.instance AND m.name = 'book'
+                LEFT JOIN {h5pactivity} ha ON ha.id = cm.instance AND m.name = 'h5pactivity'
+                LEFT JOIN {course_modules_completion} cmc ON cmc.coursemoduleid = cm.id AND cmc.userid = :userid
+                WHERE c.id IN (
+                    SELECT DISTINCT c2.id
+                    FROM {course} c2
+                    JOIN {enrol} e ON e.courseid = c2.id
+                    JOIN {user_enrolments} ue ON ue.enrolid = e.id
+                    WHERE ue.userid = :userid2
+                )
+                AND cm.completion > 0
+                AND (cmc.completionstate IS NULL OR cmc.completionstate = 0)
+                ORDER BY c.fullname ASC
+            ";
+
+            $queryParams = [
+                'userid' => $userid,
+                'userid2' => $userid
+            ];
+
+            // Thêm filter theo course nếu được chỉ định
+            if ($courseid > 0) {
+                $sql = str_replace("ORDER BY c.fullname ASC", "AND c.id = :courseid ORDER BY c.fullname ASC", $sql);
+                $queryParams['courseid'] = $courseid;
+            }
+
+            // Thêm filter theo type nếu được chỉ định
+            if ($type !== 'all') {
+                $sql = str_replace("ORDER BY c.fullname ASC", "AND m.name = :modulename ORDER BY c.fullname ASC", $sql);
+                $queryParams['modulename'] = $type;
+            }
+
+            // Thêm search filter nếu có
+            if (!empty($search)) {
+                $sql = str_replace("ORDER BY c.fullname ASC", "AND (CASE 
+                    WHEN m.name = 'assign' THEN a.name
+                    WHEN m.name = 'quiz' THEN q.name
+                    WHEN m.name = 'forum' THEN f.name
+                    WHEN m.name = 'lesson' THEN l.name
+                    WHEN m.name = 'resource' THEN r.name
+                    WHEN m.name = 'page' THEN p.name
+                    WHEN m.name = 'customcert' THEN cc.name
+                    WHEN m.name = 'book' THEN b.name
+                    WHEN m.name = 'h5pactivity' THEN ha.name
+                    ELSE CONCAT(UPPER(SUBSTRING(m.name, 1, 1)), SUBSTRING(m.name, 2))
+                END LIKE :search OR m.name LIKE :search2) ORDER BY c.fullname ASC", $sql);
+                $queryParams['search'] = '%' . $search . '%';
+                $queryParams['search2'] = '%' . $search . '%';
+            }
+
+            // Execute query
+            $allActivities = $DB->get_records_sql($sql, $queryParams);
+            
+            // Calculate total available activities (before pagination)
+            $totalAvailable = count($allActivities);
+            
+            // Apply pagination manually
+            $activities = array_slice($allActivities, $offset, $limit);
+
+            // Format activities data
+            $formattedActivities = [];
+            $currentTime = time();
+            $currentCount = 0;
+            $overdueCount = 0;
+            $upcomingCount = 0;
+
+            foreach ($activities as $activity) {
+                // Determine status based on due date
+                $dueDate = $activity->duedate;
+                $activityStatus = 'current';
+                $isOverdue = false;
+
+                if ($dueDate > 0) {
+                    if ($dueDate < $currentTime) {
+                        $activityStatus = 'overdue';
+                        $isOverdue = true;
+                        $overdueCount++;
+                    } else {
+                        $daysUntilDue = ceil(($dueDate - $currentTime) / 86400);
+                        if ($daysUntilDue <= 7) {
+                            $activityStatus = 'current';
+                            $currentCount++;
+                        } else {
+                            $activityStatus = 'upcoming';
+                            $upcomingCount++;
+                        }
+                    }
+                } else {
+                    $currentCount++;
+                }
+
+                // Apply status filter
+                if ($status !== 'all' && $activityStatus !== $status) {
+                    continue;
+                }
+
+                // Format due date
+                $formattedDueDate = '';
+                if ($dueDate > 0) {
+                    $formattedDueDate = date('c', $dueDate);
+                }
+
+                // Calculate time remaining
+                $timeRemaining = '';
+                if ($dueDate > 0 && $dueDate > $currentTime) {
+                    $timeDiff = $dueDate - $currentTime;
+                    $days = floor($timeDiff / 86400);
+                    $hours = floor(($timeDiff % 86400) / 3600);
+                    $timeRemaining = $days . ' days, ' . $hours . ' hours';
+                }
+
+                // Build activity URL
+                $activityUrl = $CFG->wwwroot . '/mod/' . $activity->modulename . '/view.php?id=' . $activity->cmid;
+
+                $formattedActivities[] = [
+                    'id' => (string)$activity->cmid,
+                    'title' => $activity->activity_name,
+                    'type' => $activity->modulename,
+                    'course' => [
+                        'id' => (int)$activity->courseid,
+                        'fullname' => $activity->coursefullname,
+                        'shortname' => $activity->courseshortname
+                    ],
+                    'dueDate' => $formattedDueDate,
+                    'status' => $activityStatus,
+                    'description' => $activity->activity_intro,
+                    'url' => $activityUrl,
+                    'submissionStatus' => 'notsubmitted',
+                    'timeRemaining' => $timeRemaining,
+                    'isOverdue' => $isOverdue,
+                    'activityId' => (int)$activity->activity_id,
+                    'courseId' => (int)$activity->courseid
+                ];
+            }
+
+
+            return [
+                'success' => true,
+                'message' => 'API is working - Step 4 completed with ' . count($formattedActivities) . ' activities found',
+                'data' => [
+                    'activities' => $formattedActivities,
+                    'summary' => [
+                        'current' => $currentCount,
+                        'overdue' => $overdueCount,
+                        'upcoming' => $upcomingCount,
+                        'total' => count($formattedActivities)
+                    ],
+                    'pagination' => [
+                        'total' => count($formattedActivities),
+                        'totalAvailable' => $totalAvailable,
+                        'limit' => $limit,
+                        'offset' => $offset,
+                        'hasMore' => ($offset + $limit) < $totalAvailable
+                    ],
+                    'sorting' => [
+                        'sortBy' => $sortby,
+                        'sortOrder' => $sortorder
+                    ]
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'data' => [
+                    'activities' => [],
+                    'summary' => [
+                        'current' => 0,
+                        'overdue' => 0,
+                        'upcoming' => 0,
+                        'total' => 0
+                    ],
+                    'pagination' => [
+                        'total' => 0,
+                        'totalAvailable' => 0,
+                        'limit' => $limit,
+                        'offset' => $offset,
+                        'hasMore' => false
+                    ],
+                    'sorting' => [
+                        'sortBy' => $sortby,
+                        'sortOrder' => $sortorder
+                    ]
+                ]
+            ];
+        }
+    }
+
+    /**
+     * Get Student Incomplete Activities Timeline with Sorting
+     * Return structure definition
+     */
+    public static function get_student_incomplete_activities_timeline_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success status'),
+            'message' => new external_value(PARAM_TEXT, 'Response message'),
+            'data' => new external_single_structure([
+                'activities' => new external_multiple_structure(
+                    new external_single_structure([
+                        'id' => new external_value(PARAM_TEXT, 'Activity ID'),
+                        'title' => new external_value(PARAM_TEXT, 'Activity title'),
+                        'type' => new external_value(PARAM_TEXT, 'Activity type'),
+                        'course' => new external_single_structure([
+                            'id' => new external_value(PARAM_INT, 'Course ID'),
+                            'fullname' => new external_value(PARAM_TEXT, 'Course full name'),
+                            'shortname' => new external_value(PARAM_TEXT, 'Course short name')
+                        ]),
+                        'dueDate' => new external_value(PARAM_TEXT, 'Due date in ISO 8601 format'),
+                        'status' => new external_value(PARAM_TEXT, 'Activity status (current, overdue, upcoming)'),
+                        'description' => new external_value(PARAM_TEXT, 'Activity description'),
+                        'url' => new external_value(PARAM_TEXT, 'Activity URL'),
+                        'submissionStatus' => new external_value(PARAM_TEXT, 'Submission status'),
+                        'timeRemaining' => new external_value(PARAM_TEXT, 'Time remaining until due'),
+                        'isOverdue' => new external_value(PARAM_BOOL, 'Whether activity is overdue'),
+                        'activityId' => new external_value(PARAM_INT, 'Activity ID as integer'),
+                        'courseId' => new external_value(PARAM_INT, 'Course ID as integer')
+                    ])
+                ),
+                'summary' => new external_single_structure([
+                    'current' => new external_value(PARAM_INT, 'Number of current activities'),
+                    'overdue' => new external_value(PARAM_INT, 'Number of overdue activities'),
+                    'upcoming' => new external_value(PARAM_INT, 'Number of upcoming activities'),
+                    'total' => new external_value(PARAM_INT, 'Total number of activities')
+                ]),
+                'pagination' => new external_single_structure([
+                    'total' => new external_value(PARAM_INT, 'Total number of items'),
+                    'totalAvailable' => new external_value(PARAM_INT, 'Total number of available items'),
+                    'limit' => new external_value(PARAM_INT, 'Items per page'),
+                    'offset' => new external_value(PARAM_INT, 'Current offset'),
+                    'hasMore' => new external_value(PARAM_BOOL, 'Whether there are more items')
+                ]),
+                'sorting' => new external_single_structure([
+                    'sortBy' => new external_value(PARAM_TEXT, 'Current sort field'),
+                    'sortOrder' => new external_value(PARAM_TEXT, 'Current sort order')
+                ])
+            ])
+        ]);
+    }
 }

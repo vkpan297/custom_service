@@ -23,6 +23,7 @@ require_once($CFG->dirroot . '/mod/assign/lib.php');
 require_once($CFG->dirroot . '/user/externallib.php');
 require_once($CFG->dirroot . '/course/classes/category.php');
 require_once($CFG->dirroot . '/tag/lib.php');
+require_once($CFG->dirroot . '/lib/filelib.php');
 // require_once("$CFG->libdir/phpspreadsheet/vendor/autoload.php");
 // require_once(__DIR__ . '/vendor/autoload.php');
 
@@ -12037,5 +12038,378 @@ class local_custom_service_external extends external_api
                 ])
             ])
         ]);
+    }
+
+    // Get My Courses with filters and pagination
+    public static function get_learning_courses_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'userid' => new external_value(PARAM_INT, 'User ID', VALUE_REQUIRED),
+                'page' => new external_value(PARAM_INT, 'Current page', VALUE_DEFAULT, 1),
+                'perpage' => new external_value(PARAM_INT, 'Courses per page', VALUE_DEFAULT, 8),
+                'search' => new external_value(PARAM_TEXT, 'Search keyword', VALUE_DEFAULT, ''),
+                'categoryid' => new external_value(PARAM_TEXT, 'Category filter', VALUE_DEFAULT, 'all'),
+                'status' => new external_value(PARAM_TEXT, 'Status filter', VALUE_DEFAULT, 'all'),
+                'duration' => new external_value(PARAM_TEXT, 'Duration filter', VALUE_DEFAULT, ''),
+                'rating' => new external_value(PARAM_TEXT, 'Rating filter', VALUE_DEFAULT, '')
+            )
+        );
+    }
+
+    public static function get_learning_courses($userid, $page = 1, $perpage = 8, $search = '', $categoryid = 'all', $status = 'all', $duration = '', $rating = '')
+    {
+        global $DB, $CFG;
+
+        // Validate parameters
+        $params = self::validate_parameters(self::get_learning_courses_parameters(), array(
+            'userid' => $userid,
+            'page' => $page,
+            'perpage' => $perpage,
+            'search' => $search,
+            'categoryid' => $categoryid,
+            'status' => $status,
+            'duration' => $duration,
+            'rating' => $rating
+        ));
+
+        try {
+            // Validate user exists
+            if (!$DB->record_exists('user', array('id' => $userid))) {
+                throw new moodle_exception('invaliduser', 'error');
+            }
+
+            // Calculate offset
+            $offset = ($page - 1) * $perpage;
+
+            // Build base query for enrolled courses
+            $sql = "SELECT DISTINCT c.id, c.fullname, c.shortname, c.summary, c.startdate, c.enddate, 
+                           c.timecreated, c.timemodified, c.visible, c.enablecompletion,
+                           cc.name as category_name, cc.id as category_id,
+                           u.firstname, u.lastname, u.email as instructor_email,
+                           ue.timecreated as enrolled_time,
+                           ue.timeend as enrollment_end
+                    FROM {course} c
+                    LEFT JOIN {course_categories} cc ON c.category = cc.id
+                    LEFT JOIN {enrol} e ON c.id = e.courseid
+                    LEFT JOIN {user_enrolments} ue ON e.id = ue.enrolid
+                    LEFT JOIN {context} ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                    LEFT JOIN {role_assignments} ra ON ue.userid = ra.userid AND ra.contextid = ctx.id
+                    LEFT JOIN {user} u ON ra.userid = u.id AND ra.roleid IN (
+                        SELECT id FROM {role} WHERE shortname IN ('editingteacher', 'teacher')
+                    )
+                    WHERE ue.userid = :userid 
+                    AND e.status = 0 
+                    AND c.visible = 1
+                    AND c.id > 1";
+
+            $params_sql = array('userid' => $userid);
+
+            // Add category filter
+            if ($categoryid !== 'all' && is_numeric($categoryid)) {
+                $sql .= " AND c.category = :categoryid";
+                $params_sql['categoryid'] = $categoryid;
+            }
+
+            // Add search filter
+            if (!empty($search)) {
+                $sql .= " AND (c.fullname LIKE :search OR c.summary LIKE :search2)";
+                $params_sql['search'] = '%' . $search . '%';
+                $params_sql['search2'] = '%' . $search . '%';
+            }
+
+            // Get total count for pagination
+            $count_sql = "SELECT COUNT(DISTINCT c.id) FROM {course} c
+                         LEFT JOIN {enrol} e ON c.id = e.courseid
+                         LEFT JOIN {user_enrolments} ue ON e.id = ue.enrolid
+                         WHERE ue.userid = :userid 
+                         AND e.status = 0 
+                         AND c.visible = 1
+                         AND c.id > 1";
+            
+            $count_params = array('userid' => $userid);
+            if ($categoryid !== 'all' && is_numeric($categoryid)) {
+                $count_sql .= " AND c.category = :categoryid";
+                $count_params['categoryid'] = $categoryid;
+            }
+            if (!empty($search)) {
+                $count_sql .= " AND (c.fullname LIKE :search OR c.summary LIKE :search2)";
+                $count_params['search'] = '%' . $search . '%';
+                $count_params['search2'] = '%' . $search . '%';
+            }
+
+            $total_courses = $DB->count_records_sql($count_sql, $count_params);
+
+            // Add pagination
+            $sql .= " ORDER BY c.fullname ASC";
+            $sql .= " LIMIT " . intval($perpage) . " OFFSET " . intval($offset);
+
+            $courses = $DB->get_records_sql($sql, $params_sql);
+
+            $courses_data = array();
+            foreach ($courses as $course) {
+                // Get course image
+                $course_image = '';
+                try {
+                    $context = context_course::instance($course->id);
+                    $fs = get_file_storage();
+                    $files = $fs->get_area_files($context->id, 'course', 'overviewfiles', 0, 'sortorder', false);
+                    if ($files) {
+                        $file = reset($files);
+                        // Create URL using moodle_url for proper encoding
+                        $course_image = moodle_url::make_pluginfile_url(
+                            $file->get_contextid(),
+                            $file->get_component(),
+                            $file->get_filearea(),
+                            null, // No itemid for course overview files
+                            $file->get_filepath(),
+                            $file->get_filename()
+                        )->out();
+                    }
+                } catch (Exception $e) {
+                    // If context doesn't exist, skip image
+                    $course_image = '';
+                }
+
+                // Get course rating from mdl_block_edwiserratingreview (check if table exists first)
+                $course_rating = 0;
+                if ($DB->get_manager()->table_exists('block_edwiserratingreview')) {
+                    $rating_sql = "SELECT AVG(star_ratings) as avg_rating, COUNT(*) as total_reviews
+                                  FROM {block_edwiserratingreview} 
+                                  WHERE for_type = 'course' 
+                                  AND for_id = :courseid 
+                                  AND approved = 1";
+                    $rating_data = $DB->get_record_sql($rating_sql, array('courseid' => $course->id));
+                    $course_rating = $rating_data ? round($rating_data->avg_rating, 1) : 0;
+                }
+
+                // Get completion data
+                $completion_data = self::get_course_completion_data($course->id, $userid);
+                
+                // Get course tags
+                $tags = array();
+                $course_tags = $DB->get_records_sql(
+                    "SELECT t.name FROM {tag} t 
+                     JOIN {tag_instance} ti ON t.id = ti.tagid 
+                     WHERE ti.itemtype = 'course' AND ti.itemid = :courseid",
+                    array('courseid' => $course->id)
+                );
+                foreach ($course_tags as $tag) {
+                    $tags[] = $tag->name;
+                }
+
+                // Determine course status
+                $course_status = self::determine_course_status($course, $completion_data);
+
+                // Get last access time
+                $last_access = $DB->get_field('user_lastaccess', 'timeaccess', 
+                    array('userid' => $userid, 'courseid' => $course->id));
+
+                $course_data = array(
+                    'id' => (int)$course->id,
+                    'coursename' => (string)$course->fullname,
+                    'summary' => (string)strip_tags($course->summary),
+                    'view_url' => (string)($CFG->wwwroot . '/course/view.php?id=' . $course->id),
+                    'course_image' => (string)$course_image,
+                    'last_access_time' => (string)($last_access ? date('Y-m-d H:i:s', $last_access) : ''),
+                    'total_activity' => (int)$completion_data['total_activities'],
+                    'total_activity_completion' => (int)$completion_data['completed_activities'],
+                    'completion_percentage' => (int)$completion_data['completion_percentage'],
+                    'category' => (string)($course->category_name ?: 'Uncategorized'),
+                    'categoryId' => (string)$course->category_id,
+                    'tags' => (array)$tags,
+                    'rating' => (float)$course_rating,
+                    'duration' => (string)'', // Duration not available as mentioned
+                    'status' => (string)$course_status,
+                    'is_enrolled' => (bool)true,
+                    'course_startdate' => (string)($course->startdate ? date('Y-m-d', $course->startdate) : ''),
+                    'course_enddate' => (string)($course->enddate ? date('Y-m-d', $course->enddate) : ''),
+                    'instructor' => (string)(trim($course->firstname . ' ' . $course->lastname) ?: 'Unknown'),
+                    'difficulty_level' => (string)'Beginner', // Default value
+                    'language' => (string)'English' // Default value
+                );
+
+                // Apply status filter
+                if ($status !== 'all') {
+                    // If filtering for 'not_enrolled', skip all courses since all returned courses are enrolled
+                    if ($status === 'not_enrolled') {
+                        continue;
+                    }
+                    // For other status filters, check if course status matches
+                    if ($course_status !== $status) {
+                        continue;
+                    }
+                }
+
+                // Apply rating filter
+                if ($rating !== '' && $course_rating < (float)$rating) {
+                    continue;
+                }
+
+                $courses_data[] = $course_data;
+            }
+
+            // Get categories for filter
+            $categories = $DB->get_records_sql(
+                "SELECT id, name FROM {course_categories} WHERE visible = 1 ORDER BY name"
+            );
+            $categories_data = array();
+            foreach ($categories as $cat) {
+                $categories_data[] = array(
+                    'id' => (string)$cat->id,
+                    'name' => $cat->name
+                );
+            }
+
+            // Calculate pagination
+            $total_pages = ceil($total_courses / $perpage);
+
+            return array(
+                'status' => (string)'success',
+                'data' => array(
+                    'courses' => (array)$courses_data,
+                    'total_courses' => (int)$total_courses,
+                    'current_page' => (int)$page,
+                    'per_page' => (int)$perpage,
+                    'total_pages' => (int)$total_pages,
+                    'categories' => (array)$categories_data,
+                    'filters' => array(
+                        'statuses' => (array)array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
+                        'durations' => (array)array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
+                        'ratings' => (array)array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
+                    )
+                )
+            );
+
+        } catch (Exception $e) {
+            return array(
+                'status' => (string)'error',
+                'data' => array(
+                    'courses' => (array)array(),
+                    'total_courses' => (int)0,
+                    'current_page' => (int)$page,
+                    'per_page' => (int)$perpage,
+                    'total_pages' => (int)0,
+                    'categories' => (array)array(),
+                    'filters' => array(
+                        'statuses' => (array)array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
+                        'durations' => (array)array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
+                        'ratings' => (array)array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
+                    ),
+                    'error_message' => (string)$e->getMessage()
+                )
+            );
+        }
+    }
+
+    public static function get_learning_courses_returns()
+    {
+        return new external_single_structure(array(
+            'status' => new external_value(PARAM_TEXT, 'Response status'),
+            'data' => new external_single_structure(array(
+                'courses' => new external_multiple_structure(
+                    new external_single_structure(array(
+                        'id' => new external_value(PARAM_INT, 'Course ID'),
+                        'coursename' => new external_value(PARAM_TEXT, 'Course name'),
+                        'summary' => new external_value(PARAM_TEXT, 'Course summary'),
+                        'view_url' => new external_value(PARAM_URL, 'Course view URL'),
+                        'course_image' => new external_value(PARAM_URL, 'Course image URL'),
+                        'last_access_time' => new external_value(PARAM_TEXT, 'Last access time'),
+                        'total_activity' => new external_value(PARAM_INT, 'Total activities'),
+                        'total_activity_completion' => new external_value(PARAM_INT, 'Completed activities'),
+                        'completion_percentage' => new external_value(PARAM_INT, 'Completion percentage'),
+                        'category' => new external_value(PARAM_TEXT, 'Category name'),
+                        'categoryId' => new external_value(PARAM_TEXT, 'Category ID'),
+                        'tags' => new external_multiple_structure(
+                            new external_value(PARAM_TEXT, 'Tag name')
+                        ),
+                        'rating' => new external_value(PARAM_FLOAT, 'Course rating'),
+                        'duration' => new external_value(PARAM_TEXT, 'Course duration'),
+                        'status' => new external_value(PARAM_TEXT, 'Course status'),
+                        'is_enrolled' => new external_value(PARAM_BOOL, 'Is enrolled'),
+                        'course_startdate' => new external_value(PARAM_TEXT, 'Course start date'),
+                        'course_enddate' => new external_value(PARAM_TEXT, 'Course end date'),
+                        'instructor' => new external_value(PARAM_TEXT, 'Instructor name'),
+                        'difficulty_level' => new external_value(PARAM_TEXT, 'Difficulty level'),
+                        'language' => new external_value(PARAM_TEXT, 'Language')
+                    ))
+                ),
+                'total_courses' => new external_value(PARAM_INT, 'Total courses'),
+                'current_page' => new external_value(PARAM_INT, 'Current page'),
+                'per_page' => new external_value(PARAM_INT, 'Courses per page'),
+                'total_pages' => new external_value(PARAM_INT, 'Total pages'),
+                'categories' => new external_multiple_structure(
+                    new external_single_structure(array(
+                        'id' => new external_value(PARAM_TEXT, 'Category ID'),
+                        'name' => new external_value(PARAM_TEXT, 'Category name')
+                    ))
+                ),
+                'filters' => new external_single_structure(array(
+                    'statuses' => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, 'Status option')
+                    ),
+                    'durations' => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, 'Duration option')
+                    ),
+                    'ratings' => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, 'Rating option')
+                    )
+                )),
+                'error_message' => new external_value(PARAM_TEXT, 'Error message if any', VALUE_OPTIONAL)
+            ))
+        ));
+    }
+
+    // Helper function to get course completion data
+    private static function get_course_completion_data($courseid, $userid)
+    {
+        global $DB;
+
+        // Get total activities (exclude labels and only count modules with completion tracking)
+        $total_activities = $DB->count_records_sql(
+            "SELECT COUNT(*) FROM {course_modules} cm 
+             JOIN {modules} m ON cm.module = m.id
+             WHERE cm.course = :courseid 
+             AND cm.visible = 1 
+             AND m.name != 'label'
+             AND cm.completion > 0",
+            array('courseid' => $courseid)
+        );
+
+        // Get completed activities (exclude labels and only count modules with completion tracking)
+        $completed_activities = $DB->count_records_sql(
+            "SELECT COUNT(*) FROM {course_modules_completion} cmc
+             JOIN {course_modules} cm ON cmc.coursemoduleid = cm.id
+             JOIN {modules} m ON cm.module = m.id
+             WHERE cm.course = :courseid 
+             AND cmc.userid = :userid 
+             AND cmc.completionstate > 0
+             AND m.name != 'label'
+             AND cm.completion > 0",
+            array('courseid' => $courseid, 'userid' => $userid)
+        );
+
+        $completion_percentage = $total_activities > 0 ? 
+            round(($completed_activities / $total_activities) * 100) : 0;
+
+        return array(
+            'total_activities' => $total_activities,
+            'completed_activities' => $completed_activities,
+            'completion_percentage' => $completion_percentage
+        );
+    }
+
+    // Helper function to determine course status
+    private static function determine_course_status($course, $completion_data)
+    {
+        $completion_percentage = $completion_data['completion_percentage'];
+        
+        if ($completion_percentage >= 100) {
+            return 'completed';
+        } else {
+            // If user is enrolled but completion < 100%, they are in progress
+            // Only return 'not_enrolled' if user is not actually enrolled
+            return 'in_progress';
+        }
     }
 }

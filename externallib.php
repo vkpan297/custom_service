@@ -2139,7 +2139,9 @@ class local_custom_service_external extends external_api
                                 'definition' => $step->definition ?? '',
                                 'example' => $step->example ?? '',
                                 'audio_file' => $step->audio_file ?? '',
-                                'response_text' => $step->response_text ?? 'Continue',
+                                'response_text' => $step->response_text 
+                                    ? html_entity_decode($step->response_text) 
+                                    : 'Continue',
                                 'storage_path' => $step->storage_path ?? '',
                                 'sortorder' => $step->sortorder,
                                 'timecreated' => $step->timecreated,

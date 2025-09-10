@@ -583,6 +583,24 @@ $functions = array(
         'type'        => 'write',
         'capabilities'=> 'moodle/course:update',
     ),
+    'local_custom_service_get_student_incomplete_activities_timeline' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'get_student_incomplete_activities_timeline',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Get Student Incomplete Activities Timeline with Sorting',
+        'type'        => 'read',
+        'ajax'        => true,
+        'capabilities'=> 'moodle/course:view',
+    ),
+    'local_custom_service_get_learning_courses' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'get_learning_courses',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Get My Courses with filters and pagination',
+        'type'        => 'read',
+        'ajax'        => true,
+        'capabilities'=> 'moodle/course:view',
+    ),
 );
 
 $services = array(
@@ -657,7 +675,9 @@ $services = array(
             'local_custom_service_update_activity_completion',
             'local_custom_service_get_users_by_school_id',
             'local_custom_service_create_activity_cmsvideo',
-            'local_custom_service_update_activity_cmsvideo'
+            'local_custom_service_update_activity_cmsvideo',
+            'local_custom_service_get_student_incomplete_activities_timeline',
+            'local_custom_service_get_learning_courses'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

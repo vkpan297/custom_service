@@ -23,6 +23,7 @@ require_once($CFG->dirroot . '/mod/assign/lib.php');
 require_once($CFG->dirroot . '/user/externallib.php');
 require_once($CFG->dirroot . '/course/classes/category.php');
 require_once($CFG->dirroot . '/tag/lib.php');
+require_once($CFG->dirroot . '/lib/filelib.php');
 // require_once("$CFG->libdir/phpspreadsheet/vendor/autoload.php");
 // require_once(__DIR__ . '/vendor/autoload.php');
 
@@ -2139,7 +2140,9 @@ class local_custom_service_external extends external_api
                                 'definition' => $step->definition ?? '',
                                 'example' => $step->example ?? '',
                                 'audio_file' => $step->audio_file ?? '',
-                                'response_text' => $step->response_text ?? 'Continue',
+                                'response_text' => $step->response_text 
+                                    ? html_entity_decode($step->response_text) 
+                                    : 'Continue',
                                 'storage_path' => $step->storage_path ?? '',
                                 'sortorder' => $step->sortorder,
                                 'timecreated' => $step->timecreated,
@@ -5800,6 +5803,12 @@ class local_custom_service_external extends external_api
         
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
+        
+            // Cập nhật lại course_modules
+            $DB->update_record('course_modules', $cm); 
         }
         
         // Xử lý section và visible nếu được truyền
@@ -6170,6 +6179,12 @@ class local_custom_service_external extends external_api
         
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
+        
+            // Cập nhật lại course_modules
+            $DB->update_record('course_modules', $cm);
         }
         
         // Xử lý section và visible nếu được truyền
@@ -6398,6 +6413,8 @@ class local_custom_service_external extends external_api
                 $completioncmids
             );
             $moduleinfo->availability = $availability_json;
+        }else{
+            $moduleinfo->availability = '';
         }
 
         // Update completion settings
@@ -9977,6 +9994,10 @@ class local_custom_service_external extends external_api
         
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
+            $DB->update_record('course_modules', $cm);
         }
         
         // Xử lý section và visible nếu được truyền
@@ -10128,6 +10149,10 @@ class local_custom_service_external extends external_api
     
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = $availability_json;
+            $DB->update_record('course_modules', $cm);
+        }else{
+            $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+            $cm->availability = '';
             $DB->update_record('course_modules', $cm);
         }
     
@@ -11298,5 +11323,1105 @@ class local_custom_service_external extends external_api
                 )
             )
         );
+    }
+
+    // Functionset for create_activity_cmsvideo ******************************************************************************************.
+
+    /**
+     * Parameter description for create_activity_cmsvideo().
+     *
+     * @return external_function_parameters.
+     */
+    public static function create_activity_cmsvideo_parameters() {
+        return new external_function_parameters([
+            'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
+            'content' => new external_value(PARAM_RAW, 'Nội dung của activity'),
+            'name' => new external_value(PARAM_TEXT, 'Tên của activity'),
+            'module' => new external_value(PARAM_TEXT, 'Loại module: cmsvideo'),
+            'section' => new external_value(PARAM_INT, 'Số thứ tự của section để thêm activity', VALUE_DEFAULT, 0),
+            'display' => new external_value(PARAM_INT, 'Hiển thị', VALUE_DEFAULT, 0),
+            'visible' => new external_value(PARAM_INT, 'Trạng thái hiển thị', VALUE_DEFAULT, 1),
+        ]);
+    }
+
+    /**
+     * Function to create a cmsvideo activity in a course.
+     *
+     * @param int $courseid
+     * @param string $content
+     * @param string $name
+     * @param string $module
+     * @param int $section
+     * @param int $display
+     * @param int $visible
+     * @return array
+     * @throws moodle_exception
+     */
+    public static function create_activity_cmsvideo($courseid, $content, $name, $module, $section = 0, $display = 0, $visible = 1) {
+        global $DB, $USER;
+    
+        // Validate the parameters.
+        $params = self::validate_parameters(self::create_activity_cmsvideo_parameters(), [
+            'courseid' => $courseid,
+            'content' => $content,
+            'name' => $name,
+            'module' => $module,
+            'section' => $section,
+            'display' => $display,
+            'visible' => $visible,
+        ]);
+
+        // Get course info
+        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+        
+        // Get section info
+        if ($section == 0) {
+            $section = $DB->get_field_sql("SELECT MAX(section) FROM {course_sections} WHERE course = ?", [$courseid]);
+        }
+        
+        $sectionrecord = $DB->get_record('course_sections', ['course' => $courseid, 'section' => $section], '*', MUST_EXIST);
+        
+        // Get module info
+        $moduleid = $DB->get_field('modules', 'id', ['name' => 'cmsvideo']);
+        if (!$moduleid) {
+            throw new moodle_exception('Module cmsvideo not found. Please ensure the cmsvideo plugin is installed and enabled.');
+        }
+        
+        // Check if module is available
+        $module = $DB->get_record('modules', ['id' => $moduleid]);
+        if (!$module || !$module->visible) {
+            throw new moodle_exception('Module cmsvideo is not available or disabled.');
+        }
+
+        // Create cmsvideo instance
+        $cmsvideo = new stdClass();
+        $cmsvideo->course = $courseid;
+        $cmsvideo->name = $name;
+        $cmsvideo->intro = $content;
+        $cmsvideo->introformat = FORMAT_HTML;
+        $cmsvideo->source_path = '';
+        $cmsvideo->timecreated = time();
+        $cmsvideo->timemodified = time();
+        
+        $cmsvideoid = $DB->insert_record('cmsvideo', $cmsvideo);
+
+        // Create course module
+        $cm = new stdClass();
+        $cm->course = $courseid;
+        $cm->module = $moduleid;
+        $cm->instance = $cmsvideoid;
+        $cm->section = $sectionrecord->id;
+        $cm->idnumber = '';
+        $cm->added = time();
+        $cm->score = 0;
+        $cm->indent = 0;
+        $cm->visible = $visible;
+        $cm->visibleoncoursepage = $visible;
+        $cm->visibleold = $visible;
+        $cm->groupmode = 0;
+        $cm->groupingid = 0;
+        $cm->completion = 0;
+        $cm->completionview = 0;
+        $cm->completionexpected = 0;
+        $cm->showdescription = $display;
+        $cm->availability = null;
+        
+        $cmid = $DB->insert_record('course_modules', $cm);
+
+        // Update section sequence
+        if (empty($sectionrecord->sequence)) {
+            $sectionrecord->sequence = $cmid;
+        } else {
+            $sectionrecord->sequence = $sectionrecord->sequence . ',' . $cmid;
+        }
+        $DB->update_record('course_sections', $sectionrecord);
+
+        // Rebuild course cache
+        rebuild_course_cache($courseid, true);
+        
+        // Update course format
+        course_modinfo::clear_instance_cache($courseid);
+        
+        // Get course context
+        $context = context_course::instance($courseid);
+        
+        // Trigger event
+        $event = course_module_created::create([
+            'objectid' => $cmid,
+            'context' => context_module::instance($cmid),
+            'other' => [
+                'modulename' => 'cmsvideo',
+                'instanceid' => $cmsvideoid,
+                'name' => $name
+            ]
+        ]);
+        $event->add_record_snapshot('course_modules', $cm);
+        $event->add_record_snapshot('cmsvideo', $cmsvideo);
+        $event->trigger();
+
+        return [
+            'modulename' => 'cmsvideo',
+            'cmid' => $cmid,
+            'instanceid' => $cmsvideoid,
+            'name' => $name,
+            'content' => $content,
+            'section' => $section
+        ];
+    }
+
+    /**
+     * Return description for create_activity_cmsvideo().
+     *
+     * @return external_single_structure.
+     */
+    public static function create_activity_cmsvideo_returns() {
+        return new external_single_structure([
+            'modulename' => new external_value(PARAM_TEXT, 'Module name'),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID'),
+            'instanceid' => new external_value(PARAM_INT, 'Instance ID'),
+            'name' => new external_value(PARAM_TEXT, 'Tên của activity'),
+            'content' => new external_value(PARAM_RAW, 'Nội dung của activity'),
+            'section' => new external_value(PARAM_INT, 'Section number')
+        ]);
+    }
+
+    // Functionset for update_activity_cmsvideo ******************************************************************************************.
+
+    /**
+     * Parameter description for update_activity_cmsvideo().
+     *
+     * @return external_function_parameters.
+     */
+    public static function update_activity_cmsvideo_parameters() {
+        return new external_function_parameters([
+            'cmid' => new external_value(PARAM_INT, 'Course module ID của cmsvideo cần cập nhật'),
+            'fields' => new external_multiple_structure(
+                new external_single_structure([
+                    'name' => new external_value(PARAM_TEXT, 'Tên cmsvideo', VALUE_OPTIONAL),
+                    'intro' => new external_value(PARAM_RAW, 'Mô tả cmsvideo', VALUE_OPTIONAL),
+                    'introformat' => new external_value(PARAM_INT, 'Định dạng mô tả', VALUE_OPTIONAL),
+                    'source_path' => new external_value(PARAM_TEXT, 'Đường dẫn nguồn', VALUE_OPTIONAL),
+                    'section' => new external_value(PARAM_INT, 'Section number', VALUE_OPTIONAL),
+                    'visible' => new external_value(PARAM_INT, 'Hiển thị', VALUE_OPTIONAL),
+                    'completion' => new external_value(PARAM_INT, 'Completion tracking', VALUE_OPTIONAL),
+                    'completionview' => new external_value(PARAM_INT, 'Completion view', VALUE_OPTIONAL),
+                    'completionexpected' => new external_value(PARAM_INT, 'Completion expected', VALUE_OPTIONAL),
+                    'availability' => new external_single_structure([
+                        'completioncmid' => new external_multiple_structure(
+                            new external_value(PARAM_INT, 'Course module ID for completion'),
+                            'Completion course module IDs'
+                        ),
+                        'timeopen' => new external_value(PARAM_INT, 'Open time', VALUE_OPTIONAL),
+                        'timeclose' => new external_value(PARAM_INT, 'Close time', VALUE_OPTIONAL),
+                        'gradeitemid' => new external_value(PARAM_INT, 'Grade item ID', VALUE_OPTIONAL),
+                        'min' => new external_value(PARAM_FLOAT, 'Minimum grade', VALUE_OPTIONAL),
+                        'max' => new external_value(PARAM_FLOAT, 'Maximum grade', VALUE_OPTIONAL),
+                    ], 'Availability conditions', VALUE_OPTIONAL),
+                ]),
+                'Fields to update'
+            ),
+        ]);
+    }
+
+    /**
+     * Function to update a cmsvideo activity.
+     *
+     * @param int $cmid
+     * @param string $fields
+     * @return array
+     * @throws moodle_exception
+     */
+    public static function update_activity_cmsvideo($cmid, $fields) {
+        global $DB;
+    
+        // Validate parameters
+        $params = self::validate_parameters(self::update_activity_cmsvideo_parameters(), [
+            'cmid' => $cmid,
+            'fields' => $fields
+        ]);
+        
+        // Lấy cmsvideoid từ cmid
+        $cmsvideoid = self::get_moduleid_from_cmid($cmid, 'cmsvideo');
+        
+        // Kiểm tra cmsvideo có tồn tại không
+        if (!$DB->record_exists('cmsvideo', ['id' => $cmsvideoid])) {
+            throw new moodle_exception('invalidcmsvideoid', 'mdl_cmsvideo', '', $cmsvideoid);
+        }
+    
+        // Lấy thông tin cmsvideo hiện tại
+        $cmsvideo = $DB->get_record('cmsvideo', ['id' => $cmsvideoid], '*', MUST_EXIST);
+    
+        // Cập nhật các trường được cung cấp
+        foreach ($params['fields'] as $field_data) {
+            foreach ($field_data as $field => $value) {
+                if (isset($value) && $field !== 'availability' && property_exists($cmsvideo, $field)) {
+                    $cmsvideo->{$field} = $value;
+                }
+            }
+        }
+        // Cập nhật cmsvideo
+        $result = $DB->update_record('cmsvideo', $cmsvideo);
+        
+        // Lấy course_modules record trước khi xử lý availability
+        $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+        
+        // Xử lý restrict access (availability)
+        if (!empty($params['fields'][0]) && !empty($params['fields'][0]['availability'])) {
+            $availability_params = $params['fields'][0]['availability'];
+            $completioncmids = $availability_params['completioncmid'] ?? [];
+
+            if (!is_array($completioncmids)) {
+                $completioncmids = [$completioncmids];
+            }
+            $availability_json = self::generate_availability_conditions(
+                $availability_params['timeopen'] ?? null,
+                $availability_params['timeclose'] ?? null,
+                $availability_params['gradeitemid'] ?? null,
+                $availability_params['min'] ?? null,
+                $availability_params['max'] ?? null,
+                $completioncmids
+            );
+            // Cập nhật availability trong bảng course_modules
+            $cm->availability = $availability_json;
+        } else {
+            $cm->availability = '';
+        }
+        
+        // Cập nhật lại course_modules
+        $DB->update_record('course_modules', $cm);
+        
+        // Xử lý section và visible nếu được truyền
+        $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
+
+        if (!empty($params['fields'][0]) && isset($params['fields'][0]['section'])) {
+            $section = $DB->get_record('course_sections', array('course' => $cm1->course, 'section' => $params['fields'][0]['section']));
+            
+            if ($section && $section->id != $cm1->section) {
+                // Cập nhật section mới
+                self::move_activity_to_section($cm1->course, $cmid, $params['fields'][0]['section']);
+            }
+        }
+
+        if (!empty($params['fields'][0]) && isset($params['fields'][0]['visible'])) {
+            $cm1->visible = $params['fields'][0]['visible'];
+        }
+
+        $completion = 0;
+        $completionview = 0;
+        $completionexpected = 0;
+        if (!empty($params['fields'][0]) && !empty($params['fields'][0]['completion'])) {
+            if($params['fields'][0]['completion'] == 1){
+                $completion = $params['fields'][0]['completion'];
+                $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
+            }
+
+            if($params['fields'][0]['completion'] == 2){
+                $completion = $params['fields'][0]['completion'];
+                $completionview = $params['fields'][0]['completionview'] ?? 0;
+                $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
+            }
+        }
+        $cm1->completion = $completion;
+        $cm1->completionview = $completionview;
+        $cm1->completionexpected = $completionexpected;
+
+        $cm1->showdescription = (!empty($params['fields'][0]) && isset($params['fields'][0]['showdescription'])) ? $params['fields'][0]['showdescription'] : 0;
+        
+        $DB->update_record('course_modules', $cm1);
+
+        rebuild_course_cache($cm1->course, true);
+    
+        return [
+            'status' => 'success',
+            'message' => 'cmsvideo updated successfully',
+            'cmsvideoid' => $cmsvideoid,
+            'cmid' => $cmid
+        ];
+    }
+
+    /**
+     * Return description for update_activity_cmsvideo().
+     *
+     * @return external_single_structure.
+     */
+    public static function update_activity_cmsvideo_returns() {
+        return new external_single_structure([
+            'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
+            'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
+            'cmsvideoid' => new external_value(PARAM_INT, 'ID của cmsvideo đã cập nhật'),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID của cmsvideo')
+        ]);
+    }
+
+    /**
+     * Get Student Incomplete Activities Timeline with Sorting
+     * Parameters definition
+     */
+    public static function get_student_incomplete_activities_timeline_parameters() {
+        return new external_function_parameters([
+            'userid' => new external_value(PARAM_INT, 'User ID (default: current user)', VALUE_DEFAULT, 0),
+            'courseid' => new external_value(PARAM_INT, 'Course ID (default: all courses)', VALUE_DEFAULT, 0),
+            'status' => new external_value(PARAM_TEXT, 'Filter by status (current, overdue, upcoming, all)', VALUE_DEFAULT, 'all'),
+            'type' => new external_value(PARAM_TEXT, 'Filter by activity type (any valid Moodle activity type or "all")', VALUE_DEFAULT, 'all'),
+            'search' => new external_value(PARAM_TEXT, 'Search by activity name or type', VALUE_DEFAULT, ''),
+            'sortby' => new external_value(PARAM_TEXT, 'Sort by (date, course)', VALUE_DEFAULT, 'date'),
+            'sortorder' => new external_value(PARAM_TEXT, 'Sort order (asc, desc)', VALUE_DEFAULT, 'asc'),
+            'limit' => new external_value(PARAM_INT, 'Number of items to return', VALUE_DEFAULT, 50),
+            'offset' => new external_value(PARAM_INT, 'Offset for pagination', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    /**
+     * Get Student Incomplete Activities Timeline with Sorting
+     * Main implementation
+     */
+    public static function get_student_incomplete_activities_timeline(
+        $userid = 0,
+        $courseid = 0,
+        $status = 'all',
+        $type = 'all',
+        $search = '',
+        $sortby = 'date',
+        $sortorder = 'asc',
+        $limit = 50,
+        $offset = 0
+    ) {
+        global $DB, $USER, $CFG;
+
+        // Bước 1: Validation cơ bản
+        try {
+            // Validate parameters
+            $params = self::validate_parameters(self::get_student_incomplete_activities_timeline_parameters(), [
+                'userid' => $userid,
+                'courseid' => $courseid,
+                'status' => $status,
+                'type' => $type,
+                'search' => $search,
+                'sortby' => $sortby,
+                'sortorder' => $sortorder,
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+            
+            // Use current user if userid is 0
+            if ($userid == 0) {
+                $userid = $USER->id;
+            }
+
+            // Validate user exists
+            if (!$DB->record_exists('user', ['id' => $userid])) {
+                return [
+                    'success' => false,
+                    'message' => 'User not found',
+                    'data' => null
+                ];
+            }
+
+            // Bước 2: Thêm SQL query đơn giản
+            $sql = "
+                SELECT DISTINCT
+                    cm.id as activity_id,
+                    cm.instance as activity_instance_id,
+                    m.name as activity_type,
+                    c.id as course_id,
+                    c.fullname as course_fullname,
+                    c.shortname as course_shortname,
+                    cmc.completionstate,
+                    cmc.timemodified as completion_time
+                FROM {course_modules} cm
+                JOIN {course} c ON c.id = cm.course
+                JOIN {modules} m ON m.id = cm.module
+                LEFT JOIN {course_modules_completion} cmc ON cm.id = cmc.coursemoduleid AND cmc.userid = :userid
+                JOIN {user_enrolments} ue ON ue.userid = :userid2
+                JOIN {enrol} e ON e.id = ue.enrolid AND e.courseid = c.id
+                WHERE cm.deletioninprogress != 1
+                AND cm.completion != 0
+                AND c.visible = 1
+                AND m.name != 'vedubotleanbothoctap'
+                AND (cmc.completionstate IS NULL OR cmc.completionstate = 0)
+                ORDER BY m.name ASC, cm.id ASC
+                LIMIT " . intval($limit) . " OFFSET " . intval($offset) . "
+            ";
+
+            $queryParams = [
+                'userid' => $userid,
+                'userid2' => $userid
+            ];
+
+            // Execute query
+            $activities = $DB->get_records_sql($sql, $queryParams);
+
+            $arr = [
+                'success' => true,
+                'message' => 'API is working - Step 2 completed with ' . count($activities) . ' activities found',
+                'data' => [
+                    'activities' => [],
+                    'summary' => [
+                        'current' => 0,
+                        'overdue' => 0,
+                        'upcoming' => 0,
+                        'total' => 0
+                    ],
+                    'pagination' => [
+                        'total' => 0,
+                        'limit' => $limit,
+                        'offset' => $offset,
+                        'hasMore' => false
+                    ],
+                    'sorting' => [
+                        'sortBy' => $sortby,
+                        'sortOrder' => $sortorder
+                    ]
+                ]
+            ];
+            // Bước 4: Sử dụng SQL query đơn giản đã test thành công
+            $sql = "
+                SELECT DISTINCT
+                    cm.id as cmid,
+                    cm.instance as activity_id,
+                    m.name as modulename,
+                    c.id as courseid,
+                    c.fullname as coursefullname,
+                    c.shortname as courseshortname,
+                    CASE 
+                        WHEN m.name = 'assign' THEN a.name
+                        WHEN m.name = 'quiz' THEN q.name
+                        WHEN m.name = 'forum' THEN f.name
+                        WHEN m.name = 'lesson' THEN l.name
+                        WHEN m.name = 'resource' THEN r.name
+                        WHEN m.name = 'page' THEN p.name
+                        WHEN m.name = 'customcert' THEN cc.name
+                        WHEN m.name = 'book' THEN b.name
+                        WHEN m.name = 'h5pactivity' THEN ha.name
+                        ELSE CONCAT(UPPER(SUBSTRING(m.name, 1, 1)), SUBSTRING(m.name, 2))
+                    END as activity_name,
+                    CASE 
+                        WHEN m.name = 'assign' THEN a.duedate
+                        WHEN m.name = 'quiz' THEN q.timeclose
+                        WHEN m.name = 'forum' THEN f.duedate
+                        WHEN m.name = 'lesson' THEN l.deadline
+                        ELSE 0
+                    END as duedate
+                FROM {course_modules} cm
+                JOIN {course} c ON c.id = cm.course
+                JOIN {modules} m ON m.id = cm.module
+                LEFT JOIN {assign} a ON a.id = cm.instance AND m.name = 'assign'
+                LEFT JOIN {quiz} q ON q.id = cm.instance AND m.name = 'quiz'
+                LEFT JOIN {forum} f ON f.id = cm.instance AND m.name = 'forum'
+                LEFT JOIN {lesson} l ON l.id = cm.instance AND m.name = 'lesson'
+                LEFT JOIN {resource} r ON r.id = cm.instance AND m.name = 'resource'
+                LEFT JOIN {page} p ON p.id = cm.instance AND m.name = 'page'
+                LEFT JOIN {customcert} cc ON cc.id = cm.instance AND m.name = 'customcert'
+                LEFT JOIN {book} b ON b.id = cm.instance AND m.name = 'book'
+                LEFT JOIN {h5pactivity} ha ON ha.id = cm.instance AND m.name = 'h5pactivity'
+                LEFT JOIN {course_modules_completion} cmc ON cmc.coursemoduleid = cm.id AND cmc.userid = :userid
+                WHERE c.id IN (
+                    SELECT DISTINCT c2.id
+                    FROM {course} c2
+                    JOIN {enrol} e ON e.courseid = c2.id
+                    JOIN {user_enrolments} ue ON ue.enrolid = e.id
+                    WHERE ue.userid = :userid2
+                )
+                AND cm.completion > 0
+                AND (cmc.completionstate IS NULL OR cmc.completionstate = 0)
+                ORDER BY c.fullname ASC
+            ";
+
+            $queryParams = [
+                'userid' => $userid,
+                'userid2' => $userid
+            ];
+
+            // Thêm filter theo course nếu được chỉ định
+            if ($courseid > 0) {
+                $sql = str_replace("ORDER BY c.fullname ASC", "AND c.id = :courseid ORDER BY c.fullname ASC", $sql);
+                $queryParams['courseid'] = $courseid;
+            }
+
+            // Thêm filter theo type nếu được chỉ định
+            if ($type !== 'all') {
+                $sql = str_replace("ORDER BY c.fullname ASC", "AND m.name = :modulename ORDER BY c.fullname ASC", $sql);
+                $queryParams['modulename'] = $type;
+            }
+
+            // Thêm search filter nếu có
+            if (!empty($search)) {
+                $sql = str_replace("ORDER BY c.fullname ASC", "AND (CASE 
+                    WHEN m.name = 'assign' THEN a.name
+                    WHEN m.name = 'quiz' THEN q.name
+                    WHEN m.name = 'forum' THEN f.name
+                    WHEN m.name = 'lesson' THEN l.name
+                    WHEN m.name = 'resource' THEN r.name
+                    WHEN m.name = 'page' THEN p.name
+                    WHEN m.name = 'customcert' THEN cc.name
+                    WHEN m.name = 'book' THEN b.name
+                    WHEN m.name = 'h5pactivity' THEN ha.name
+                    ELSE CONCAT(UPPER(SUBSTRING(m.name, 1, 1)), SUBSTRING(m.name, 2))
+                END LIKE :search OR m.name LIKE :search2) ORDER BY c.fullname ASC", $sql);
+                $queryParams['search'] = '%' . $search . '%';
+                $queryParams['search2'] = '%' . $search . '%';
+            }
+
+            // Execute query
+            $allActivities = $DB->get_records_sql($sql, $queryParams);
+            
+            // Calculate total available activities (before pagination)
+            $totalAvailable = count($allActivities);
+            
+            // Apply pagination manually
+            $activities = array_slice($allActivities, $offset, $limit);
+
+            // Format activities data
+            $formattedActivities = [];
+            $currentTime = time();
+            $currentCount = 0;
+            $overdueCount = 0;
+            $upcomingCount = 0;
+
+            foreach ($activities as $activity) {
+                // Determine status based on due date
+                $dueDate = $activity->duedate;
+                $activityStatus = 'current';
+                $isOverdue = false;
+
+                if ($dueDate > 0) {
+                    if ($dueDate < $currentTime) {
+                        $activityStatus = 'overdue';
+                        $isOverdue = true;
+                        $overdueCount++;
+                    } else {
+                        $daysUntilDue = ceil(($dueDate - $currentTime) / 86400);
+                        if ($daysUntilDue <= 7) {
+                            $activityStatus = 'current';
+                            $currentCount++;
+                        } else {
+                            $activityStatus = 'upcoming';
+                            $upcomingCount++;
+                        }
+                    }
+                } else {
+                    $currentCount++;
+                }
+
+                // Apply status filter
+                if ($status !== 'all' && $activityStatus !== $status) {
+                    continue;
+                }
+
+                // Format due date
+                $formattedDueDate = '';
+                if ($dueDate > 0) {
+                    $formattedDueDate = date('c', $dueDate);
+                }
+
+                // Calculate time remaining
+                $timeRemaining = '';
+                if ($dueDate > 0 && $dueDate > $currentTime) {
+                    $timeDiff = $dueDate - $currentTime;
+                    $days = floor($timeDiff / 86400);
+                    $hours = floor(($timeDiff % 86400) / 3600);
+                    $timeRemaining = $days . ' days, ' . $hours . ' hours';
+                }
+
+                // Build activity URL
+                $activityUrl = $CFG->wwwroot . '/mod/' . $activity->modulename . '/view.php?id=' . $activity->cmid;
+
+                $formattedActivities[] = [
+                    'id' => (string)$activity->cmid,
+                    'title' => $activity->activity_name,
+                    'type' => $activity->modulename,
+                    'course' => [
+                        'id' => (int)$activity->courseid,
+                        'fullname' => $activity->coursefullname,
+                        'shortname' => $activity->courseshortname
+                    ],
+                    'dueDate' => $formattedDueDate,
+                    'status' => $activityStatus,
+                    'description' => $activity->activity_intro,
+                    'url' => $activityUrl,
+                    'submissionStatus' => 'notsubmitted',
+                    'timeRemaining' => $timeRemaining,
+                    'isOverdue' => $isOverdue,
+                    'activityId' => (int)$activity->activity_id,
+                    'courseId' => (int)$activity->courseid
+                ];
+            }
+
+
+            return [
+                'success' => true,
+                'message' => 'API is working - Step 4 completed with ' . count($formattedActivities) . ' activities found',
+                'data' => [
+                    'activities' => $formattedActivities,
+                    'summary' => [
+                        'current' => $currentCount,
+                        'overdue' => $overdueCount,
+                        'upcoming' => $upcomingCount,
+                        'total' => count($formattedActivities)
+                    ],
+                    'pagination' => [
+                        'total' => count($formattedActivities),
+                        'totalAvailable' => $totalAvailable,
+                        'limit' => $limit,
+                        'offset' => $offset,
+                        'hasMore' => ($offset + $limit) < $totalAvailable
+                    ],
+                    'sorting' => [
+                        'sortBy' => $sortby,
+                        'sortOrder' => $sortorder
+                    ]
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'data' => [
+                    'activities' => [],
+                    'summary' => [
+                        'current' => 0,
+                        'overdue' => 0,
+                        'upcoming' => 0,
+                        'total' => 0
+                    ],
+                    'pagination' => [
+                        'total' => 0,
+                        'totalAvailable' => 0,
+                        'limit' => $limit,
+                        'offset' => $offset,
+                        'hasMore' => false
+                    ],
+                    'sorting' => [
+                        'sortBy' => $sortby,
+                        'sortOrder' => $sortorder
+                    ]
+                ]
+            ];
+        }
+    }
+
+    /**
+     * Get Student Incomplete Activities Timeline with Sorting
+     * Return structure definition
+     */
+    public static function get_student_incomplete_activities_timeline_returns() {
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'Success status'),
+            'message' => new external_value(PARAM_TEXT, 'Response message'),
+            'data' => new external_single_structure([
+                'activities' => new external_multiple_structure(
+                    new external_single_structure([
+                        'id' => new external_value(PARAM_TEXT, 'Activity ID'),
+                        'title' => new external_value(PARAM_TEXT, 'Activity title'),
+                        'type' => new external_value(PARAM_TEXT, 'Activity type'),
+                        'course' => new external_single_structure([
+                            'id' => new external_value(PARAM_INT, 'Course ID'),
+                            'fullname' => new external_value(PARAM_TEXT, 'Course full name'),
+                            'shortname' => new external_value(PARAM_TEXT, 'Course short name')
+                        ]),
+                        'dueDate' => new external_value(PARAM_TEXT, 'Due date in ISO 8601 format'),
+                        'status' => new external_value(PARAM_TEXT, 'Activity status (current, overdue, upcoming)'),
+                        'description' => new external_value(PARAM_TEXT, 'Activity description'),
+                        'url' => new external_value(PARAM_TEXT, 'Activity URL'),
+                        'submissionStatus' => new external_value(PARAM_TEXT, 'Submission status'),
+                        'timeRemaining' => new external_value(PARAM_TEXT, 'Time remaining until due'),
+                        'isOverdue' => new external_value(PARAM_BOOL, 'Whether activity is overdue'),
+                        'activityId' => new external_value(PARAM_INT, 'Activity ID as integer'),
+                        'courseId' => new external_value(PARAM_INT, 'Course ID as integer')
+                    ])
+                ),
+                'summary' => new external_single_structure([
+                    'current' => new external_value(PARAM_INT, 'Number of current activities'),
+                    'overdue' => new external_value(PARAM_INT, 'Number of overdue activities'),
+                    'upcoming' => new external_value(PARAM_INT, 'Number of upcoming activities'),
+                    'total' => new external_value(PARAM_INT, 'Total number of activities')
+                ]),
+                'pagination' => new external_single_structure([
+                    'total' => new external_value(PARAM_INT, 'Total number of items'),
+                    'totalAvailable' => new external_value(PARAM_INT, 'Total number of available items'),
+                    'limit' => new external_value(PARAM_INT, 'Items per page'),
+                    'offset' => new external_value(PARAM_INT, 'Current offset'),
+                    'hasMore' => new external_value(PARAM_BOOL, 'Whether there are more items')
+                ]),
+                'sorting' => new external_single_structure([
+                    'sortBy' => new external_value(PARAM_TEXT, 'Current sort field'),
+                    'sortOrder' => new external_value(PARAM_TEXT, 'Current sort order')
+                ])
+            ])
+        ]);
+    }
+
+    // Get My Courses with filters and pagination
+    public static function get_learning_courses_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'userid' => new external_value(PARAM_INT, 'User ID', VALUE_REQUIRED),
+                'page' => new external_value(PARAM_INT, 'Current page', VALUE_DEFAULT, 1),
+                'perpage' => new external_value(PARAM_INT, 'Courses per page', VALUE_DEFAULT, 8),
+                'search' => new external_value(PARAM_TEXT, 'Search keyword', VALUE_DEFAULT, ''),
+                'categoryid' => new external_value(PARAM_TEXT, 'Category filter', VALUE_DEFAULT, 'all'),
+                'status' => new external_value(PARAM_TEXT, 'Status filter', VALUE_DEFAULT, 'all'),
+                'duration' => new external_value(PARAM_TEXT, 'Duration filter', VALUE_DEFAULT, ''),
+                'rating' => new external_value(PARAM_TEXT, 'Rating filter', VALUE_DEFAULT, '')
+            )
+        );
+    }
+
+    public static function get_learning_courses($userid, $page = 1, $perpage = 8, $search = '', $categoryid = 'all', $status = 'all', $duration = '', $rating = '')
+    {
+        global $DB, $CFG;
+
+        // Validate parameters
+        $params = self::validate_parameters(self::get_learning_courses_parameters(), array(
+            'userid' => $userid,
+            'page' => $page,
+            'perpage' => $perpage,
+            'search' => $search,
+            'categoryid' => $categoryid,
+            'status' => $status,
+            'duration' => $duration,
+            'rating' => $rating
+        ));
+
+        try {
+            // Validate user exists
+            if (!$DB->record_exists('user', array('id' => $userid))) {
+                throw new moodle_exception('invaliduser', 'error');
+            }
+
+            // Calculate offset
+            $offset = ($page - 1) * $perpage;
+
+            // Build base query for enrolled courses
+            $sql = "SELECT DISTINCT c.id, c.fullname, c.shortname, c.summary, c.startdate, c.enddate, 
+                           c.timecreated, c.timemodified, c.visible, c.enablecompletion,
+                           cc.name as category_name, cc.id as category_id,
+                           u.firstname, u.lastname, u.email as instructor_email,
+                           ue.timecreated as enrolled_time,
+                           ue.timeend as enrollment_end
+                    FROM {course} c
+                    LEFT JOIN {course_categories} cc ON c.category = cc.id
+                    LEFT JOIN {enrol} e ON c.id = e.courseid
+                    LEFT JOIN {user_enrolments} ue ON e.id = ue.enrolid
+                    LEFT JOIN {context} ctx ON ctx.instanceid = c.id AND ctx.contextlevel = 50
+                    LEFT JOIN {role_assignments} ra ON ue.userid = ra.userid AND ra.contextid = ctx.id
+                    LEFT JOIN {user} u ON ra.userid = u.id AND ra.roleid IN (
+                        SELECT id FROM {role} WHERE shortname IN ('editingteacher', 'teacher')
+                    )
+                    WHERE ue.userid = :userid 
+                    AND e.status = 0 
+                    AND c.visible = 1
+                    AND c.id > 1";
+
+            $params_sql = array('userid' => $userid);
+
+            // Add category filter
+            if ($categoryid !== 'all' && is_numeric($categoryid)) {
+                $sql .= " AND c.category = :categoryid";
+                $params_sql['categoryid'] = $categoryid;
+            }
+
+            // Add search filter
+            if (!empty($search)) {
+                $sql .= " AND (c.fullname LIKE :search OR c.summary LIKE :search2)";
+                $params_sql['search'] = '%' . $search . '%';
+                $params_sql['search2'] = '%' . $search . '%';
+            }
+
+            // Get total count for pagination
+            $count_sql = "SELECT COUNT(DISTINCT c.id) FROM {course} c
+                         LEFT JOIN {enrol} e ON c.id = e.courseid
+                         LEFT JOIN {user_enrolments} ue ON e.id = ue.enrolid
+                         WHERE ue.userid = :userid 
+                         AND e.status = 0 
+                         AND c.visible = 1
+                         AND c.id > 1";
+            
+            $count_params = array('userid' => $userid);
+            if ($categoryid !== 'all' && is_numeric($categoryid)) {
+                $count_sql .= " AND c.category = :categoryid";
+                $count_params['categoryid'] = $categoryid;
+            }
+            if (!empty($search)) {
+                $count_sql .= " AND (c.fullname LIKE :search OR c.summary LIKE :search2)";
+                $count_params['search'] = '%' . $search . '%';
+                $count_params['search2'] = '%' . $search . '%';
+            }
+
+            $total_courses = $DB->count_records_sql($count_sql, $count_params);
+
+            // Add pagination
+            $sql .= " ORDER BY c.fullname ASC";
+            $sql .= " LIMIT " . intval($perpage) . " OFFSET " . intval($offset);
+
+            $courses = $DB->get_records_sql($sql, $params_sql);
+
+            $courses_data = array();
+            foreach ($courses as $course) {
+                // Get course image
+                $course_image = '';
+                try {
+                    $context = context_course::instance($course->id);
+                    $fs = get_file_storage();
+                    $files = $fs->get_area_files($context->id, 'course', 'overviewfiles', 0, 'sortorder', false);
+                    if ($files) {
+                        $file = reset($files);
+                        // Create URL using moodle_url for proper encoding
+                        $course_image = moodle_url::make_pluginfile_url(
+                            $file->get_contextid(),
+                            $file->get_component(),
+                            $file->get_filearea(),
+                            null, // No itemid for course overview files
+                            $file->get_filepath(),
+                            $file->get_filename()
+                        )->out();
+                    }
+                } catch (Exception $e) {
+                    // If context doesn't exist, skip image
+                    $course_image = '';
+                }
+
+                // Get course rating from mdl_block_edwiserratingreview (check if table exists first)
+                $course_rating = 0;
+                if ($DB->get_manager()->table_exists('block_edwiserratingreview')) {
+                    $rating_sql = "SELECT AVG(star_ratings) as avg_rating, COUNT(*) as total_reviews
+                                  FROM {block_edwiserratingreview} 
+                                  WHERE for_type = 'course' 
+                                  AND for_id = :courseid 
+                                  AND approved = 1";
+                    $rating_data = $DB->get_record_sql($rating_sql, array('courseid' => $course->id));
+                    $course_rating = $rating_data ? round($rating_data->avg_rating, 1) : 0;
+                }
+
+                // Get completion data
+                $completion_data = self::get_course_completion_data($course->id, $userid);
+                
+                // Get course tags
+                $tags = array();
+                $course_tags = $DB->get_records_sql(
+                    "SELECT t.name FROM {tag} t 
+                     JOIN {tag_instance} ti ON t.id = ti.tagid 
+                     WHERE ti.itemtype = 'course' AND ti.itemid = :courseid",
+                    array('courseid' => $course->id)
+                );
+                foreach ($course_tags as $tag) {
+                    $tags[] = $tag->name;
+                }
+
+                // Determine course status
+                $course_status = self::determine_course_status($course, $completion_data);
+
+                // Get last access time
+                $last_access = $DB->get_field('user_lastaccess', 'timeaccess', 
+                    array('userid' => $userid, 'courseid' => $course->id));
+
+                $course_data = array(
+                    'id' => (int)$course->id,
+                    'coursename' => (string)$course->fullname,
+                    'summary' => (string)strip_tags($course->summary),
+                    'view_url' => (string)($CFG->wwwroot . '/course/view.php?id=' . $course->id),
+                    'course_image' => (string)$course_image,
+                    'last_access_time' => (string)($last_access ? date('Y-m-d H:i:s', $last_access) : ''),
+                    'total_activity' => (int)$completion_data['total_activities'],
+                    'total_activity_completion' => (int)$completion_data['completed_activities'],
+                    'completion_percentage' => (int)$completion_data['completion_percentage'],
+                    'category' => (string)($course->category_name ?: 'Uncategorized'),
+                    'categoryId' => (string)$course->category_id,
+                    'tags' => (array)$tags,
+                    'rating' => (float)$course_rating,
+                    'duration' => (string)'', // Duration not available as mentioned
+                    'status' => (string)$course_status,
+                    'is_enrolled' => (bool)true,
+                    'course_startdate' => (string)($course->startdate ? date('Y-m-d', $course->startdate) : ''),
+                    'course_enddate' => (string)($course->enddate ? date('Y-m-d', $course->enddate) : ''),
+                    'instructor' => (string)(trim($course->firstname . ' ' . $course->lastname) ?: 'Unknown'),
+                    'difficulty_level' => (string)'Beginner', // Default value
+                    'language' => (string)'English' // Default value
+                );
+
+                // Apply status filter
+                if ($status !== 'all') {
+                    // If filtering for 'not_enrolled', skip all courses since all returned courses are enrolled
+                    if ($status === 'not_enrolled') {
+                        continue;
+                    }
+                    // For other status filters, check if course status matches
+                    if ($course_status !== $status) {
+                        continue;
+                    }
+                }
+
+                // Apply rating filter
+                if ($rating !== '' && $course_rating < (float)$rating) {
+                    continue;
+                }
+
+                $courses_data[] = $course_data;
+            }
+
+            // Get categories for filter
+            $categories = $DB->get_records_sql(
+                "SELECT id, name FROM {course_categories} WHERE visible = 1 ORDER BY name"
+            );
+            $categories_data = array();
+            foreach ($categories as $cat) {
+                $categories_data[] = array(
+                    'id' => (string)$cat->id,
+                    'name' => $cat->name
+                );
+            }
+
+            // Calculate pagination
+            $total_pages = ceil($total_courses / $perpage);
+
+            return array(
+                'status' => (string)'success',
+                'data' => array(
+                    'courses' => (array)$courses_data,
+                    'total_courses' => (int)$total_courses,
+                    'current_page' => (int)$page,
+                    'per_page' => (int)$perpage,
+                    'total_pages' => (int)$total_pages,
+                    'categories' => (array)$categories_data,
+                    'filters' => array(
+                        'statuses' => (array)array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
+                        'durations' => (array)array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
+                        'ratings' => (array)array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
+                    )
+                )
+            );
+
+        } catch (Exception $e) {
+            return array(
+                'status' => (string)'error',
+                'data' => array(
+                    'courses' => (array)array(),
+                    'total_courses' => (int)0,
+                    'current_page' => (int)$page,
+                    'per_page' => (int)$perpage,
+                    'total_pages' => (int)0,
+                    'categories' => (array)array(),
+                    'filters' => array(
+                        'statuses' => (array)array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
+                        'durations' => (array)array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
+                        'ratings' => (array)array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
+                    ),
+                    'error_message' => (string)$e->getMessage()
+                )
+            );
+        }
+    }
+
+    public static function get_learning_courses_returns()
+    {
+        return new external_single_structure(array(
+            'status' => new external_value(PARAM_TEXT, 'Response status'),
+            'data' => new external_single_structure(array(
+                'courses' => new external_multiple_structure(
+                    new external_single_structure(array(
+                        'id' => new external_value(PARAM_INT, 'Course ID'),
+                        'coursename' => new external_value(PARAM_TEXT, 'Course name'),
+                        'summary' => new external_value(PARAM_TEXT, 'Course summary'),
+                        'view_url' => new external_value(PARAM_URL, 'Course view URL'),
+                        'course_image' => new external_value(PARAM_URL, 'Course image URL'),
+                        'last_access_time' => new external_value(PARAM_TEXT, 'Last access time'),
+                        'total_activity' => new external_value(PARAM_INT, 'Total activities'),
+                        'total_activity_completion' => new external_value(PARAM_INT, 'Completed activities'),
+                        'completion_percentage' => new external_value(PARAM_INT, 'Completion percentage'),
+                        'category' => new external_value(PARAM_TEXT, 'Category name'),
+                        'categoryId' => new external_value(PARAM_TEXT, 'Category ID'),
+                        'tags' => new external_multiple_structure(
+                            new external_value(PARAM_TEXT, 'Tag name')
+                        ),
+                        'rating' => new external_value(PARAM_FLOAT, 'Course rating'),
+                        'duration' => new external_value(PARAM_TEXT, 'Course duration'),
+                        'status' => new external_value(PARAM_TEXT, 'Course status'),
+                        'is_enrolled' => new external_value(PARAM_BOOL, 'Is enrolled'),
+                        'course_startdate' => new external_value(PARAM_TEXT, 'Course start date'),
+                        'course_enddate' => new external_value(PARAM_TEXT, 'Course end date'),
+                        'instructor' => new external_value(PARAM_TEXT, 'Instructor name'),
+                        'difficulty_level' => new external_value(PARAM_TEXT, 'Difficulty level'),
+                        'language' => new external_value(PARAM_TEXT, 'Language')
+                    ))
+                ),
+                'total_courses' => new external_value(PARAM_INT, 'Total courses'),
+                'current_page' => new external_value(PARAM_INT, 'Current page'),
+                'per_page' => new external_value(PARAM_INT, 'Courses per page'),
+                'total_pages' => new external_value(PARAM_INT, 'Total pages'),
+                'categories' => new external_multiple_structure(
+                    new external_single_structure(array(
+                        'id' => new external_value(PARAM_TEXT, 'Category ID'),
+                        'name' => new external_value(PARAM_TEXT, 'Category name')
+                    ))
+                ),
+                'filters' => new external_single_structure(array(
+                    'statuses' => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, 'Status option')
+                    ),
+                    'durations' => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, 'Duration option')
+                    ),
+                    'ratings' => new external_multiple_structure(
+                        new external_value(PARAM_TEXT, 'Rating option')
+                    )
+                )),
+                'error_message' => new external_value(PARAM_TEXT, 'Error message if any', VALUE_OPTIONAL)
+            ))
+        ));
+    }
+
+    // Helper function to get course completion data
+    private static function get_course_completion_data($courseid, $userid)
+    {
+        global $DB;
+
+        // Get total activities (exclude labels and only count modules with completion tracking)
+        $total_activities = $DB->count_records_sql(
+            "SELECT COUNT(*) FROM {course_modules} cm 
+             JOIN {modules} m ON cm.module = m.id
+             WHERE cm.course = :courseid 
+             AND cm.visible = 1 
+             AND m.name != 'label'
+             AND cm.completion > 0",
+            array('courseid' => $courseid)
+        );
+
+        // Get completed activities (exclude labels and only count modules with completion tracking)
+        $completed_activities = $DB->count_records_sql(
+            "SELECT COUNT(*) FROM {course_modules_completion} cmc
+             JOIN {course_modules} cm ON cmc.coursemoduleid = cm.id
+             JOIN {modules} m ON cm.module = m.id
+             WHERE cm.course = :courseid 
+             AND cmc.userid = :userid 
+             AND cmc.completionstate > 0
+             AND m.name != 'label'
+             AND cm.completion > 0",
+            array('courseid' => $courseid, 'userid' => $userid)
+        );
+
+        $completion_percentage = $total_activities > 0 ? 
+            round(($completed_activities / $total_activities) * 100) : 0;
+
+        return array(
+            'total_activities' => $total_activities,
+            'completed_activities' => $completed_activities,
+            'completion_percentage' => $completion_percentage
+        );
+    }
+
+    // Helper function to determine course status
+    private static function determine_course_status($course, $completion_data)
+    {
+        $completion_percentage = $completion_data['completion_percentage'];
+        
+        if ($completion_percentage >= 100) {
+            return 'completed';
+        } else {
+            // If user is enrolled but completion < 100%, they are in progress
+            // Only return 'not_enrolled' if user is not actually enrolled
+            return 'in_progress';
+        }
     }
 }

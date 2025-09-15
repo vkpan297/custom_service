@@ -8098,10 +8098,19 @@ class local_custom_service_external extends external_api
 
                                 try {
                                     $required_module = core_course_external::get_course_module($condition['cm']);
+                                     // Kiểm tra trạng thái hoàn thành của activity yêu cầu
+                                     $required_completion = $DB->get_record('course_modules_completion', [
+                                        'coursemoduleid' => $condition['cm'],
+                                        'userid' => $userid
+                                    ]);
+                                    
+                                    $is_required_completed = ($required_completion && in_array($required_completion->completionstate, [1, 2])) ? true : false;
+                                    
                                     $availability[] = [
                                         'id' => $required_module['cm']->id,
                                         'name' => $required_module['cm']->name ?? 'Unknown',
-                                        'modname' => $required_module['cm']->modname ?? 'Unknown'
+                                        'modname' => $required_module['cm']->modname ?? 'Unknown',
+                                        'completed' => $is_required_completed
                                     ];
                                 } catch (Exception $e) {
                                     // Nếu module không tồn tại, ghi log và bỏ qua
@@ -8216,7 +8225,8 @@ class local_custom_service_external extends external_api
                                     new external_single_structure([
                                         'id' => new external_value(PARAM_INT, 'Required Activity ID'),
                                         'name' => new external_value(PARAM_RAW, 'Required Activity Name'),
-                                        'modname' => new external_value(PARAM_RAW, 'Required Activity Type')
+                                        'modname' => new external_value(PARAM_RAW, 'Required Activity Type'),
+                                        'completed' => new external_value(PARAM_BOOL, 'Required Activity Completion Status')
                                     ])
                                 ),
                                 'visible' => new external_value(PARAM_RAW, 'Trạng thái hiển thị của activity'),

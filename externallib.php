@@ -8115,8 +8115,13 @@ class local_custom_service_external extends external_api
 
                                 try {
                                     $required_module = core_course_external::get_course_module($condition['cm']);
-                                     // Kiểm tra trạng thái hoàn thành của activity yêu cầu
-                                     $required_completion = $DB->get_record('course_modules_completion', [
+                                    
+                                    // Lấy thông tin section của activity yêu cầu
+                                    $required_section = $DB->get_record('course_sections', ['id' => $required_module['cm']->section]);
+                                    $topic_id = $required_section ? $required_section->id : null;
+                                    
+                                    // Kiểm tra trạng thái hoàn thành của activity yêu cầu
+                                    $required_completion = $DB->get_record('course_modules_completion', [
                                         'coursemoduleid' => $condition['cm'],
                                         'userid' => $userid
                                     ]);
@@ -8127,6 +8132,7 @@ class local_custom_service_external extends external_api
                                         'id' => $required_module['cm']->id,
                                         'name' => $required_module['cm']->name ?? 'Unknown',
                                         'modname' => $required_module['cm']->modname ?? 'Unknown',
+                                        'topic_id' => $topic_id,
                                         'completed' => $is_required_completed
                                     ];
                                 } catch (Exception $e) {
@@ -8243,6 +8249,7 @@ class local_custom_service_external extends external_api
                                         'id' => new external_value(PARAM_INT, 'Required Activity ID'),
                                         'name' => new external_value(PARAM_RAW, 'Required Activity Name'),
                                         'modname' => new external_value(PARAM_RAW, 'Required Activity Type'),
+                                        'topic_id' => new external_value(PARAM_INT, 'Required Activity Topic ID'),
                                         'completed' => new external_value(PARAM_BOOL, 'Required Activity Completion Status')
                                     ])
                                 ),

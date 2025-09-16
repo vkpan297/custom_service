@@ -736,7 +736,7 @@ function form_data_question_for_type_ddwtos($dataJson){
     return $form;
 }
 
-function execute_curl_custome_service_function($url, $data = false, $contentType = false, $token = false, $method)
+function execute_curl_custome_service_function($url, $method, $data = false, $contentType = false, $token = false)
 {
     $ch = curl_init();
     $headers = array();
@@ -767,7 +767,7 @@ function get_data_slide_by_code($data)
     require_once($CFG->dirroot . '/local/custom_service/config/config.php');
     $url = $urlApiWp;
     $method = 'POST';
-    $response = json_decode(execute_curl_custome_service_function($url, $data, false, false, $method), true);
+    $response = json_decode(execute_curl_custome_service_function($url, $method, $data, false, false), true);
     return $response;
 }
 
@@ -777,6 +777,6 @@ function get_user_email_by_school_id($schoolId)
     require_once($CFG->dirroot . '/local/custom_service/config/config.php');
     $url = $urlApiGetUserBySchoolId . '?schoolId=' . $schoolId;
     $method = 'GET';
-    $response = json_decode(execute_curl_custome_service_function($url, false, false, false, $method), true);
+    $response = json_decode(execute_curl_custome_service_function($url, $method, false, false, false), true);
     return $response;
 }

@@ -2017,7 +2017,8 @@ class local_custom_service_external extends external_api
                     cm.instance AS instance_id,
                     m.name AS module_name,
                     a.name AS activity_name,
-                    a.intro AS activity_intro
+                    a.intro AS activity_intro,
+                    FIND_IN_SET(cm.id, cs.sequence) AS sequence_order
                 FROM 
                     {course_sections} cs
                 JOIN 
@@ -2030,8 +2031,9 @@ class local_custom_service_external extends external_api
                     cs.course = :course_id
                     AND cm.deletioninprogress = 0 -- Ensure the module is not in the process of being deleted
                     AND cm.visible = 1 -- Ensure the module is visible
+                    AND FIND_IN_SET(cm.id, cs.sequence) > 0 -- Only include modules that are in the sequence
                 ORDER BY 
-                    cs.section, cm.id;
+                    cs.section, sequence_order;
             ";
 
             $params = ['course_id' => $course->id];
@@ -2058,7 +2060,8 @@ class local_custom_service_external extends external_api
                         'listUrl' => [],
                         'listPDF' => [],
                         'listStepbystep' => [],
-                        'listOther' => []
+                        'listOther' => [],
+                        'listActivities' => []
                     ];
                 }
 
@@ -2076,7 +2079,10 @@ class local_custom_service_external extends external_api
                     'modname' => $record->module_name,
                     'modplural' => ucfirst($record->module_name) . 's', // You may need to adjust this based on your actual data
                     'contents' => [], // Placeholder for contents
-                    'url_type' => ''
+                    'url_type' => '',
+                    'position' => $record->sequence_order,
+                    'total_steps' => 0,
+                    'steps' => []
                 ];
 
                 if ($record->module_name == 'h5pactivity') {
@@ -2105,6 +2111,7 @@ class local_custom_service_external extends external_api
                     }
                     $module_data['url_type'] = 'streaming';
                     $section_data[$section_id]['listVideo'][] = $module_data;
+                    $section_data[$section_id]['listActivities'][] = $module_data;
                 } elseif ($record->module_name == 'checkmatepdf') {
                     $checkmatepdf_content = $DB->get_record('checkmatepdf', ['id' => $record->instance_id]);
                     if ($checkmatepdf_content && $checkmatepdf_content->url) {
@@ -2112,6 +2119,7 @@ class local_custom_service_external extends external_api
                     }
                     $module_data['url_type'] = 'pdf';
                     $section_data[$section_id]['listPDF'][] = $module_data;
+                    $section_data[$section_id]['listActivities'][] = $module_data;
                 } elseif ($record->module_name == 'url') {
                     $url_content = $DB->get_record('url', ['id' => $record->instance_id]);
                     if ($url_content) {
@@ -2119,6 +2127,7 @@ class local_custom_service_external extends external_api
                     }
                     $module_data['url_type'] = 'link'; // Change to link or url
                     $section_data[$section_id]['listUrl'][] = $module_data;
+                    $section_data[$section_id]['listActivities'][] = $module_data;
                 } elseif ($record->module_name == 'stepbystep') {
                     // Handle stepbystep module
                     $stepbystep_content = $DB->get_record('stepbystep', ['id' => $record->instance_id]);
@@ -2172,9 +2181,11 @@ class local_custom_service_external extends external_api
                         
                         // Add to listStepbystep
                         $section_data[$section_id]['listStepbystep'][] = $module_data;
+                        $section_data[$section_id]['listActivities'][] = $module_data;
                     }
                 } else {
-                    $section_data[$section_id]['listOther'][] = $module_data; // Default to video nếu không khớp với các trường hợp khác
+                    $section_data[$section_id]['listOther'][] = $module_data;
+                    $section_data[$section_id]['listActivities'][] = $module_data;
                 }
             }
 
@@ -2252,6 +2263,7 @@ class local_custom_service_external extends external_api
                                 'modname' => new external_value(PARAM_RAW, 'Module Type'),
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
+                                'position' => new external_value(PARAM_INT, 'Position in Section'),
                                 'contents' => new external_multiple_structure(
                                     new external_single_structure([
                                         'type' => new external_value(PARAM_RAW, 'Content Type'),
@@ -2283,6 +2295,7 @@ class local_custom_service_external extends external_api
                                 'modname' => new external_value(PARAM_RAW, 'Module Type'),
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
+                                'position' => new external_value(PARAM_INT, 'Position in Section'),
                                 'contents' => new external_multiple_structure(
                                     new external_single_structure([
                                         'type' => new external_value(PARAM_RAW, 'Content Type'),
@@ -2314,6 +2327,7 @@ class local_custom_service_external extends external_api
                                 'modname' => new external_value(PARAM_RAW, 'Module Type'),
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
+                                'position' => new external_value(PARAM_INT, 'Position in Section'),
                                 'contents' => new external_multiple_structure(
                                     new external_single_structure([
                                         'type' => new external_value(PARAM_RAW, 'Content Type'),
@@ -2348,6 +2362,7 @@ class local_custom_service_external extends external_api
                                     new external_value(PARAM_RAW, 'Content'), VALUE_OPTIONAL
                                 ),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
+                                'position' => new external_value(PARAM_INT, 'Position in Section'),
                                 'total_steps' => new external_value(PARAM_INT, 'Total Steps'),
                                 'steps' => new external_multiple_structure(
                                     new external_single_structure([
@@ -2385,6 +2400,7 @@ class local_custom_service_external extends external_api
                                 'modname' => new external_value(PARAM_RAW, 'Module Type'),
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
+                                'position' => new external_value(PARAM_INT, 'Position in Section'),
                                 'contents' => new external_multiple_structure(
                                     new external_single_structure([
                                         'type' => new external_value(PARAM_RAW, 'Content Type'),
@@ -2399,6 +2415,59 @@ class local_custom_service_external extends external_api
                                         'author' => new external_value(PARAM_RAW, 'Author'),
                                         'license' => new external_value(PARAM_RAW, 'License')
                                     ])
+                                )
+                            ])
+                        ),
+                        'listActivities' => new external_multiple_structure(
+                            new external_single_structure([
+                                'id' => new external_value(PARAM_INT, 'Module ID'),
+                                'url' => new external_value(PARAM_RAW, 'Module URL'),
+                                'name' => new external_value(PARAM_RAW, 'Module Name'),
+                                'instance' => new external_value(PARAM_INT, 'Instance ID'),
+                                'contextid' => new external_value(PARAM_INT, 'Context ID', VALUE_OPTIONAL),
+                                'visible' => new external_value(PARAM_INT, 'Visible'),
+                                'uservisible' => new external_value(PARAM_BOOL, 'User Visible'),
+                                'visibleoncoursepage' => new external_value(PARAM_INT, 'Visible on Course Page'),
+                                'modicon' => new external_value(PARAM_RAW, 'Module Icon URL'),
+                                'modname' => new external_value(PARAM_RAW, 'Module Type'),
+                                'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
+                                'url_type' => new external_value(PARAM_RAW, 'Url Type'),
+                                'position' => new external_value(PARAM_INT, 'Position in Section'),
+                                'contents' => new external_multiple_structure(
+                                    new external_single_structure([
+                                        'type' => new external_value(PARAM_RAW, 'Content Type'),
+                                        'filename' => new external_value(PARAM_RAW, 'File Name'),
+                                        'filepath' => new external_value(PARAM_RAW, 'File Path'),
+                                        'filesize' => new external_value(PARAM_INT, 'File Size'),
+                                        'fileurl' => new external_value(PARAM_RAW, 'File URL'),
+                                        'timecreated' => new external_value(PARAM_INT, 'Time Created'),
+                                        'timemodified' => new external_value(PARAM_INT, 'Time Modified'),
+                                        'sortorder' => new external_value(PARAM_INT, 'Sort Order'),
+                                        'userid' => new external_value(PARAM_INT, 'User ID'),
+                                        'author' => new external_value(PARAM_RAW, 'Author'),
+                                        'license' => new external_value(PARAM_RAW, 'License')
+                                    ])
+                                ),
+                                'total_steps' => new external_value(PARAM_INT, 'Total Steps', VALUE_OPTIONAL),
+                                'steps' => new external_multiple_structure(
+                                    new external_single_structure([
+                                        'id' => new external_value(PARAM_INT, 'Step ID'),
+                                        'type' => new external_value(PARAM_RAW, 'Step Type'),
+                                        'main_title' => new external_value(PARAM_RAW, 'Main Title'),
+                                        'sub_heading' => new external_value(PARAM_RAW, 'Sub Heading'),
+                                        'content_paragraphs' => new external_value(PARAM_RAW, 'Content Paragraphs'),
+                                        'paragraphs' => new external_multiple_structure(
+                                            new external_value(PARAM_RAW, 'Paragraph Text'), VALUE_OPTIONAL
+                                        ),
+                                        'term' => new external_value(PARAM_RAW, 'Term'),
+                                        'definition' => new external_value(PARAM_RAW, 'Definition'),
+                                        'example' => new external_value(PARAM_RAW, 'Example'),
+                                        'audio_file' => new external_value(PARAM_RAW, 'Audio File'),
+                                        'response_text' => new external_value(PARAM_RAW, 'Response Text'),
+                                        'storage_path' => new external_value(PARAM_RAW, 'Storage Path'),
+                                        'sortorder' => new external_value(PARAM_INT, 'Sort Order'),
+                                        'timecreated' => new external_value(PARAM_INT, 'Time Created')
+                                    ]), VALUE_OPTIONAL
                                 )
                             ])
                         ),

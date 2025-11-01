@@ -4984,7 +4984,7 @@ class local_custom_service_external extends external_api
         $myQuiz->grade = 10;
         $myQuiz->sumgrades = 10;
         $myQuiz->gradeperiod = 0;
-        $myQuiz->attempts = 1;
+        $myQuiz->attempts = 0;
         $myQuiz->preferredbehaviour = 'deferredfeedback';
         $myQuiz->attemptonlast = 0;
         $myQuiz->shufflequestions = 0;

@@ -8124,7 +8124,7 @@ class local_custom_service_external extends external_api
         $userid = $user->id;
 
         // Lấy thông tin khóa học
-        $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber');
+        $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber, category, enddate');
         
         if (!$course) {
             return [
@@ -8137,122 +8137,201 @@ class local_custom_service_external extends external_api
             ];
         }
 
-        $course_info = self::get_data_basic_course_information_checkmate($useremail, 'all', 0, 0, $courseid, 0);
-        
-        // Lấy danh sách sections của course
-        $sections = core_course_external::get_course_contents($courseid);
+        // ========================= Tối ưu hóa truy vấn =========================
+        $sections = $DB->get_records_sql(
+            "SELECT id, section, name
+               FROM {course_sections}
+              WHERE course = :courseid
+           ORDER BY section ASC",
+            ['courseid' => $courseid]
+        );
+
+        $modulesql = "SELECT cm.id,
+                             cm.section,
+                             cm.instance,
+                             cm.visible,
+                             cm.availability,
+                             cm.completiongradeitemnumber,
+                             cm.completionview,
+                             cm.completionexpected,
+                             cm.completionpassgrade,
+                             m.name AS modname
+                        FROM {course_modules} cm
+                        JOIN {modules} m ON m.id = cm.module
+                       WHERE cm.course = :courseid
+                    ORDER BY cm.section, cm.id";
+        $coursemoduleRecords = $DB->get_records_sql($modulesql, ['courseid' => $courseid]);
+
+        $modulesbysection = [];
+        $modulesbyid = [];
+        $allmoduleids = [];
+        $instancesbymodname = [];
+        foreach ($coursemoduleRecords as $cmrecord) {
+            $modulesbysection[$cmrecord->section][] = $cmrecord;
+            $modulesbyid[$cmrecord->id] = $cmrecord;
+            $allmoduleids[$cmrecord->id] = $cmrecord->id;
+            if (!empty($cmrecord->instance)) {
+                if (!isset($instancesbymodname[$cmrecord->modname])) {
+                    $instancesbymodname[$cmrecord->modname] = [];
+                }
+                $instancesbymodname[$cmrecord->modname][] = (int)$cmrecord->instance;
+            }
+        }
+
+        $allmoduleids = array_values($allmoduleids);
+
+        $completionmap = [];
+        if (!empty($allmoduleids)) {
+            list($insql, $params) = $DB->get_in_or_equal($allmoduleids, SQL_PARAMS_NAMED);
+            $params['userid'] = $userid;
+            $sql = "SELECT coursemoduleid, completionstate
+                      FROM {course_modules_completion}
+                     WHERE userid = :userid
+                       AND coursemoduleid {$insql}";
+            $completionmap = $DB->get_records_sql_menu($sql, $params);
+        }
+
+        $gradebymodule = [];
+        $gradeitems = $DB->get_records_sql(
+            "SELECT itemmodule, iteminstance, grademax, gradepass
+               FROM {grade_items}
+              WHERE courseid = :courseid
+                AND itemtype = 'mod'",
+            ['courseid' => $courseid]
+        );
+        foreach ($gradeitems as $gradeitem) {
+            if (!empty($gradeitem->itemmodule) && !empty($gradeitem->iteminstance)) {
+                $gradebymodule[$gradeitem->itemmodule . '_' . $gradeitem->iteminstance] = [
+                    'grade' => $gradeitem->grademax,
+                    'gradepass' => $gradeitem->gradepass
+                ];
+            }
+        }
+
+        $moduledetails = [];
+        foreach ($instancesbymodname as $modname => $instanceids) {
+            $instanceids = array_values(array_unique($instanceids));
+            if (empty($instanceids)) {
+                continue;
+            }
+            list($insql, $params) = $DB->get_in_or_equal($instanceids, SQL_PARAMS_NAMED);
+            try {
+                $records = $DB->get_records_sql("SELECT * FROM {{$modname}} WHERE id {$insql}", $params);
+            } catch (Exception $e) {
+                debugging("Unable to fetch module data for {$modname}: " . $e->getMessage());
+                $records = [];
+            }
+            $moduledetails[$modname] = $records;
+        }
 
         $result = [];
-
         foreach ($sections as $section) {
-            if ($section['section'] == 0) continue; // Bỏ qua section 0 (General)
+            if ($section->section == 0) {
+                continue;
+            }
 
-            $sectionid = $section['id'];
-            $sectionname = $section['name'];
-
+            $sectionid = $section->id;
+            $sectionname = trim((string)$section->name);
+            if ($sectionname === '') {
+                $sectionname = 'Section ' . $section->section;
+            }
+            $sectionmodules = $modulesbysection[$sectionid] ?? [];
+            $total_activity = count($sectionmodules);
+            $total_activity_completion = 0;
             $activities = [];
-            $total_activity = count($section['modules']); // Tổng số activity trong section
-            $total_activity_completion = 0; // Đếm số activity đã hoàn thành
 
-            foreach ($section['modules'] as $module) {
-                // Lấy trạng thái hoàn thành của activity
-                $completion = $DB->get_record('course_modules_completion', [
-                    'coursemoduleid' => $module['id'],
-                    'userid' => $userid
-                ]);
+            if (empty($sectionmodules)) {
+                $result[] = [
+                    'id' => $sectionid,
+                    'name' => $sectionname,
+                    'total_activity' => 0,
+                    'total_activity_completion' => 0,
+                    'completion_percentage' => 0,
+                    'activities' => []
+                ];
+                continue;
+            }
 
-                $moduleDetail = self::get_detail_module($module['id'], $module['modname']);
+            foreach ($sectionmodules as $module) {
+                $cmid = (int)$module->id;
+                if (!$cmid) {
+                    continue;
+                }
 
-                $moduleDetailDecode = json_decode($moduleDetail['data']);
-
-                // Kiểm tra trạng thái hoàn thành (1 hoặc 2)
-                $is_completed = ($completion && in_array($completion->completionstate, [1, 2])) ? true : false;
-            
+                $completionstate = $completionmap[$cmid] ?? null;
+                $is_completed = ($completionstate !== null && in_array((int)$completionstate, [1, 2]));
                 if ($is_completed) {
                     $total_activity_completion++;
                 }
 
-                // Xử lý availability (điều kiện hoạt động)
                 $availability = [];
-                if (!empty($module['availability'])) {
-                    // Chuyển đổi availability thành mảng từ chuỗi JSON
-                    $availability_data = json_decode($module['availability'], true);
-                    
-                    if ($availability_data && isset($availability_data['c'])) {
+                $rawavailability = $module->availability ?? '';
+                if (!empty($rawavailability)) {
+                    $availability_data = json_decode($rawavailability, true);
+                    if (!empty($availability_data['c'])) {
                         foreach ($availability_data['c'] as $condition) {
-                            if ($condition['type'] === 'completion' && isset($condition['cm'])) {
-
-                                try {
-                                    $required_module = core_course_external::get_course_module($condition['cm']);
-                                    
-                                    // Lấy thông tin section của activity yêu cầu
-                                    $required_section = $DB->get_record('course_sections', ['id' => $required_module['cm']->section]);
-                                    $topic_id = $required_section ? $required_section->id : null;
-                                    
-                                    // Kiểm tra trạng thái hoàn thành của activity yêu cầu
-                                    $required_completion = $DB->get_record('course_modules_completion', [
-                                        'coursemoduleid' => $condition['cm'],
-                                        'userid' => $userid
-                                    ]);
-                                    
-                                    $is_required_completed = ($required_completion && in_array($required_completion->completionstate, [1, 2])) ? true : false;
-                                    
-                                    $availability[] = [
-                                        'id' => $required_module['cm']->id,
-                                        'name' => $required_module['cm']->name ?? 'Unknown',
-                                        'modname' => $required_module['cm']->modname ?? 'Unknown',
-                                        'topic_id' => $topic_id,
-                                        'completed' => $is_required_completed
-                                    ];
-                                } catch (Exception $e) {
-                                    // Nếu module không tồn tại, ghi log và bỏ qua
-                                    debugging("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());
-                                    // var_dump("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());die;
+                            if ($condition['type'] === 'completion' && !empty($condition['cm'])) {
+                                $requiredcmid = (int)$condition['cm'];
+                                if (!isset($modulesbyid[$requiredcmid])) {
+                                    continue;
                                 }
+                                $requiredcm = $modulesbyid[$requiredcmid];
+                                $required_completion = $completionmap[$requiredcmid] ?? null;
+                                $requireddetail = $moduledetails[$requiredcm->modname][$requiredcm->instance] ?? null;
+                                $availability[] = [
+                                    'id' => $requiredcmid,
+                                    'name' => $requireddetail->name ?? $requiredcm->modname ?? 'Unknown',
+                                    'modname' => $requiredcm->modname ?? 'Unknown',
+                                    'topic_id' => $requiredcm->section ?? null,
+                                    'completed' => ($required_completion !== null && in_array((int)$required_completion, [1, 2]))
+                                ];
                             }
                         }
                     }
                 }
 
-                try {
-                    $detailActivity = core_course_external::get_course_module($module['id']);
-                } catch (Exception $e) {
-                    debugging("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());
-                    // var_dump("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());die;
-                    continue; // Bỏ qua module không tồn tại
+                $modname = $module->modname;
+                $instanceid = $module->instance;
+                $detailrecord = $moduledetails[$modname][$instanceid] ?? null;
+
+                $description = '';
+                if ($detailrecord && property_exists($detailrecord, 'intro') && $detailrecord->intro !== null) {
+                    $description = $detailrecord->intro;
                 }
-                
-                $detailModule = json_decode(self::get_detail_module($module['id'], $module['modname'])['data']);
+
+                $activityname = $detailrecord->name ?? $modname;
+                $completionminattempts = null;
+                if ($detailrecord && property_exists($detailrecord, 'completionminattempts')) {
+                    $completionminattempts = $detailrecord->completionminattempts;
+                }
+
+                $gradekey = $modname . '_' . $instanceid;
+                $gradeinfo = $gradebymodule[$gradekey] ?? null;
 
                 $activities[] = [
-                    'id' => $module['id'],
-                    'name' => $module['name'],
-                    'description' => $moduleDetailDecode->intro,
-                    'modname' => $module['modname'],
+                    'id' => $cmid,
+                    'name' => $activityname,
+                    'description' => $description,
+                    'modname' => $modname,
                     'completed' => $is_completed,
-                    'availability' => $availability, // Thêm thông tin về availability
-                    'visible' => $detailActivity['cm']->visible,
-                    'completiongradeitemnumber' => $detailActivity['cm']->completiongradeitemnumber,
-                    'completionview' => $detailActivity['cm']->completionview,
-                    'completionexpected' => $detailActivity['cm']->completionexpected,
-                    'completionpassgrade' => $detailActivity['cm']->completionpassgrade,
-                    'completionminattempts' => $detailModule->completionminattempts,
-                    'grade' => $detailActivity['cm']->grade ?? 0,
-                    'gradepass' => $detailActivity['cm']->gradepass ?? 0,
+                    'availability' => $availability,
+                    'visible' => $module->visible ?? 0,
+                    'completiongradeitemnumber' => $module->completiongradeitemnumber ?? null,
+                    'completionview' => $module->completionview ?? null,
+                    'completionexpected' => $module->completionexpected ?? null,
+                    'completionpassgrade' => $module->completionpassgrade ?? null,
+                    'completionminattempts' => $completionminattempts,
+                    'grade' => $gradeinfo['grade'] ?? 0,
+                    'gradepass' => $gradeinfo['gradepass'] ?? 0,
                 ];
-                
-
-                // if(isset($detailActivity['cm']->grade)){
-                //     $activities[]['grade'] = $detailActivity['cm']->grade;
-                // }
-
-                // if(isset($detailActivity['cm']->gradepass)){
-                //     $activities[]['gradepass'] = $detailActivity['cm']->gradepass;
-                // }
             }
 
-            // Tính phần trăm hoàn thành
-            $completion_percentage = ($total_activity > 0) ? round(($total_activity_completion / $total_activity) * 100, 2) : 0;
+            $completion_percentage = ($total_activity > 0)
+                ? round(($total_activity_completion / $total_activity) * 100, 2)
+                : 0;
+
+            $course_total_activity += $total_activity;
+            $course_total_activity_completion += $total_activity_completion;
 
             $result[] = [
                 'id' => $sectionid,
@@ -8264,19 +8343,229 @@ class local_custom_service_external extends external_api
             ];
         }
 
+        $course_total_activity_due = max($course_total_activity - $course_total_activity_completion, 0);
+        $course_completion_percentage = ($course_total_activity > 0)
+            ? round(($course_total_activity_completion / $course_total_activity) * 100, 2)
+            : 0;
+        $course_summary = self::build_course_summary_for_checkmate(
+            $course,
+            $userid,
+            $course_total_activity,
+            $course_total_activity_completion,
+            $course_total_activity_due,
+            (int)$course_completion_percentage
+        );
+
         $dataResponse = [
             'status' => true,
             'message' => 'Data retrieved successfully.',
             'data' => [
-                'course' => $course_info['data']['courses'][0],
+                'course' => $course_summary,
                 'topics' => $result
             ]
         ];
-        // var_dump('<pre>');
-        // var_dump($dataResponse);die;
 
         return $dataResponse;
+        // ======================= Hết phần tối ưu hóa ==========================
     }
+
+    // old code
+    // public static function get_content_course_checkmate_old($useremail, $courseid)
+    // {
+    //     global $DB, $CFG;
+
+    //     require_once($CFG->libdir . '/completionlib.php');
+
+    //     if (empty($courseid)) {
+    //         return [
+    //             'status' => false,
+    //             'message' => 'Invalid course id.',
+    //             'data' => [
+    //                 'course' => self::get_empty_course_structure(),
+    //                 'topics' => []
+    //             ]
+    //         ];
+    //     }
+
+    //     if (empty($useremail)) {
+    //         return [
+    //             'status' => false,
+    //             'message' => 'Invalid user.',
+    //             'data' => [
+    //                 'course' => self::get_empty_course_structure(),
+    //                 'topics' => []
+    //             ]
+    //         ];
+    //     }
+
+    //     // Lấy thông tin user từ email
+    //     $user = $DB->get_record('user', ['email' => $useremail]);
+    //     if (!$user) {
+    //         return [
+    //             'status' => false,
+    //             'message' => 'Invalid user.',
+    //             'data' => [
+    //                 'course' => self::get_empty_course_structure(),
+    //                 'topics' => []
+    //             ]
+    //         ];
+    //     }
+    //     $userid = $user->id;
+
+    //     // Lấy thông tin khóa học
+    //     $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber');
+        
+    //     if (!$course) {
+    //         return [
+    //             'status' => false,
+    //             'message' => 'Course not found.',
+    //             'data' => [
+    //                 'course' => self::get_empty_course_structure(),
+    //                 'topics' => []
+    //             ]
+    //         ];
+    //     }
+
+    //     $course_info = self::get_data_basic_course_information_checkmate($useremail, 'all', 0, 0, $courseid, 0);
+        
+    //     // Lấy danh sách sections của course
+    //     $sections = core_course_external::get_course_contents($courseid);
+
+    //     $result = [];
+
+    //     foreach ($sections as $section) {
+    //         if ($section['section'] == 0) continue; // Bỏ qua section 0 (General)
+
+    //         $sectionid = $section['id'];
+    //         $sectionname = $section['name'];
+
+    //         $activities = [];
+    //         $total_activity = count($section['modules']); // Tổng số activity trong section
+    //         $total_activity_completion = 0; // Đếm số activity đã hoàn thành
+
+    //         foreach ($section['modules'] as $module) {
+    //             // Lấy trạng thái hoàn thành của activity
+    //             $completion = $DB->get_record('course_modules_completion', [
+    //                 'coursemoduleid' => $module['id'],
+    //                 'userid' => $userid
+    //             ]);
+
+    //             $moduleDetail = self::get_detail_module($module['id'], $module['modname']);
+
+    //             $moduleDetailDecode = json_decode($moduleDetail['data']);
+
+    //             // Kiểm tra trạng thái hoàn thành (1 hoặc 2)
+    //             $is_completed = ($completion && in_array($completion->completionstate, [1, 2])) ? true : false;
+            
+    //             if ($is_completed) {
+    //                 $total_activity_completion++;
+    //             }
+
+    //             // Xử lý availability (điều kiện hoạt động)
+    //             $availability = [];
+    //             if (!empty($module['availability'])) {
+    //                 // Chuyển đổi availability thành mảng từ chuỗi JSON
+    //                 $availability_data = json_decode($module['availability'], true);
+                    
+    //                 if ($availability_data && isset($availability_data['c'])) {
+    //                     foreach ($availability_data['c'] as $condition) {
+    //                         if ($condition['type'] === 'completion' && isset($condition['cm'])) {
+
+    //                             try {
+    //                                 $required_module = core_course_external::get_course_module($condition['cm']);
+                                    
+    //                                 // Lấy thông tin section của activity yêu cầu
+    //                                 $required_section = $DB->get_record('course_sections', ['id' => $required_module['cm']->section]);
+    //                                 $topic_id = $required_section ? $required_section->id : null;
+                                    
+    //                                 // Kiểm tra trạng thái hoàn thành của activity yêu cầu
+    //                                 $required_completion = $DB->get_record('course_modules_completion', [
+    //                                     'coursemoduleid' => $condition['cm'],
+    //                                     'userid' => $userid
+    //                                 ]);
+                                    
+    //                                 $is_required_completed = ($required_completion && in_array($required_completion->completionstate, [1, 2])) ? true : false;
+                                    
+    //                                 $availability[] = [
+    //                                     'id' => $required_module['cm']->id,
+    //                                     'name' => $required_module['cm']->name ?? 'Unknown',
+    //                                     'modname' => $required_module['cm']->modname ?? 'Unknown',
+    //                                     'topic_id' => $topic_id,
+    //                                     'completed' => $is_required_completed
+    //                                 ];
+    //                             } catch (Exception $e) {
+    //                                 // Nếu module không tồn tại, ghi log và bỏ qua
+    //                                 debugging("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());
+    //                                 // var_dump("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());die;
+    //                             }
+    //                         }
+    //                     }
+    //                 }
+    //             }
+
+    //             try {
+    //                 $detailActivity = core_course_external::get_course_module($module['id']);
+    //             } catch (Exception $e) {
+    //                 debugging("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());
+    //                 // var_dump("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());die;
+    //                 continue; // Bỏ qua module không tồn tại
+    //             }
+                
+    //             $detailModule = json_decode(self::get_detail_module($module['id'], $module['modname'])['data']);
+
+    //             $activities[] = [
+    //                 'id' => $module['id'],
+    //                 'name' => $module['name'],
+    //                 'description' => $moduleDetailDecode->intro,
+    //                 'modname' => $module['modname'],
+    //                 'completed' => $is_completed,
+    //                 'availability' => $availability, // Thêm thông tin về availability
+    //                 'visible' => $detailActivity['cm']->visible,
+    //                 'completiongradeitemnumber' => $detailActivity['cm']->completiongradeitemnumber,
+    //                 'completionview' => $detailActivity['cm']->completionview,
+    //                 'completionexpected' => $detailActivity['cm']->completionexpected,
+    //                 'completionpassgrade' => $detailActivity['cm']->completionpassgrade,
+    //                 'completionminattempts' => $detailModule->completionminattempts,
+    //                 'grade' => $detailActivity['cm']->grade ?? 0,
+    //                 'gradepass' => $detailActivity['cm']->gradepass ?? 0,
+    //             ];
+                
+
+    //             // if(isset($detailActivity['cm']->grade)){
+    //             //     $activities[]['grade'] = $detailActivity['cm']->grade;
+    //             // }
+
+    //             // if(isset($detailActivity['cm']->gradepass)){
+    //             //     $activities[]['gradepass'] = $detailActivity['cm']->gradepass;
+    //             // }
+    //         }
+
+    //         // Tính phần trăm hoàn thành
+    //         $completion_percentage = ($total_activity > 0) ? round(($total_activity_completion / $total_activity) * 100, 2) : 0;
+
+    //         $result[] = [
+    //             'id' => $sectionid,
+    //             'name' => $sectionname,
+    //             'total_activity' => $total_activity,
+    //             'total_activity_completion' => $total_activity_completion,
+    //             'completion_percentage' => $completion_percentage,
+    //             'activities' => $activities
+    //         ];
+    //     }
+
+    //     $dataResponse = [
+    //         'status' => true,
+    //         'message' => 'Data retrieved successfully.',
+    //         'data' => [
+    //             'course' => $course_info['data']['courses'][0],
+    //             'topics' => $result
+    //         ]
+    //     ];
+    //     // var_dump('<pre>');
+    //     // var_dump($dataResponse);die;
+
+    //     return $dataResponse;
+    // }
 
     public static function get_content_course_checkmate_returns()
     {

@@ -2462,6 +2462,7 @@ class local_custom_service_external extends external_api
                                             new external_value(PARAM_RAW, 'Paragraph Text'), VALUE_OPTIONAL
                                         ),
                                         'term' => new external_value(PARAM_RAW, 'Term'),
+                                        'phonetic' => new external_value(PARAM_RAW, 'Phonetic'),
                                         'definition' => new external_value(PARAM_RAW, 'Definition'),
                                         'example' => new external_value(PARAM_RAW, 'Example'),
                                         'audio_file' => new external_value(PARAM_RAW, 'Audio File'),

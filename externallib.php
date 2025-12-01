@@ -2184,6 +2184,24 @@ class local_custom_service_external extends external_api
                         $section_data[$section_id]['listStepbystep'][] = $module_data;
                         $section_data[$section_id]['listActivities'][] = $module_data;
                     }
+                } elseif ($record->module_name == 'readingflow') {
+                    // Handle readingflow module
+                    $readingflow_content = $DB->get_record('readingflow', ['id' => $record->instance_id]);
+                    if ($readingflow_content) {
+                        // Add readingflow specific fields
+                        $module_data['content'] = $readingflow_content->content ?? '';
+                        $module_data['contentformat'] = $readingflow_content->contentformat ?? 0;
+                        $module_data['lumos_reading_id'] = $readingflow_content->lumos_reading_id ?? 0;
+                        $module_data['lumos_reading_slug'] = $readingflow_content->lumos_reading_slug ?? '';
+                        $module_data['timecreated'] = $readingflow_content->timecreated ?? 0;
+                        $module_data['timemodified'] = $readingflow_content->timemodified ?? 0;
+                        $module_data['url_type'] = 'readingflow';
+                        $module_data['contents'] = []; // Add empty contents array
+                        
+                        // Add to listOther
+                        $section_data[$section_id]['listOther'][] = $module_data;
+                        $section_data[$section_id]['listActivities'][] = $module_data;
+                    }
                 } else {
                     $section_data[$section_id]['listOther'][] = $module_data;
                     $section_data[$section_id]['listActivities'][] = $module_data;
@@ -2403,6 +2421,12 @@ class local_custom_service_external extends external_api
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
                                 'position' => new external_value(PARAM_INT, 'Position in Section'),
+                                'content' => new external_value(PARAM_RAW, 'Reading flow content', VALUE_OPTIONAL),
+                                'contentformat' => new external_value(PARAM_INT, 'Content format', VALUE_OPTIONAL),
+                                'lumos_reading_id' => new external_value(PARAM_INT, 'Lumos reading ID', VALUE_OPTIONAL),
+                                'lumos_reading_slug' => new external_value(PARAM_TEXT, 'Lumos reading slug', VALUE_OPTIONAL),
+                                'timecreated' => new external_value(PARAM_INT, 'Time created', VALUE_OPTIONAL),
+                                'timemodified' => new external_value(PARAM_INT, 'Time modified', VALUE_OPTIONAL),
                                 'contents' => new external_multiple_structure(
                                     new external_single_structure([
                                         'type' => new external_value(PARAM_RAW, 'Content Type'),
@@ -2435,6 +2459,12 @@ class local_custom_service_external extends external_api
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
                                 'position' => new external_value(PARAM_INT, 'Position in Section'),
+                                'content' => new external_value(PARAM_RAW, 'Reading flow content', VALUE_OPTIONAL),
+                                'contentformat' => new external_value(PARAM_INT, 'Content format', VALUE_OPTIONAL),
+                                'lumos_reading_id' => new external_value(PARAM_INT, 'Lumos reading ID', VALUE_OPTIONAL),
+                                'lumos_reading_slug' => new external_value(PARAM_TEXT, 'Lumos reading slug', VALUE_OPTIONAL),
+                                'timecreated' => new external_value(PARAM_INT, 'Time created', VALUE_OPTIONAL),
+                                'timemodified' => new external_value(PARAM_INT, 'Time modified', VALUE_OPTIONAL),
                                 'contents' => new external_multiple_structure(
                                     new external_single_structure([
                                         'type' => new external_value(PARAM_RAW, 'Content Type'),

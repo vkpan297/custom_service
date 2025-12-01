@@ -7818,6 +7818,227 @@ class local_custom_service_external extends external_api
         );
     }
 
+    // public static function get_data_basic_course_information_checkmate($useremail, $role, $limit, $offset, $courseid, $coursename) {
+    //     global $DB, $OUTPUT;
+
+    //     if (empty($useremail)) {
+    //         return [
+    //             'status' => false,
+    //             'message' => 'Invalid user.',
+    //             'data' => [
+    //                 'totalpage' => 0,
+    //                 'currentpage' => 1,
+    //                 'courses' => []
+    //             ]
+    //         ];
+    //     }
+
+    //     $user = $DB->get_record('user', ['email' => $useremail]);
+
+    //     if (!$user) {
+    //         return [
+    //             'status' => false,
+    //             'message' => 'Invalid user.',
+    //             'data' => [
+    //                 'totalpage' => 0,
+    //                 'currentpage' => 1,
+    //                 'courses' => []
+    //             ]
+    //         ];
+    //     }
+    
+    //     // Kiểm tra userid có hợp lệ không
+    //     // if (empty($userid)) {
+    //     //     return [
+    //     //         'status' => false,
+    //     //         'message' => 'Invalid user ID.',
+    //     //         'data' => []
+    //     //     ];
+    //     // }
+    //     $userid = $user->id;
+    
+    //     $total_course_enrolled = $DB->count_records('user_enrolments', ['userid' => $userid]);
+    
+    //     // $enrolledCourses = enrol_get_users_courses($userid);
+
+    //     $enrolledCoursesSql = "SELECT DISTINCT c.fullname, c.id, c.summary, f.filename AS course_image, f.contextid AS f_contextid,
+    //             IFNULL(FROM_UNIXTIME(l.timeaccess, '%d-%m-%Y %H:%i:%s'), 'N/A') AS last_access_time,
+    //             IFNULL(FROM_UNIXTIME(c.enddate, '%d-%m-%Y'), 'N/A') AS course_enddate,
+    //             cat.id AS categoryid, cat.name AS categoryname
+    //     FROM mdl_user u
+    //     JOIN mdl_role_assignments ra ON u.id = ra.userid
+    //     JOIN mdl_context ctx ON ra.contextid = ctx.id
+    //     JOIN mdl_role r ON ra.roleid = r.id
+    //     JOIN mdl_course c ON ctx.instanceid = c.id
+    //     LEFT JOIN mdl_files f ON f.contextid = ctx.id AND f.component = 'course' AND f.filearea = 'overviewfiles' AND f.filename <> '.'
+    //     LEFT JOIN mdl_user_lastaccess l ON l.courseid = c.id AND l.userid = u.id
+    //     JOIN mdl_course_categories cat ON c.category = cat.id
+    //     WHERE u.id = $userid";
+
+    //     if ($role == 'student') {
+    //         $enrolledCoursesSql .= " and r.shortname = 'student'";
+    //     }
+
+    //     if ($role == 'teacher') {
+    //         $enrolledCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+    //     }
+
+    //     if (!empty($courseid)) {
+    //         $enrolledCoursesSql .= " and c.id = $courseid";
+    //     }
+
+    //     if (!empty($coursename)) {
+    //         $enrolledCoursesSql .= " and c.fullname like '%$coursename%'";
+    //     }
+
+    //     $enrolledCoursesSql .= " ORDER BY l.timeaccess DESC";
+
+    //     if (!empty($limit)) {
+    //         $enrolledCoursesSql .= " LIMIT $limit OFFSET $offset";
+    //     }
+
+    //     $enrolledCoursesQuery = $DB->get_records_sql($enrolledCoursesSql);
+
+    //     $countCourseCompleted = 0;
+    //     $countActivityCompleted = 0;
+    //     $countTotalActivityDue = 0;
+
+    //     $courseDetails = [];
+
+    //     if (!empty($enrolledCoursesQuery)) {
+    //         foreach ($enrolledCoursesQuery as $course) {
+    //             $courseId = $course->id;
+    //             $courseData = [
+    //                 'id' => $course->id,
+    //                 'coursename' => $course->fullname,
+    //                 'summary' => $course->summary,
+    //                 'course_image' => (new moodle_url($course->course_image ? $CFG->wwwroot . '/pluginfile.php/' . $course->f_contextid . '/course/overviewfiles/' . $course->course_image : ''))->out(),
+    //                 'last_access_time' => $course->last_access_time,
+    //                 'course_enddate' => $course->course_enddate,
+    //                 'categoryid' => $course->categoryid,
+    //                 'categoryname' => $course->categoryname,
+    //                 'view_url' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(),
+    //             ];
+
+    //             // Lấy trạng thái hoàn thành các activity trong khóa học
+    //             $get_activities_completion_status = core_completion_external::get_activities_completion_status($courseId, $userid);
+    //             if (!empty($get_activities_completion_status['statuses'])) {
+    //                 $totalActivity = count($get_activities_completion_status['statuses']);
+    //                 $completedActivities = array_filter($get_activities_completion_status['statuses'], function ($status) {
+    //                     return $status['state'] == 1 || $status['state'] == 2;
+    //                 });
+    //                 $numberActivityCompletion = count($completedActivities);
+    //                 $totalActivityDue = $totalActivity - count($completedActivities);
+        
+    //                 $countTotalActivityDue += $totalActivityDue;
+    //                 $countActivityCompleted += $numberActivityCompletion;
+    //             }
+    //             $courseData['total_activity_completion'] = (int) $numberActivityCompletion;
+    //             $courseData['total_activity_due'] = (int) $totalActivityDue;
+    //             $courseData['total_activity'] = (int) $totalActivity;
+    //             // Sử dụng try-catch để xử lý trường hợp không có tiêu chí hoàn thành
+    //             try {
+    //                 $get_course_completion_status = core_completion_external::get_course_completion_status($courseId, $userid);
+
+    //                 if (!empty($get_course_completion_status['completionstatus']['completions'])) {
+    //                     $completionStatus = $get_course_completion_status['completionstatus'];
+    //                     $totalCompletions = count($completionStatus['completions']);
+    //                     $completedCompletions = array_filter($completionStatus['completions'], function ($completion) {
+    //                         return isset($completion['complete']) && $completion['complete'] === true;
+    //                     });
+        
+    //                     $completedCount = count($completedCompletions);
+        
+    //                     $hasOtherType = array_reduce($completionStatus['completions'], function ($carry, $completion) {
+    //                         return $carry || (int)$completion['type'] !== 4;
+    //                     }, false);
+
+    //                     if ($hasOtherType) {
+    //                         $completionPercentage = $totalActivity > 0
+    //                             ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
+    //                             : 0;
+    //                     } else {
+    //                         $completionPercentage = $totalCompletions > 0
+    //                             ? round(($completedCount / $totalCompletions) * 100, 2)
+    //                             : 0;
+    //                     }
+    //                 }else{
+    //                     $completionPercentage = $totalActivity > 0
+    //                         ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
+    //                         : 0;
+    //                 }
+    //             } catch (moodle_exception $e) {
+    //                 $completionPercentage = $totalActivity > 0
+    //                     ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
+    //                     : 0;
+    //                 $courseData['completionPercentage'] = (int) $completionPercentage;
+    //                 // $courseDetails[] = $courseData;
+    //             }
+
+    //             $courseData['completionPercentage'] = (int) $completionPercentage;
+
+    //             if (isset($completionPercentage) && $completionPercentage == 100) {
+    //                 $countCourseCompleted++;
+    //             }
+
+    //             $courseDetails[] = $courseData;
+    //         }
+    //     }
+
+    //     // Tính tổng số trang và trang hiện tại
+    //     $totalCoursesSql = "SELECT COUNT(DISTINCT c.id) as total_count
+    //     FROM mdl_user u
+    //     JOIN mdl_role_assignments ra ON u.id = ra.userid
+    //     JOIN mdl_context ctx ON ra.contextid = ctx.id
+    //     JOIN mdl_role r ON ra.roleid = r.id
+    //     JOIN mdl_course c ON ctx.instanceid = c.id
+    //     WHERE u.id = $userid";
+
+    //     if ($role == 'student') {
+    //         $totalCoursesSql .= " and r.shortname = 'student'";
+    //     }
+
+    //     if ($role == 'teacher') {
+    //         $totalCoursesSql .= " and (r.shortname = 'editingteacher' OR r.shortname = 'teacher')";
+    //     }
+
+    //     if (!empty($courseid)) {
+    //         $totalCoursesSql .= " and c.id = $courseid";
+    //     }
+
+    //     if (!empty($coursename)) {
+    //         $totalCoursesSql .= " and c.fullname like '%$coursename%'";
+    //     }
+
+    //     $mods_count = $DB->get_record_sql($totalCoursesSql);
+    //     $countTotalCourses = $mods_count->total_count;
+
+    //     $totalpage = 1;
+    //     $currentpage = 1;
+
+    //     if (!empty($limit)) {
+    //         $totalpage = ($limit > 0) ? ceil($countTotalCourses / $limit) : 1; 
+    //         $currentpage = ($offset / $limit) + 1; // Trang hiện tại
+    //     }
+
+    //     $dataReturn = [
+    //         'status' => true,
+    //         'message' => 'successfully',
+    //         'data' => [
+    //             'totalpage' => (int) $totalpage,
+    //             'currentpage' => (int) $currentpage,
+    //             // 'total_course_enrolled' => (int) $total_course_enrolled,
+    //             // // 'total_course_enrolled' => count($courseDetails),
+    //             // 'total_course_completed' => (int) $countCourseCompleted,
+    //             // 'total_activity_completed' => (int) $countActivityCompleted,
+    //             // 'total_activity_due' => (int) $countTotalActivityDue,
+    //             'courses' => $courseDetails
+    //         ]
+    //     ];
+
+    //     return $dataReturn;
+    // }
+
     public static function get_data_basic_course_information_checkmate($useremail, $role, $limit, $offset, $courseid, $coursename) {
         global $DB, $OUTPUT;
 
@@ -7906,8 +8127,71 @@ class local_custom_service_external extends external_api
         $courseDetails = [];
 
         if (!empty($enrolledCoursesQuery)) {
+            // ========================= Tối ưu hóa: Preload completion data =========================
+            $courseIds = array_map(function($c) { return (int)$c->id; }, $enrolledCoursesQuery);
+            
+            // Batch load tất cả course modules với completion enabled
+            $allCmidByCourse = [];
+            $completionByCmid = [];
+            if (!empty($courseIds)) {
+                list($insql, $params) = $DB->get_in_or_equal($courseIds, SQL_PARAMS_NAMED);
+                $params['userid'] = $userid;
+                
+                // Load tất cả course modules có completion enabled
+                $cms = $DB->get_records_sql(
+                    "SELECT cm.id, cm.course, cm.completion
+                       FROM {course_modules} cm
+                      WHERE cm.course {$insql}
+                        AND cm.completion > 0
+                        AND cm.deletioninprogress = 0
+                        AND cm.visible = 1",
+                    $params
+                );
+                
+                foreach ($cms as $cm) {
+                    $allCmidByCourse[$cm->course][] = $cm->id;
+                }
+                
+                // Batch load completion states cho tất cả modules
+                if (!empty($cms)) {
+                    $allCmids = array_map(function($cm) { return $cm->id; }, $cms);
+                    list($cmidsql, $cmidparams) = $DB->get_in_or_equal($allCmids, SQL_PARAMS_NAMED);
+                    $cmidparams['userid'] = $userid;
+                    
+                    $completions = $DB->get_records_sql(
+                        "SELECT coursemoduleid, completionstate
+                           FROM {course_modules_completion}
+                          WHERE userid = :userid
+                            AND coursemoduleid {$cmidsql}",
+                        $cmidparams
+                    );
+                    
+                    foreach ($completions as $comp) {
+                        $completionByCmid[$comp->coursemoduleid] = (int)$comp->completionstate;
+                    }
+                }
+                
+                // Batch load course completion criteria
+                $courseCompletionCriteria = [];
+                $criteria = $DB->get_records_sql(
+                    "SELECT c.id AS courseid, cc.id, cc.course, cc.criteriatype
+                       FROM {course_completion_criteria} cc
+                       JOIN {course} c ON c.id = cc.course
+                      WHERE c.id {$insql}",
+                    $params
+                );
+                
+                foreach ($criteria as $criterion) {
+                    $courseCompletionCriteria[$criterion->courseid][] = [
+                        'type' => (int)$criterion->criteriatype,
+                        'complete' => false // Sẽ tính sau
+                    ];
+                }
+            }
+            // ======================= Hết phần tối ưu hóa =========================
+
             foreach ($enrolledCoursesQuery as $course) {
-                $courseId = $course->id;
+                $courseId = (int)$course->id;
                 $courseData = [
                     'id' => $course->id,
                     'coursename' => $course->fullname,
@@ -7920,64 +8204,59 @@ class local_custom_service_external extends external_api
                     'view_url' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(),
                 ];
 
-                // Lấy trạng thái hoàn thành các activity trong khóa học
-                $get_activities_completion_status = core_completion_external::get_activities_completion_status($courseId, $userid);
-                if (!empty($get_activities_completion_status['statuses'])) {
-                    $totalActivity = count($get_activities_completion_status['statuses']);
-                    $completedActivities = array_filter($get_activities_completion_status['statuses'], function ($status) {
-                        return $status['state'] == 1 || $status['state'] == 2;
-                    });
-                    $numberActivityCompletion = count($completedActivities);
-                    $totalActivityDue = $totalActivity - count($completedActivities);
-        
-                    $countTotalActivityDue += $totalActivityDue;
-                    $countActivityCompleted += $numberActivityCompletion;
+                // Tính completion từ dữ liệu đã preload
+                $courseCmids = $allCmidByCourse[$courseId] ?? [];
+                $totalActivity = count($courseCmids);
+                $numberActivityCompletion = 0;
+                
+                foreach ($courseCmids as $cmid) {
+                    $state = $completionByCmid[$cmid] ?? null;
+                    if ($state !== null && in_array($state, [1, 2])) {
+                        $numberActivityCompletion++;
+                    }
                 }
+                
+                $totalActivityDue = $totalActivity - $numberActivityCompletion;
+                $countTotalActivityDue += $totalActivityDue;
+                $countActivityCompleted += $numberActivityCompletion;
+                
                 $courseData['total_activity_completion'] = (int) $numberActivityCompletion;
                 $courseData['total_activity_due'] = (int) $totalActivityDue;
                 $courseData['total_activity'] = (int) $totalActivity;
-                // Sử dụng try-catch để xử lý trường hợp không có tiêu chí hoàn thành
-                try {
-                    $get_course_completion_status = core_completion_external::get_course_completion_status($courseId, $userid);
-
-                    if (!empty($get_course_completion_status['completionstatus']['completions'])) {
-                        $completionStatus = $get_course_completion_status['completionstatus'];
-                        $totalCompletions = count($completionStatus['completions']);
-                        $completedCompletions = array_filter($completionStatus['completions'], function ($completion) {
-                            return isset($completion['complete']) && $completion['complete'] === true;
-                        });
-        
-                        $completedCount = count($completedCompletions);
-        
-                        $hasOtherType = array_reduce($completionStatus['completions'], function ($carry, $completion) {
-                            return $carry || (int)$completion['type'] !== 4;
-                        }, false);
-
-                        if ($hasOtherType) {
-                            $completionPercentage = $totalActivity > 0
-                                ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
-                                : 0;
-                        } else {
-                            $completionPercentage = $totalCompletions > 0
-                                ? round(($completedCount / $totalCompletions) * 100, 2)
-                                : 0;
+                
+                // Tính completion percentage
+                $completionPercentage = 0;
+                $courseCriteria = $courseCompletionCriteria[$courseId] ?? [];
+                
+                if (!empty($courseCriteria)) {
+                    $totalCompletions = count($courseCriteria);
+                    $hasOtherType = false;
+                    foreach ($courseCriteria as $criterion) {
+                        if ((int)$criterion['type'] !== 4) {
+                            $hasOtherType = true;
+                            break;
                         }
-                    }else{
+                    }
+                    
+                    if ($hasOtherType) {
+                        $completionPercentage = $totalActivity > 0
+                            ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
+                            : 0;
+                    } else {
+                        // Type 4 = completion by activities, tính từ activity completion
                         $completionPercentage = $totalActivity > 0
                             ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
                             : 0;
                     }
-                } catch (moodle_exception $e) {
+                } else {
                     $completionPercentage = $totalActivity > 0
                         ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
                         : 0;
-                    $courseData['completionPercentage'] = (int) $completionPercentage;
-                    // $courseDetails[] = $courseData;
                 }
 
                 $courseData['completionPercentage'] = (int) $completionPercentage;
 
-                if (isset($completionPercentage) && $completionPercentage == 100) {
+                if ($completionPercentage == 100) {
                     $countCourseCompleted++;
                 }
 

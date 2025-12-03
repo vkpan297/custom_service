@@ -9358,20 +9358,24 @@ class local_custom_service_external extends external_api
 
         $gradebymodule = [];
         $gradeitems = $DB->get_records_sql(
-            "SELECT itemmodule, iteminstance, grademax, gradepass
-               FROM {grade_items}
-              WHERE courseid = :courseid
-                AND itemtype = 'mod'",
+            "SELECT  cm.id as cmid, gi.itemmodule, gi.iteminstance, gi.grademax, gi.gradepass
+               FROM {grade_items} gi
+               LEFT JOIN {course_modules} cm ON cm.instance = gi.iteminstance 
+                    AND cm.course = gi.courseid
+               JOIN {modules} m ON m.name = gi.itemmodule AND m.id = cm.module
+              WHERE gi.courseid = :courseid
+                AND gi.itemtype = 'mod'",
             ['courseid' => $courseid]
         );
         foreach ($gradeitems as $gradeitem) {
-            if (!empty($gradeitem->itemmodule) && !empty($gradeitem->iteminstance)) {
-                $gradebymodule[$gradeitem->itemmodule . '_' . $gradeitem->iteminstance] = [
+            if (!empty($gradeitem->cmid)) {
+                $gradebymodule[$gradeitem->cmid] = [
                     'grade' => $gradeitem->grademax,
                     'gradepass' => $gradeitem->gradepass
                 ];
             }
         }
+
 
         $moduledetails = [];
         foreach ($instancesbymodname as $modname => $instanceids) {
@@ -9470,8 +9474,7 @@ class local_custom_service_external extends external_api
                     $completionminattempts = $detailrecord->completionminattempts;
                 }
 
-                $gradekey = $modname . '_' . $instanceid;
-                $gradeinfo = $gradebymodule[$gradekey] ?? null;
+                $gradeinfo = $gradebymodule[$cmid] ?? null;
 
                 $activities[] = [
                     'id' => $cmid,

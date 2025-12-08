@@ -8160,44 +8160,58 @@ class local_custom_service_external extends external_api
             // ========================= Tối ưu hóa: Preload completion data =========================
             $courseIds = array_map(function($c) { return (int)$c->id; }, $enrolledCoursesQuery);
             
-            // Batch load tất cả course modules với completion enabled
+            // Batch load sections và course modules (giống get_content_course - bỏ qua section 0)
             $allCmidByCourse = [];
             $completionByCmid = [];
             if (!empty($courseIds)) {
                 list($insql, $params) = $DB->get_in_or_equal($courseIds, SQL_PARAMS_NAMED);
                 $params['userid'] = $userid;
                 
-                // Load tất cả course modules có completion enabled
-                $cms = $DB->get_records_sql(
-                    "SELECT cm.id, cm.course, cm.completion
-                       FROM {course_modules} cm
-                      WHERE cm.course {$insql}
-                        AND cm.completion > 0
-                        AND cm.deletioninprogress = 0
-                        AND cm.visible = 1",
+                // Load sections (bỏ qua section 0) - giống get_content_course
+                $sections = $DB->get_records_sql(
+                    "SELECT id, course, section
+                       FROM {course_sections}
+                      WHERE course {$insql}
+                        AND section > 0",
                     $params
                 );
                 
-                foreach ($cms as $cm) {
-                    $allCmidByCourse[$cm->course][] = $cm->id;
-                }
+                // Lấy section IDs (không phải section 0)
+                $sectionIds = array_map(function($s) { return (int)$s->id; }, $sections);
                 
-                // Batch load completion states cho tất cả modules
-                if (!empty($cms)) {
-                    $allCmids = array_map(function($cm) { return $cm->id; }, $cms);
-                    list($cmidsql, $cmidparams) = $DB->get_in_or_equal($allCmids, SQL_PARAMS_NAMED);
-                    $cmidparams['userid'] = $userid;
-                    
-                    $completions = $DB->get_records_sql(
-                        "SELECT coursemoduleid, completionstate
-                           FROM {course_modules_completion}
-                          WHERE userid = :userid
-                            AND coursemoduleid {$cmidsql}",
-                        $cmidparams
+                // Load course modules CHỈ trong các sections (không phải section 0)
+                // Giống như get_content_course để đếm đúng total_activity
+                if (!empty($sectionIds)) {
+                    list($sectioninsql, $sectionparams) = $DB->get_in_or_equal($sectionIds, SQL_PARAMS_NAMED);
+                    $cms = $DB->get_records_sql(
+                        "SELECT cm.id, cm.course
+                           FROM {course_modules} cm
+                          WHERE cm.course {$insql}
+                            AND cm.section {$sectioninsql}",
+                        array_merge($params, $sectionparams)
                     );
                     
-                    foreach ($completions as $comp) {
-                        $completionByCmid[$comp->coursemoduleid] = (int)$comp->completionstate;
+                    foreach ($cms as $cm) {
+                        $allCmidByCourse[$cm->course][] = $cm->id;
+                    }
+                    
+                    // Batch load completion states cho tất cả modules
+                    if (!empty($cms)) {
+                        $allCmids = array_map(function($cm) { return $cm->id; }, $cms);
+                        list($cmidsql, $cmidparams) = $DB->get_in_or_equal($allCmids, SQL_PARAMS_NAMED);
+                        $cmidparams['userid'] = $userid;
+                        
+                        $completions = $DB->get_records_sql(
+                            "SELECT coursemoduleid, completionstate
+                               FROM {course_modules_completion}
+                              WHERE userid = :userid
+                                AND coursemoduleid {$cmidsql}",
+                            $cmidparams
+                        );
+                        
+                        foreach ($completions as $comp) {
+                            $completionByCmid[$comp->coursemoduleid] = (int)$comp->completionstate;
+                        }
                     }
                 }
                 
@@ -8486,44 +8500,58 @@ class local_custom_service_external extends external_api
             // ========================= Tối ưu hóa: Preload completion data =========================
             $courseIds = array_map(function($c) { return (int)$c->id; }, $enrolledCoursesQuery);
             
-            // Batch load tất cả course modules với completion enabled
+            // Batch load sections và course modules (giống get_content_course - bỏ qua section 0)
             $allCmidByCourse = [];
             $completionByCmid = [];
             if (!empty($courseIds)) {
                 list($insql, $params) = $DB->get_in_or_equal($courseIds, SQL_PARAMS_NAMED);
                 $params['userid'] = $userid;
                 
-                // Load tất cả course modules có completion enabled
-                $cms = $DB->get_records_sql(
-                    "SELECT cm.id, cm.course, cm.completion
-                       FROM {course_modules} cm
-                      WHERE cm.course {$insql}
-                        AND cm.completion > 0
-                        AND cm.deletioninprogress = 0
-                        AND cm.visible = 1",
+                // Load sections (bỏ qua section 0) - giống get_content_course
+                $sections = $DB->get_records_sql(
+                    "SELECT id, course, section
+                       FROM {course_sections}
+                      WHERE course {$insql}
+                        AND section > 0",
                     $params
                 );
                 
-                foreach ($cms as $cm) {
-                    $allCmidByCourse[$cm->course][] = $cm->id;
-                }
+                // Lấy section IDs (không phải section 0)
+                $sectionIds = array_map(function($s) { return (int)$s->id; }, $sections);
                 
-                // Batch load completion states cho tất cả modules
-                if (!empty($cms)) {
-                    $allCmids = array_map(function($cm) { return $cm->id; }, $cms);
-                    list($cmidsql, $cmidparams) = $DB->get_in_or_equal($allCmids, SQL_PARAMS_NAMED);
-                    $cmidparams['userid'] = $userid;
-                    
-                    $completions = $DB->get_records_sql(
-                        "SELECT coursemoduleid, completionstate
-                           FROM {course_modules_completion}
-                          WHERE userid = :userid
-                            AND coursemoduleid {$cmidsql}",
-                        $cmidparams
+                // Load course modules CHỈ trong các sections (không phải section 0)
+                // Giống như get_content_course để đếm đúng total_activity
+                if (!empty($sectionIds)) {
+                    list($sectioninsql, $sectionparams) = $DB->get_in_or_equal($sectionIds, SQL_PARAMS_NAMED);
+                    $cms = $DB->get_records_sql(
+                        "SELECT cm.id, cm.course
+                           FROM {course_modules} cm
+                          WHERE cm.course {$insql}
+                            AND cm.section {$sectioninsql}",
+                        array_merge($params, $sectionparams)
                     );
                     
-                    foreach ($completions as $comp) {
-                        $completionByCmid[$comp->coursemoduleid] = (int)$comp->completionstate;
+                    foreach ($cms as $cm) {
+                        $allCmidByCourse[$cm->course][] = $cm->id;
+                    }
+                    
+                    // Batch load completion states cho tất cả modules
+                    if (!empty($cms)) {
+                        $allCmids = array_map(function($cm) { return $cm->id; }, $cms);
+                        list($cmidsql, $cmidparams) = $DB->get_in_or_equal($allCmids, SQL_PARAMS_NAMED);
+                        $cmidparams['userid'] = $userid;
+                        
+                        $completions = $DB->get_records_sql(
+                            "SELECT coursemoduleid, completionstate
+                               FROM {course_modules_completion}
+                              WHERE userid = :userid
+                                AND coursemoduleid {$cmidsql}",
+                            $cmidparams
+                        );
+                        
+                        foreach ($completions as $comp) {
+                            $completionByCmid[$comp->coursemoduleid] = (int)$comp->completionstate;
+                        }
                     }
                 }
                 

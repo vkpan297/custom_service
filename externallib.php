@@ -8740,8 +8740,15 @@ class local_custom_service_external extends external_api
             array(
                 'useremail' => new external_value(PARAM_TEXT, 'User Email Moodle', VALUE_DEFAULT, ''),
                 'courseid' => new external_value(PARAM_INT, 'courseid', VALUE_DEFAULT, 0),
-                // 'page' => new external_value(PARAM_INT, 'Page number', VALUE_DEFAULT, 1),
-                // 'perpage' => new external_value(PARAM_INT, 'Items per page', VALUE_DEFAULT, 10),
+                'page' => new external_value(PARAM_INT, 'Page number', VALUE_DEFAULT, 0),
+                'perpage' => new external_value(PARAM_INT, 'Items per page', VALUE_DEFAULT, 0),
+                'section_id' => new external_value(PARAM_INT, 'Section ID', VALUE_DEFAULT, 0),
+                'section_ids' => new external_multiple_structure(
+                    new external_value(PARAM_INT, 'Section ID'),
+                    'Array of section IDs',
+                    VALUE_DEFAULT,
+                    array()
+                ),
             )
         );
     }
@@ -8803,571 +8810,26 @@ class local_custom_service_external extends external_api
         }
 
         // ========================= Tối ưu hóa truy vấn =========================
-        $sections = $DB->get_records_sql(
-            "SELECT id, section, name
-               FROM {course_sections}
-              WHERE course = :courseid
-           ORDER BY section ASC",
-            ['courseid' => $courseid]
-        );
-
-        $modulesql = "SELECT cm.id,
-                             cm.section,
-                             cm.instance,
-                             cm.visible,
-                             cm.availability,
-                             cm.completiongradeitemnumber,
-                             cm.completionview,
-                             cm.completionexpected,
-                             cm.completionpassgrade,
-                             m.name AS modname
-                        FROM {course_modules} cm
-                        JOIN {modules} m ON m.id = cm.module
-                       WHERE cm.course = :courseid
-                    ORDER BY cm.section, cm.id";
-        $coursemoduleRecords = $DB->get_records_sql($modulesql, ['courseid' => $courseid]);
-
-        $modulesbysection = [];
-        $modulesbyid = [];
-        $allmoduleids = [];
-        $instancesbymodname = [];
-        foreach ($coursemoduleRecords as $cmrecord) {
-            $modulesbysection[$cmrecord->section][] = $cmrecord;
-            $modulesbyid[$cmrecord->id] = $cmrecord;
-            $allmoduleids[$cmrecord->id] = $cmrecord->id;
-            if (!empty($cmrecord->instance)) {
-                if (!isset($instancesbymodname[$cmrecord->modname])) {
-                    $instancesbymodname[$cmrecord->modname] = [];
-                }
-                $instancesbymodname[$cmrecord->modname][] = (int)$cmrecord->instance;
-            }
-        }
-
-        $allmoduleids = array_values($allmoduleids);
-
-        $completionmap = [];
-        if (!empty($allmoduleids)) {
-            list($insql, $params) = $DB->get_in_or_equal($allmoduleids, SQL_PARAMS_NAMED);
-            $params['userid'] = $userid;
-            $sql = "SELECT coursemoduleid, completionstate
-                      FROM {course_modules_completion}
-                     WHERE userid = :userid
-                       AND coursemoduleid {$insql}";
-            $completionmap = $DB->get_records_sql_menu($sql, $params);
-        }
-
-        $gradebymodule = [];
-        $gradeitems = $DB->get_records_sql(
-            "SELECT itemmodule, iteminstance, grademax, gradepass
-               FROM {grade_items}
-              WHERE courseid = :courseid
-                AND itemtype = 'mod'",
-            ['courseid' => $courseid]
-        );
-        foreach ($gradeitems as $gradeitem) {
-            if (!empty($gradeitem->itemmodule) && !empty($gradeitem->iteminstance)) {
-                $gradebymodule[$gradeitem->itemmodule . '_' . $gradeitem->iteminstance] = [
-                    'grade' => $gradeitem->grademax,
-                    'gradepass' => $gradeitem->gradepass
-                ];
-            }
-        }
-
-        $moduledetails = [];
-        foreach ($instancesbymodname as $modname => $instanceids) {
-            $instanceids = array_values(array_unique($instanceids));
-            if (empty($instanceids)) {
-                continue;
-            }
-            list($insql, $params) = $DB->get_in_or_equal($instanceids, SQL_PARAMS_NAMED);
-            try {
-                $records = $DB->get_records_sql("SELECT * FROM {{$modname}} WHERE id {$insql}", $params);
-            } catch (Exception $e) {
-                debugging("Unable to fetch module data for {$modname}: " . $e->getMessage());
-                $records = [];
-            }
-            $moduledetails[$modname] = $records;
-        }
-
-        $result = [];
-        foreach ($sections as $section) {
-            if ($section->section == 0) {
-                continue;
-            }
-
-            $sectionid = $section->id;
-            $sectionname = trim((string)$section->name);
-            if ($sectionname === '') {
-                $sectionname = 'Section ' . $section->section;
-            }
-            $sectionmodules = $modulesbysection[$sectionid] ?? [];
-            $total_activity = count($sectionmodules);
-            $total_activity_completion = 0;
-            $activities = [];
-
-            if (empty($sectionmodules)) {
-                $result[] = [
-                    'id' => $sectionid,
-                    'name' => $sectionname,
-                    'total_activity' => 0,
-                    'total_activity_completion' => 0,
-                    'completion_percentage' => 0,
-                    'activities' => []
-                ];
-                continue;
-            }
-
-            foreach ($sectionmodules as $module) {
-                $cmid = (int)$module->id;
-                if (!$cmid) {
-                    continue;
-                }
-
-                $completionstate = $completionmap[$cmid] ?? null;
-                $is_completed = ($completionstate !== null && in_array((int)$completionstate, [1, 2]));
-                if ($is_completed) {
-                    $total_activity_completion++;
-                }
-
-                $availability = [];
-                $rawavailability = $module->availability ?? '';
-                if (!empty($rawavailability)) {
-                    $availability_data = json_decode($rawavailability, true);
-                    if (!empty($availability_data['c'])) {
-                        foreach ($availability_data['c'] as $condition) {
-                            if ($condition['type'] === 'completion' && !empty($condition['cm'])) {
-                                $requiredcmid = (int)$condition['cm'];
-                                if (!isset($modulesbyid[$requiredcmid])) {
-                                    continue;
-                                }
-                                $requiredcm = $modulesbyid[$requiredcmid];
-                                $required_completion = $completionmap[$requiredcmid] ?? null;
-                                $requireddetail = $moduledetails[$requiredcm->modname][$requiredcm->instance] ?? null;
-                                $availability[] = [
-                                    'id' => $requiredcmid,
-                                    'name' => $requireddetail->name ?? $requiredcm->modname ?? 'Unknown',
-                                    'modname' => $requiredcm->modname ?? 'Unknown',
-                                    'topic_id' => $requiredcm->section ?? null,
-                                    'completed' => ($required_completion !== null && in_array((int)$required_completion, [1, 2]))
-                                ];
-                            }
-                        }
-                    }
-                }
-
-                $modname = $module->modname;
-                $instanceid = $module->instance;
-                $detailrecord = $moduledetails[$modname][$instanceid] ?? null;
-
-                $description = '';
-                if ($detailrecord && property_exists($detailrecord, 'intro') && $detailrecord->intro !== null) {
-                    $description = $detailrecord->intro;
-                }
-
-                $activityname = $detailrecord->name ?? $modname;
-                $completionminattempts = null;
-                if ($detailrecord && property_exists($detailrecord, 'completionminattempts')) {
-                    $completionminattempts = $detailrecord->completionminattempts;
-                }
-
-                $gradekey = $modname . '_' . $instanceid;
-                $gradeinfo = $gradebymodule[$gradekey] ?? null;
-
-                $activities[] = [
-                    'id' => $cmid,
-                    'name' => $activityname,
-                    'description' => $description,
-                    'modname' => $modname,
-                    'completed' => $is_completed,
-                    'availability' => $availability,
-                    'visible' => $module->visible ?? 0,
-                    'completiongradeitemnumber' => $module->completiongradeitemnumber ?? null,
-                    'completionview' => $module->completionview ?? null,
-                    'completionexpected' => $module->completionexpected ?? null,
-                    'completionpassgrade' => $module->completionpassgrade ?? null,
-                    'completionminattempts' => $completionminattempts,
-                    'grade' => $gradeinfo['grade'] ?? 0,
-                    'gradepass' => $gradeinfo['gradepass'] ?? 0,
-                ];
-            }
-
-            $completion_percentage = ($total_activity > 0)
-                ? round(($total_activity_completion / $total_activity) * 100, 2)
-                : 0;
-
-            $course_total_activity += $total_activity;
-            $course_total_activity_completion += $total_activity_completion;
-
-            $result[] = [
-                'id' => $sectionid,
-                'name' => $sectionname,
-                'total_activity' => $total_activity,
-                'total_activity_completion' => $total_activity_completion,
-                'completion_percentage' => $completion_percentage,
-                'activities' => $activities
-            ];
-        }
-
-        $course_total_activity_due = max($course_total_activity - $course_total_activity_completion, 0);
-        $course_completion_percentage = ($course_total_activity > 0)
-            ? round(($course_total_activity_completion / $course_total_activity) * 100, 2)
-            : 0;
-        $course_summary = self::build_course_summary(
-            $course,
-            $userid,
-            $course_total_activity,
-            $course_total_activity_completion,
-            $course_total_activity_due,
-            (int)$course_completion_percentage
-        );
-
-        $dataResponse = [
-            'status' => true,
-            'message' => 'Data retrieved successfully.',
-            'data' => [
-                'course' => $course_summary,
-                'topics' => $result
-            ]
-        ];
-
-        return $dataResponse;
-        // ======================= Hết phần tối ưu hóa ==========================
-    }
-
-    // old code
-    // public static function get_content_course_checkmate_old($useremail, $courseid)
-    // {
-    //     global $DB, $CFG;
-
-    //     require_once($CFG->libdir . '/completionlib.php');
-
-    //     if (empty($courseid)) {
-    //         return [
-    //             'status' => false,
-    //             'message' => 'Invalid course id.',
-    //             'data' => [
-    //                 'course' => self::get_empty_course_structure(),
-    //                 'topics' => []
-    //             ]
-    //         ];
-    //     }
-
-    //     if (empty($useremail)) {
-    //         return [
-    //             'status' => false,
-    //             'message' => 'Invalid user.',
-    //             'data' => [
-    //                 'course' => self::get_empty_course_structure(),
-    //                 'topics' => []
-    //             ]
-    //         ];
-    //     }
-
-    //     // Lấy thông tin user từ email
-    //     $user = $DB->get_record('user', ['email' => $useremail]);
-    //     if (!$user) {
-    //         return [
-    //             'status' => false,
-    //             'message' => 'Invalid user.',
-    //             'data' => [
-    //                 'course' => self::get_empty_course_structure(),
-    //                 'topics' => []
-    //             ]
-    //         ];
-    //     }
-    //     $userid = $user->id;
-
-    //     // Lấy thông tin khóa học
-    //     $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber');
+        // Build SQL query with optional section filtering
+        $section_sql = "SELECT id, section, name
+                          FROM {course_sections}
+                         WHERE course = :courseid";
+        $section_params = ['courseid' => $courseid];
         
-    //     if (!$course) {
-    //         return [
-    //             'status' => false,
-    //             'message' => 'Course not found.',
-    //             'data' => [
-    //                 'course' => self::get_empty_course_structure(),
-    //                 'topics' => []
-    //             ]
-    //         ];
-    //     }
-
-    //     $course_info = self::get_data_basic_course_information_checkmate($useremail, 'all', 0, 0, $courseid, 0);
+        if (!empty($section_id)) {
+            $section_sql .= " AND id = :section_id";
+            $section_params['section_id'] = $section_id;
+        } elseif (!empty($section_ids) && is_array($section_ids)) {
+            $section_ids_clean = array_filter(array_map('intval', $section_ids));
+            if (!empty($section_ids_clean)) {
+                list($insql, $inparams) = $DB->get_in_or_equal($section_ids_clean, SQL_PARAMS_NAMED);
+                $section_sql .= " AND id {$insql}";
+                $section_params = array_merge($section_params, $inparams);
+            }
+        }
         
-    //     // Lấy danh sách sections của course
-    //     $sections = core_course_external::get_course_contents($courseid);
-
-    //     $result = [];
-
-    //     foreach ($sections as $section) {
-    //         if ($section['section'] == 0) continue; // Bỏ qua section 0 (General)
-
-    //         $sectionid = $section['id'];
-    //         $sectionname = $section['name'];
-
-    //         $activities = [];
-    //         $total_activity = count($section['modules']); // Tổng số activity trong section
-    //         $total_activity_completion = 0; // Đếm số activity đã hoàn thành
-
-    //         foreach ($section['modules'] as $module) {
-    //             // Lấy trạng thái hoàn thành của activity
-    //             $completion = $DB->get_record('course_modules_completion', [
-    //                 'coursemoduleid' => $module['id'],
-    //                 'userid' => $userid
-    //             ]);
-
-    //             $moduleDetail = self::get_detail_module($module['id'], $module['modname']);
-
-    //             $moduleDetailDecode = json_decode($moduleDetail['data']);
-
-    //             // Kiểm tra trạng thái hoàn thành (1 hoặc 2)
-    //             $is_completed = ($completion && in_array($completion->completionstate, [1, 2])) ? true : false;
-            
-    //             if ($is_completed) {
-    //                 $total_activity_completion++;
-    //             }
-
-    //             // Xử lý availability (điều kiện hoạt động)
-    //             $availability = [];
-    //             if (!empty($module['availability'])) {
-    //                 // Chuyển đổi availability thành mảng từ chuỗi JSON
-    //                 $availability_data = json_decode($module['availability'], true);
-                    
-    //                 if ($availability_data && isset($availability_data['c'])) {
-    //                     foreach ($availability_data['c'] as $condition) {
-    //                         if ($condition['type'] === 'completion' && isset($condition['cm'])) {
-
-    //                             try {
-    //                                 $required_module = core_course_external::get_course_module($condition['cm']);
-                                    
-    //                                 // Lấy thông tin section của activity yêu cầu
-    //                                 $required_section = $DB->get_record('course_sections', ['id' => $required_module['cm']->section]);
-    //                                 $topic_id = $required_section ? $required_section->id : null;
-                                    
-    //                                 // Kiểm tra trạng thái hoàn thành của activity yêu cầu
-    //                                 $required_completion = $DB->get_record('course_modules_completion', [
-    //                                     'coursemoduleid' => $condition['cm'],
-    //                                     'userid' => $userid
-    //                                 ]);
-                                    
-    //                                 $is_required_completed = ($required_completion && in_array($required_completion->completionstate, [1, 2])) ? true : false;
-                                    
-    //                                 $availability[] = [
-    //                                     'id' => $required_module['cm']->id,
-    //                                     'name' => $required_module['cm']->name ?? 'Unknown',
-    //                                     'modname' => $required_module['cm']->modname ?? 'Unknown',
-    //                                     'topic_id' => $topic_id,
-    //                                     'completed' => $is_required_completed
-    //                                 ];
-    //                             } catch (Exception $e) {
-    //                                 // Nếu module không tồn tại, ghi log và bỏ qua
-    //                                 debugging("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());
-    //                                 // var_dump("Module in availability not found: CMID = {$condition['cm']}. Error: " . $e->getMessage());die;
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-
-    //             try {
-    //                 $detailActivity = core_course_external::get_course_module($module['id']);
-    //             } catch (Exception $e) {
-    //                 debugging("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());
-    //                 // var_dump("Module not found for ID = {$module['id']}. Error: " . $e->getMessage());die;
-    //                 continue; // Bỏ qua module không tồn tại
-    //             }
-                
-    //             $detailModule = json_decode(self::get_detail_module($module['id'], $module['modname'])['data']);
-
-    //             $activities[] = [
-    //                 'id' => $module['id'],
-    //                 'name' => $module['name'],
-    //                 'description' => $moduleDetailDecode->intro,
-    //                 'modname' => $module['modname'],
-    //                 'completed' => $is_completed,
-    //                 'availability' => $availability, // Thêm thông tin về availability
-    //                 'visible' => $detailActivity['cm']->visible,
-    //                 'completiongradeitemnumber' => $detailActivity['cm']->completiongradeitemnumber,
-    //                 'completionview' => $detailActivity['cm']->completionview,
-    //                 'completionexpected' => $detailActivity['cm']->completionexpected,
-    //                 'completionpassgrade' => $detailActivity['cm']->completionpassgrade,
-    //                 'completionminattempts' => $detailModule->completionminattempts,
-    //                 'grade' => $detailActivity['cm']->grade ?? 0,
-    //                 'gradepass' => $detailActivity['cm']->gradepass ?? 0,
-    //             ];
-                
-
-    //             // if(isset($detailActivity['cm']->grade)){
-    //             //     $activities[]['grade'] = $detailActivity['cm']->grade;
-    //             // }
-
-    //             // if(isset($detailActivity['cm']->gradepass)){
-    //             //     $activities[]['gradepass'] = $detailActivity['cm']->gradepass;
-    //             // }
-    //         }
-
-    //         // Tính phần trăm hoàn thành
-    //         $completion_percentage = ($total_activity > 0) ? round(($total_activity_completion / $total_activity) * 100, 2) : 0;
-
-    //         $result[] = [
-    //             'id' => $sectionid,
-    //             'name' => $sectionname,
-    //             'total_activity' => $total_activity,
-    //             'total_activity_completion' => $total_activity_completion,
-    //             'completion_percentage' => $completion_percentage,
-    //             'activities' => $activities
-    //         ];
-    //     }
-
-    //     $dataResponse = [
-    //         'status' => true,
-    //         'message' => 'Data retrieved successfully.',
-    //         'data' => [
-    //             'course' => $course_info['data']['courses'][0],
-    //             'topics' => $result
-    //         ]
-    //     ];
-    //     // var_dump('<pre>');
-    //     // var_dump($dataResponse);die;
-
-    //     return $dataResponse;
-    // }
-
-    public static function get_content_course_checkmate_returns()
-    {
-        return new external_single_structure([
-            'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
-            'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
-            'data' => new external_single_structure([
-                'course' => new external_single_structure([
-                    'id' => new external_value(PARAM_TEXT, 'ID khóa học'),
-                    'coursename' => new external_value(PARAM_TEXT, 'Tên khóa học'),
-                    'summary' => new external_value(PARAM_RAW, 'Mô tả khóa học'),
-                    'course_image' => new external_value(PARAM_RAW, 'Ảnh khóa học'),
-                    'last_access_time' => new external_value(PARAM_TEXT, 'Thời gian truy cập cuối cùng'),
-                    'course_enddate' => new external_value(PARAM_TEXT, 'Thời gian kết thúc khóa học'),
-                    'categoryid' => new external_value(PARAM_TEXT, 'ID danh mục'),
-                    'categoryname' => new external_value(PARAM_TEXT, 'Tên danh mục'),
-                    'view_url' => new external_value(PARAM_TEXT, 'URL khóa học'),
-                    'total_activity_completion' => new external_value(PARAM_INT, 'Tổng số hoạt động chưa hoàn thành'),
-                    'total_activity_due' => new external_value(PARAM_INT, 'Tổng số hoạt động cần hoàn thành'),
-                    'total_activity' => new external_value(PARAM_INT, 'Tổng số hoạt động'),
-                    'completionPercentage' => new external_value(PARAM_INT, 'Phần trăm hoàn thành khóa học')
-                ], 'Thông tin khóa học', VALUE_OPTIONAL),
-                'topics' => new external_multiple_structure(
-                    new external_single_structure([
-                        'id' => new external_value(PARAM_INT, 'Section ID'),
-                        'name' => new external_value(PARAM_RAW, 'Section Name'),
-                        'total_activity' => new external_value(PARAM_INT, 'Total activities in section'),
-                        'total_activity_completion' => new external_value(PARAM_INT, 'Total completed activities in section'),
-                        'completion_percentage' => new external_value(PARAM_FLOAT, 'Completion percentage'),
-                        'activities' => new external_multiple_structure(
-                            new external_single_structure([
-                                'id' => new external_value(PARAM_INT, 'Activity ID'),
-                                'name' => new external_value(PARAM_RAW, 'Activity Name'),
-                                'description' => new external_value(PARAM_RAW, 'Activity description'),
-                                'modname' => new external_value(PARAM_RAW, 'Activity Type'),
-                                'completed' => new external_value(PARAM_BOOL, 'Activity Completion Status'),
-                                'availability' => new external_multiple_structure(
-                                    new external_single_structure([
-                                        'id' => new external_value(PARAM_INT, 'Required Activity ID'),
-                                        'name' => new external_value(PARAM_RAW, 'Required Activity Name'),
-                                        'modname' => new external_value(PARAM_RAW, 'Required Activity Type'),
-                                        'topic_id' => new external_value(PARAM_INT, 'Required Activity Topic ID'),
-                                        'completed' => new external_value(PARAM_BOOL, 'Required Activity Completion Status')
-                                    ])
-                                ),
-                                'visible' => new external_value(PARAM_RAW, 'Trạng thái hiển thị của activity'),
-                                'completiongradeitemnumber' => new external_value(PARAM_RAW, 'Yêu cầu điểm số để hoàn thành', VALUE_OPTIONAL),
-                                'completionview' => new external_value(PARAM_RAW, 'Yêu cầu xem activity để hoàn thành', VALUE_OPTIONAL),
-                                'completionexpected' => new external_value(PARAM_RAW, 'Ngày mong đợi hoàn thành', VALUE_OPTIONAL),
-                                'completionpassgrade' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm đạt chuẩn để hoàn thành', VALUE_OPTIONAL),
-                                'completionminattempts' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm nộp bài để hoàn thành', VALUE_OPTIONAL),
-                                'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
-                                'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
-                            ])
-                        )
-                    ]), 'Danh sách chủ đề', VALUE_OPTIONAL
-                )
-            ])
-        ]);
-    }
-
-    public static function get_content_course_parameters()
-    {
-        return new external_function_parameters(
-            array(
-                'useremail' => new external_value(PARAM_TEXT, 'User Email Moodle', VALUE_DEFAULT, ''),
-                'courseid' => new external_value(PARAM_INT, 'courseid', VALUE_DEFAULT, 0),
-                // 'page' => new external_value(PARAM_INT, 'Page number', VALUE_DEFAULT, 1),
-                // 'perpage' => new external_value(PARAM_INT, 'Items per page', VALUE_DEFAULT, 10),
-            )
-        );
-    }
-
-    public static function get_content_course($useremail, $courseid)
-    {
-        global $DB, $CFG;
-
-        require_once($CFG->libdir . '/completionlib.php');
-
-        if (empty($courseid)) {
-            return [
-                'status' => false,
-                'message' => 'Invalid course id.',
-                'data' => [
-                    'course' => self::get_empty_course_structure(),
-                    'topics' => []
-                ]
-            ];
-        }
-
-        if (empty($useremail)) {
-            return [
-                'status' => false,
-                'message' => 'Invalid user.',
-                'data' => [
-                    'course' => self::get_empty_course_structure(),
-                    'topics' => []
-                ]
-            ];
-        }
-
-        // Lấy thông tin user từ email
-        $user = $DB->get_record('user', ['email' => $useremail]);
-        if (!$user) {
-            return [
-                'status' => false,
-                'message' => 'Invalid user.',
-                'data' => [
-                    'course' => self::get_empty_course_structure(),
-                    'topics' => []
-                ]
-            ];
-        }
-        $userid = $user->id;
-
-        // Lấy thông tin khóa học
-        $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber, category, enddate');
-        
-        if (!$course) {
-            return [
-                'status' => false,
-                'message' => 'Course not found.',
-                'data' => [
-                    'course' => self::get_empty_course_structure(),
-                    'topics' => []
-                ]
-            ];
-        }
-
-        // ========================= Tối ưu hóa truy vấn =========================
-        $sections = $DB->get_records_sql(
-            "SELECT id, section, name
-               FROM {course_sections}
-              WHERE course = :courseid
-           ORDER BY section ASC",
-            ['courseid' => $courseid]
-        );
+        $section_sql .= " ORDER BY section ASC";
+        $sections = $DB->get_records_sql($section_sql, $section_params);
 
         $modulesql = "SELECT cm.id,
                              cm.section,
@@ -9451,11 +8913,33 @@ class local_custom_service_external extends external_api
             $moduledetails[$modname] = $records;
         }
 
-        $result = [];
+        // Initialize course totals (used for SQL filtering, not in response)
+        $course_total_activity = 0;
+        $course_total_activity_completion = 0;
+
+        // Filter out section 0 (general section) before pagination
+        $filtered_sections = [];
         foreach ($sections as $section) {
-            if ($section->section == 0) {
-                continue;
+            if ($section->section != 0) {
+                $filtered_sections[] = $section;
             }
+        }
+
+        // Apply pagination if page and perpage are provided
+        $total_sections = count($filtered_sections);
+        $paginated_sections = $filtered_sections;
+        $currentpage = 1;
+        $totalpage = 1;
+
+        if ($page > 0 && $perpage > 0) {
+            $offset = ($page - 1) * $perpage;
+            $totalpage = ceil($total_sections / $perpage);
+            $currentpage = $page;
+            $paginated_sections = array_slice($filtered_sections, $offset, $perpage);
+        }
+
+        $result = [];
+        foreach ($paginated_sections as $section) {
 
             $sectionid = $section->id;
             $sectionname = trim((string)$section->name);
@@ -9569,17 +9053,16 @@ class local_custom_service_external extends external_api
             ];
         }
 
+        // Use course totals for SQL filtering (not returned in response)
         $course_total_activity_due = max($course_total_activity - $course_total_activity_completion, 0);
         $course_completion_percentage = ($course_total_activity > 0)
             ? round(($course_total_activity_completion / $course_total_activity) * 100, 2)
             : 0;
+        
+        // Build course summary without the removed fields
         $course_summary = self::build_course_summary(
             $course,
-            $userid,
-            $course_total_activity,
-            $course_total_activity_completion,
-            $course_total_activity_due,
-            (int)$course_completion_percentage
+            $userid
         );
 
         $dataResponse = [
@@ -9587,7 +9070,422 @@ class local_custom_service_external extends external_api
             'message' => 'Data retrieved successfully.',
             'data' => [
                 'course' => $course_summary,
-                'topics' => $result
+                'topics' => $result,
+                'pagination' => [
+                    'totalpage' => (int) $totalpage,
+                    'currentpage' => (int) $currentpage,
+                    'total_sections' => (int) $total_sections
+                ]
+            ]
+        ];
+
+        return $dataResponse;
+        // ======================= Hết phần tối ưu hóa ==========================
+    }
+
+    public static function get_content_course_checkmate_returns()
+    {
+        return new external_single_structure([
+            'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
+            'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
+            'data' => new external_single_structure([
+                'course' => new external_single_structure([
+                    'id' => new external_value(PARAM_TEXT, 'ID khóa học'),
+                    'coursename' => new external_value(PARAM_TEXT, 'Tên khóa học'),
+                    'summary' => new external_value(PARAM_RAW, 'Mô tả khóa học'),
+                    'course_image' => new external_value(PARAM_RAW, 'Ảnh khóa học'),
+                    'last_access_time' => new external_value(PARAM_TEXT, 'Thời gian truy cập cuối cùng'),
+                    'course_enddate' => new external_value(PARAM_TEXT, 'Thời gian kết thúc khóa học'),
+                    'categoryid' => new external_value(PARAM_TEXT, 'ID danh mục'),
+                    'categoryname' => new external_value(PARAM_TEXT, 'Tên danh mục'),
+                    'view_url' => new external_value(PARAM_TEXT, 'URL khóa học')
+                ], 'Thông tin khóa học', VALUE_OPTIONAL),
+                'pagination' => new external_single_structure([
+                    'totalpage' => new external_value(PARAM_INT, 'Tổng số trang'),
+                    'currentpage' => new external_value(PARAM_INT, 'Trang hiện tại'),
+                    'total_sections' => new external_value(PARAM_INT, 'Tổng số section')
+                ], 'Thông tin phân trang', VALUE_OPTIONAL),
+                'topics' => new external_multiple_structure(
+                    new external_single_structure([
+                        'id' => new external_value(PARAM_INT, 'Section ID'),
+                        'name' => new external_value(PARAM_RAW, 'Section Name'),
+                        'total_activity' => new external_value(PARAM_INT, 'Total activities in section'),
+                        'total_activity_completion' => new external_value(PARAM_INT, 'Total completed activities in section'),
+                        'completion_percentage' => new external_value(PARAM_FLOAT, 'Completion percentage'),
+                        'activities' => new external_multiple_structure(
+                            new external_single_structure([
+                                'id' => new external_value(PARAM_INT, 'Activity ID'),
+                                'name' => new external_value(PARAM_RAW, 'Activity Name'),
+                                'description' => new external_value(PARAM_RAW, 'Activity description'),
+                                'modname' => new external_value(PARAM_RAW, 'Activity Type'),
+                                'completed' => new external_value(PARAM_BOOL, 'Activity Completion Status'),
+                                'availability' => new external_multiple_structure(
+                                    new external_single_structure([
+                                        'id' => new external_value(PARAM_INT, 'Required Activity ID'),
+                                        'name' => new external_value(PARAM_RAW, 'Required Activity Name'),
+                                        'modname' => new external_value(PARAM_RAW, 'Required Activity Type'),
+                                        'topic_id' => new external_value(PARAM_INT, 'Required Activity Topic ID', VALUE_OPTIONAL),
+                                        'completed' => new external_value(PARAM_BOOL, 'Required Activity Completion Status')
+                                    ])
+                                ),
+                                'visible' => new external_value(PARAM_RAW, 'Trạng thái hiển thị của activity'),
+                                'completiongradeitemnumber' => new external_value(PARAM_RAW, 'Yêu cầu điểm số để hoàn thành', VALUE_OPTIONAL),
+                                'completionview' => new external_value(PARAM_RAW, 'Yêu cầu xem activity để hoàn thành', VALUE_OPTIONAL),
+                                'completionexpected' => new external_value(PARAM_RAW, 'Ngày mong đợi hoàn thành', VALUE_OPTIONAL),
+                                'completionpassgrade' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm đạt chuẩn để hoàn thành', VALUE_OPTIONAL),
+                                'completionminattempts' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm nộp bài để hoàn thành', VALUE_OPTIONAL),
+                                'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
+                                'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
+                            ])
+                        )
+                    ]), 'Danh sách chủ đề', VALUE_OPTIONAL
+                )
+            ])
+        ]);
+    }
+
+    public static function get_content_course_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'useremail' => new external_value(PARAM_TEXT, 'User Email Moodle', VALUE_DEFAULT, ''),
+                'courseid' => new external_value(PARAM_INT, 'courseid', VALUE_DEFAULT, 0),
+                'page' => new external_value(PARAM_INT, 'Page number', VALUE_DEFAULT, 0),
+                'perpage' => new external_value(PARAM_INT, 'Items per page', VALUE_DEFAULT, 0),
+                'section_id' => new external_value(PARAM_INT, 'Section ID', VALUE_DEFAULT, 0),
+                'section_ids' => new external_multiple_structure(
+                    new external_value(PARAM_INT, 'Section ID'),
+                    'Array of section IDs',
+                    VALUE_DEFAULT,
+                    array()
+                ),
+            )
+        );
+    }
+
+    public static function get_content_course($useremail, $courseid, $page = 0, $perpage = 0, $section_id = 0, $section_ids = array())
+    {
+        global $DB, $CFG;
+
+        require_once($CFG->libdir . '/completionlib.php');
+
+        if (empty($courseid)) {
+            return [
+                'status' => false,
+                'message' => 'Invalid course id.',
+                'data' => [
+                    'course' => self::get_empty_course_structure(),
+                    'topics' => []
+                ]
+            ];
+        }
+
+        if (empty($useremail)) {
+            return [
+                'status' => false,
+                'message' => 'Invalid user.',
+                'data' => [
+                    'course' => self::get_empty_course_structure(),
+                    'topics' => []
+                ]
+            ];
+        }
+
+        // Lấy thông tin user từ email
+        $user = $DB->get_record('user', ['email' => $useremail]);
+        if (!$user) {
+            return [
+                'status' => false,
+                'message' => 'Invalid user.',
+                'data' => [
+                    'course' => self::get_empty_course_structure(),
+                    'topics' => []
+                ]
+            ];
+        }
+        $userid = $user->id;
+
+        // Lấy thông tin khóa học
+        $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber, category, enddate');
+        
+        if (!$course) {
+            return [
+                'status' => false,
+                'message' => 'Course not found.',
+                'data' => [
+                    'course' => self::get_empty_course_structure(),
+                    'topics' => []
+                ]
+            ];
+        }
+
+        // ========================= Tối ưu hóa truy vấn =========================
+        // Build SQL query with optional section filtering
+        $section_sql = "SELECT id, section, name
+                          FROM {course_sections}
+                         WHERE course = :courseid";
+        $section_params = ['courseid' => $courseid];
+        
+        if (!empty($section_id)) {
+            $section_sql .= " AND id = :section_id";
+            $section_params['section_id'] = $section_id;
+        } elseif (!empty($section_ids) && is_array($section_ids)) {
+            $section_ids_clean = array_filter(array_map('intval', $section_ids));
+            if (!empty($section_ids_clean)) {
+                list($insql, $inparams) = $DB->get_in_or_equal($section_ids_clean, SQL_PARAMS_NAMED);
+                $section_sql .= " AND id {$insql}";
+                $section_params = array_merge($section_params, $inparams);
+            }
+        }
+        
+        $section_sql .= " ORDER BY section ASC";
+        $sections = $DB->get_records_sql($section_sql, $section_params);
+
+        $modulesql = "SELECT cm.id,
+                             cm.section,
+                             cm.instance,
+                             cm.visible,
+                             cm.availability,
+                             cm.completiongradeitemnumber,
+                             cm.completionview,
+                             cm.completionexpected,
+                             cm.completionpassgrade,
+                             m.name AS modname
+                        FROM {course_modules} cm
+                        JOIN {modules} m ON m.id = cm.module
+                       WHERE cm.course = :courseid
+                    ORDER BY cm.section, cm.id";
+        $coursemoduleRecords = $DB->get_records_sql($modulesql, ['courseid' => $courseid]);
+
+        $modulesbysection = [];
+        $modulesbyid = [];
+        $allmoduleids = [];
+        $instancesbymodname = [];
+        foreach ($coursemoduleRecords as $cmrecord) {
+            $modulesbysection[$cmrecord->section][] = $cmrecord;
+            $modulesbyid[$cmrecord->id] = $cmrecord;
+            $allmoduleids[$cmrecord->id] = $cmrecord->id;
+            if (!empty($cmrecord->instance)) {
+                if (!isset($instancesbymodname[$cmrecord->modname])) {
+                    $instancesbymodname[$cmrecord->modname] = [];
+                }
+                $instancesbymodname[$cmrecord->modname][] = (int)$cmrecord->instance;
+            }
+        }
+
+        $allmoduleids = array_values($allmoduleids);
+
+        $completionmap = [];
+        if (!empty($allmoduleids)) {
+            list($insql, $params) = $DB->get_in_or_equal($allmoduleids, SQL_PARAMS_NAMED);
+            $params['userid'] = $userid;
+            $sql = "SELECT coursemoduleid, completionstate
+                      FROM {course_modules_completion}
+                     WHERE userid = :userid
+                       AND coursemoduleid {$insql}";
+            $completionmap = $DB->get_records_sql_menu($sql, $params);
+        }
+
+        $gradebymodule = [];
+        $gradeitems = $DB->get_records_sql(
+            "SELECT  cm.id as cmid, gi.itemmodule, gi.iteminstance, gi.grademax, gi.gradepass
+               FROM {grade_items} gi
+               LEFT JOIN {course_modules} cm ON cm.instance = gi.iteminstance 
+                    AND cm.course = gi.courseid
+               JOIN {modules} m ON m.name = gi.itemmodule AND m.id = cm.module
+              WHERE gi.courseid = :courseid
+                AND gi.itemtype = 'mod'",
+            ['courseid' => $courseid]
+        );
+        foreach ($gradeitems as $gradeitem) {
+            if (!empty($gradeitem->cmid)) {
+                $gradebymodule[$gradeitem->cmid] = [
+                    'grade' => $gradeitem->grademax,
+                    'gradepass' => $gradeitem->gradepass
+                ];
+            }
+        }
+
+
+        $moduledetails = [];
+        foreach ($instancesbymodname as $modname => $instanceids) {
+            $instanceids = array_values(array_unique($instanceids));
+            if (empty($instanceids)) {
+                continue;
+            }
+            list($insql, $params) = $DB->get_in_or_equal($instanceids, SQL_PARAMS_NAMED);
+            try {
+                $records = $DB->get_records_sql("SELECT * FROM {{$modname}} WHERE id {$insql}", $params);
+            } catch (Exception $e) {
+                debugging("Unable to fetch module data for {$modname}: " . $e->getMessage());
+                $records = [];
+            }
+            $moduledetails[$modname] = $records;
+        }
+
+        // Initialize course totals (used for SQL filtering, not in response)
+        $course_total_activity = 0;
+        $course_total_activity_completion = 0;
+
+        // Filter out section 0 (general section) before pagination
+        $filtered_sections = [];
+        foreach ($sections as $section) {
+            if ($section->section != 0) {
+                $filtered_sections[] = $section;
+            }
+        }
+
+        // Apply pagination if page and perpage are provided
+        $total_sections = count($filtered_sections);
+        $paginated_sections = $filtered_sections;
+        $currentpage = 1;
+        $totalpage = 1;
+
+        if ($page > 0 && $perpage > 0) {
+            $offset = ($page - 1) * $perpage;
+            $totalpage = ceil($total_sections / $perpage);
+            $currentpage = $page;
+            $paginated_sections = array_slice($filtered_sections, $offset, $perpage);
+        }
+
+        $result = [];
+        foreach ($paginated_sections as $section) {
+
+            $sectionid = $section->id;
+            $sectionname = trim((string)$section->name);
+            if ($sectionname === '') {
+                $sectionname = 'Section ' . $section->section;
+            }
+            $sectionmodules = $modulesbysection[$sectionid] ?? [];
+            $total_activity = count($sectionmodules);
+            $total_activity_completion = 0;
+            $activities = [];
+
+            if (empty($sectionmodules)) {
+                $result[] = [
+                    'id' => $sectionid,
+                    'name' => $sectionname,
+                    'total_activity' => 0,
+                    'total_activity_completion' => 0,
+                    'completion_percentage' => 0,
+                    'activities' => []
+                ];
+                continue;
+            }
+
+            foreach ($sectionmodules as $module) {
+                $cmid = (int)$module->id;
+                if (!$cmid) {
+                    continue;
+                }
+
+                $completionstate = $completionmap[$cmid] ?? null;
+                $is_completed = ($completionstate !== null && in_array((int)$completionstate, [1, 2]));
+                if ($is_completed) {
+                    $total_activity_completion++;
+                }
+
+                $availability = [];
+                $rawavailability = $module->availability ?? '';
+                if (!empty($rawavailability)) {
+                    $availability_data = json_decode($rawavailability, true);
+                    if (!empty($availability_data['c'])) {
+                        foreach ($availability_data['c'] as $condition) {
+                            if ($condition['type'] === 'completion' && !empty($condition['cm'])) {
+                                $requiredcmid = (int)$condition['cm'];
+                                if (!isset($modulesbyid[$requiredcmid])) {
+                                    continue;
+                                }
+                                $requiredcm = $modulesbyid[$requiredcmid];
+                                $required_completion = $completionmap[$requiredcmid] ?? null;
+                                $requireddetail = $moduledetails[$requiredcm->modname][$requiredcm->instance] ?? null;
+                                $availability[] = [
+                                    'id' => $requiredcmid,
+                                    'name' => $requireddetail->name ?? $requiredcm->modname ?? 'Unknown',
+                                    'modname' => $requiredcm->modname ?? 'Unknown',
+                                    'topic_id' => $requiredcm->section ?? null,
+                                    'completed' => ($required_completion !== null && in_array((int)$required_completion, [1, 2]))
+                                ];
+                            }
+                        }
+                    }
+                }
+
+                $modname = $module->modname;
+                $instanceid = $module->instance;
+                $detailrecord = $moduledetails[$modname][$instanceid] ?? null;
+
+                $description = '';
+                if ($detailrecord && property_exists($detailrecord, 'intro') && $detailrecord->intro !== null) {
+                    $description = $detailrecord->intro;
+                }
+
+                $activityname = $detailrecord->name ?? $modname;
+                $completionminattempts = null;
+                if ($detailrecord && property_exists($detailrecord, 'completionminattempts')) {
+                    $completionminattempts = $detailrecord->completionminattempts;
+                }
+
+                $gradeinfo = $gradebymodule[$cmid] ?? null;
+
+                $activities[] = [
+                    'id' => $cmid,
+                    'name' => $activityname,
+                    'description' => $description,
+                    'modname' => $modname,
+                    'completed' => $is_completed,
+                    'availability' => $availability,
+                    'visible' => $module->visible ?? 0,
+                    'completiongradeitemnumber' => $module->completiongradeitemnumber ?? null,
+                    'completionview' => $module->completionview ?? null,
+                    'completionexpected' => $module->completionexpected ?? null,
+                    'completionpassgrade' => $module->completionpassgrade ?? null,
+                    'completionminattempts' => $completionminattempts,
+                    'grade' => $gradeinfo['grade'] ?? 0,
+                    'gradepass' => $gradeinfo['gradepass'] ?? 0,
+                ];
+            }
+
+            $completion_percentage = ($total_activity > 0)
+                ? round(($total_activity_completion / $total_activity) * 100, 2)
+                : 0;
+
+            $course_total_activity += $total_activity;
+            $course_total_activity_completion += $total_activity_completion;
+
+            $result[] = [
+                'id' => $sectionid,
+                'name' => $sectionname,
+                'total_activity' => $total_activity,
+                'total_activity_completion' => $total_activity_completion,
+                'completion_percentage' => $completion_percentage,
+                'activities' => $activities
+            ];
+        }
+
+        // Use course totals for SQL filtering (not returned in response)
+        $course_total_activity_due = max($course_total_activity - $course_total_activity_completion, 0);
+        $course_completion_percentage = ($course_total_activity > 0)
+            ? round(($course_total_activity_completion / $course_total_activity) * 100, 2)
+            : 0;
+        
+        // Build course summary without the removed fields
+        $course_summary = self::build_course_summary(
+            $course,
+            $userid
+        );
+
+        $dataResponse = [
+            'status' => true,
+            'message' => 'Data retrieved successfully.',
+            'data' => [
+                'course' => $course_summary,
+                'topics' => $result,
+                'pagination' => [
+                    'totalpage' => (int) $totalpage,
+                    'currentpage' => (int) $currentpage,
+                    'total_sections' => (int) $total_sections
+                ]
             ]
         ];
 
@@ -9610,12 +9508,13 @@ class local_custom_service_external extends external_api
                     'course_enddate' => new external_value(PARAM_TEXT, 'Thời gian kết thúc khóa học'),
                     'categoryid' => new external_value(PARAM_TEXT, 'ID danh mục'),
                     'categoryname' => new external_value(PARAM_TEXT, 'Tên danh mục'),
-                    'view_url' => new external_value(PARAM_TEXT, 'URL khóa học'),
-                    'total_activity_completion' => new external_value(PARAM_INT, 'Tổng số hoạt động chưa hoàn thành'),
-                    'total_activity_due' => new external_value(PARAM_INT, 'Tổng số hoạt động cần hoàn thành'),
-                    'total_activity' => new external_value(PARAM_INT, 'Tổng số hoạt động'),
-                    'completionPercentage' => new external_value(PARAM_INT, 'Phần trăm hoàn thành khóa học')
+                    'view_url' => new external_value(PARAM_TEXT, 'URL khóa học')
                 ], 'Thông tin khóa học', VALUE_OPTIONAL),
+                'pagination' => new external_single_structure([
+                    'totalpage' => new external_value(PARAM_INT, 'Tổng số trang'),
+                    'currentpage' => new external_value(PARAM_INT, 'Trang hiện tại'),
+                    'total_sections' => new external_value(PARAM_INT, 'Tổng số section')
+                ], 'Thông tin phân trang', VALUE_OPTIONAL),
                 'topics' => new external_multiple_structure(
                     new external_single_structure([
                         'id' => new external_value(PARAM_INT, 'Section ID'),
@@ -9665,15 +9564,11 @@ class local_custom_service_external extends external_api
             'course_enddate' => '',
             'categoryid' => '',
             'categoryname' => '',
-            'view_url' => '',
-            'total_activity_completion' => 0,
-            'total_activity_due' => 0,
-            'total_activity' => 0,
-            'completionPercentage' => 0
+            'view_url' => ''
         ];
     }
 
-    private static function build_course_summary(stdClass $course, int $userid, int $totalactivity, int $totalcompletion, int $totaldue, int $completionpercentage): array {
+    private static function build_course_summary(stdClass $course, int $userid): array {
         global $DB, $CFG;
 
         $category = $DB->get_record('course_categories', ['id' => $course->category], 'id, name');
@@ -9714,11 +9609,7 @@ class local_custom_service_external extends external_api
             'course_enddate' => $courseenddate,
             'categoryid' => $category->id ?? '',
             'categoryname' => $category->name ?? '',
-            'view_url' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false),
-            'total_activity_completion' => $totalcompletion,
-            'total_activity_due' => $totaldue,
-            'total_activity' => $totalactivity,
-            'completionPercentage' => $completionpercentage
+            'view_url' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false)
         ];
     }
     

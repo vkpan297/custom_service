@@ -9018,6 +9018,12 @@ class local_custom_service_external extends external_api
 
                 $gradeinfo = $gradebymodule[$cmid] ?? null;
 
+                // Get grademethod for quiz activities only
+                $grademethod = null;
+                if ($modname === 'quiz' && $detailrecord && property_exists($detailrecord, 'grademethod')) {
+                    $grademethod = $detailrecord->grademethod;
+                }
+
                 $activities[] = [
                     'id' => $cmid,
                     'name' => $activityname,
@@ -9033,6 +9039,7 @@ class local_custom_service_external extends external_api
                     'completionminattempts' => $completionminattempts,
                     'grade' => $gradeinfo['grade'] ?? 0,
                     'gradepass' => $gradeinfo['gradepass'] ?? 0,
+                    'grademethod' => $grademethod,
                 ];
             }
 
@@ -9136,6 +9143,7 @@ class local_custom_service_external extends external_api
                                 'completionminattempts' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm nộp bài để hoàn thành', VALUE_OPTIONAL),
                                 'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
                                 'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
+                                'grademethod' => new external_value(PARAM_INT, 'Phương pháp chấm điểm (chỉ áp dụng cho quiz)', VALUE_OPTIONAL),
                             ])
                         )
                     ]), 'Danh sách chủ đề', VALUE_OPTIONAL
@@ -9428,6 +9436,12 @@ class local_custom_service_external extends external_api
 
                 $gradeinfo = $gradebymodule[$cmid] ?? null;
 
+                // Get grademethod for quiz activities only
+                $grademethod = null;
+                if ($modname === 'quiz' && $detailrecord && property_exists($detailrecord, 'grademethod')) {
+                    $grademethod = $detailrecord->grademethod;
+                }
+
                 $activities[] = [
                     'id' => $cmid,
                     'name' => $activityname,
@@ -9443,6 +9457,7 @@ class local_custom_service_external extends external_api
                     'completionminattempts' => $completionminattempts,
                     'grade' => $gradeinfo['grade'] ?? 0,
                     'gradepass' => $gradeinfo['gradepass'] ?? 0,
+                    'grademethod' => $grademethod,
                 ];
             }
 
@@ -9546,6 +9561,7 @@ class local_custom_service_external extends external_api
                                 'completionminattempts' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm nộp bài để hoàn thành', VALUE_OPTIONAL),
                                 'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
                                 'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
+                                'grademethod' => new external_value(PARAM_INT, 'Phương pháp chấm điểm (chỉ áp dụng cho quiz)', VALUE_OPTIONAL),
                             ])
                         )
                     ]), 'Danh sách chủ đề', VALUE_OPTIONAL

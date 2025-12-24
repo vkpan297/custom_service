@@ -8811,7 +8811,7 @@ class local_custom_service_external extends external_api
 
         // ========================= Tối ưu hóa truy vấn =========================
         // Build SQL query with optional section filtering
-        $section_sql = "SELECT id, section, name
+        $section_sql = "SELECT id, section, name, visible
                           FROM {course_sections}
                          WHERE course = :courseid";
         $section_params = ['courseid' => $courseid];
@@ -8943,6 +8943,7 @@ class local_custom_service_external extends external_api
 
             $sectionid = $section->id;
             $sectionname = trim((string)$section->name);
+            $sectionvisible = isset($section->visible) ? (int)$section->visible : 1;
             if ($sectionname === '') {
                 $sectionname = 'Section ' . $section->section;
             }
@@ -8955,6 +8956,7 @@ class local_custom_service_external extends external_api
                 $result[] = [
                     'id' => $sectionid,
                     'name' => $sectionname,
+                    'visible' => $sectionvisible,
                     'total_activity' => 0,
                     'total_activity_completion' => 0,
                     'completion_percentage' => 0,
@@ -9053,6 +9055,7 @@ class local_custom_service_external extends external_api
             $result[] = [
                 'id' => $sectionid,
                 'name' => $sectionname,
+                'visible' => $sectionvisible,
                 'total_activity' => $total_activity,
                 'total_activity_completion' => $total_activity_completion,
                 'completion_percentage' => $completion_percentage,
@@ -9116,6 +9119,7 @@ class local_custom_service_external extends external_api
                     new external_single_structure([
                         'id' => new external_value(PARAM_INT, 'Section ID'),
                         'name' => new external_value(PARAM_RAW, 'Section Name'),
+                        'visible' => new external_value(PARAM_BOOL, 'Trạng thái hiển thị của section', VALUE_OPTIONAL),
                         'total_activity' => new external_value(PARAM_INT, 'Total activities in section'),
                         'total_activity_completion' => new external_value(PARAM_INT, 'Total completed activities in section'),
                         'completion_percentage' => new external_value(PARAM_FLOAT, 'Completion percentage'),
@@ -9229,7 +9233,7 @@ class local_custom_service_external extends external_api
 
         // ========================= Tối ưu hóa truy vấn =========================
         // Build SQL query with optional section filtering
-        $section_sql = "SELECT id, section, name
+        $section_sql = "SELECT id, section, name, visible
                           FROM {course_sections}
                          WHERE course = :courseid";
         $section_params = ['courseid' => $courseid];
@@ -9361,6 +9365,7 @@ class local_custom_service_external extends external_api
 
             $sectionid = $section->id;
             $sectionname = trim((string)$section->name);
+            $sectionvisible = isset($section->visible) ? (int)$section->visible : 1;
             if ($sectionname === '') {
                 $sectionname = 'Section ' . $section->section;
             }
@@ -9373,6 +9378,7 @@ class local_custom_service_external extends external_api
                 $result[] = [
                     'id' => $sectionid,
                     'name' => $sectionname,
+                    'visible' => $sectionvisible,
                     'total_activity' => 0,
                     'total_activity_completion' => 0,
                     'completion_percentage' => 0,
@@ -9471,6 +9477,7 @@ class local_custom_service_external extends external_api
             $result[] = [
                 'id' => $sectionid,
                 'name' => $sectionname,
+                'visible' => $sectionvisible,
                 'total_activity' => $total_activity,
                 'total_activity_completion' => $total_activity_completion,
                 'completion_percentage' => $completion_percentage,
@@ -9534,6 +9541,7 @@ class local_custom_service_external extends external_api
                     new external_single_structure([
                         'id' => new external_value(PARAM_INT, 'Section ID'),
                         'name' => new external_value(PARAM_RAW, 'Section Name'),
+                        'visible' => new external_value(PARAM_BOOL, 'Trạng thái hiển thị của section', VALUE_OPTIONAL),
                         'total_activity' => new external_value(PARAM_INT, 'Total activities in section'),
                         'total_activity_completion' => new external_value(PARAM_INT, 'Total completed activities in section'),
                         'completion_percentage' => new external_value(PARAM_FLOAT, 'Completion percentage'),

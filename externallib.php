@@ -13781,4 +13781,401 @@ class local_custom_service_external extends external_api
             return 'in_progress';
         }
     }
+
+
+    // Functionset for bulk_update_activity_completion ******************************************************************************************.
+
+    /**
+     * Parameter description for bulk_update_activity_completion().
+     *
+     * @return external_function_parameters.
+     */
+    public static function bulk_update_activity_completion_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'userid' => new external_value(PARAM_INT, 'User ID'),
+                'activities' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'cmid' => new external_value(PARAM_INT, 'Course module ID'),
+                            'completionstate' => new external_value(PARAM_INT, 'Completion state (0=incomplete, 1=complete, 2=complete_pass, 3=complete_fail)'),
+                            'forcecompletion' => new external_value(PARAM_BOOL, 'Force completion even without meeting criteria', VALUE_DEFAULT, false)
+                        )
+                    ),
+                    'List of activities to update completion status'
+                )
+            )
+        );
+    }
+
+    /**
+     * Bulk update activity completion status for a user - Performance optimized.
+     * 
+     * Supports various activity types: Quiz, Assignment, Resource, URL and others.
+     * Uses batch operations to minimize database queries for better performance.
+     *
+     * @param int $userid User ID
+     * @param array $activities Array of activities with cmid, completionstate, and forcecompletion
+     * @return array Result of the operation with success status, message, and completion details for each activity
+     */
+    public static function bulk_update_activity_completion($userid, $activities) {
+        global $DB, $CFG;
+    
+        require_once($CFG->libdir . '/completionlib.php');
+    
+        // Validate parameters
+        $params = self::validate_parameters(self::bulk_update_activity_completion_parameters(), array(
+            'userid' => $userid,
+            'activities' => $activities
+        ));
+
+        // Early return if no activities provided
+        if (empty($params['activities'])) {
+            return array(
+                'success' => true,
+                'message' => 'No activities to update',
+                'total_processed' => 0,
+                'total_success' => 0,
+                'total_failed' => 0,
+                'results' => array()
+            );
+        }
+
+        // Valid completion states
+        $valid_states = array(
+            COMPLETION_INCOMPLETE,      // 0
+            COMPLETION_COMPLETE,        // 1
+            COMPLETION_COMPLETE_PASS,   // 2
+            COMPLETION_COMPLETE_FAIL    // 3
+        );
+
+        // Validate user exists first (single query)
+        $user = $DB->get_record('user', array('id' => $params['userid']));
+        if (!$user) {
+            return array(
+                'success' => false,
+                'message' => 'User not found',
+                'total_processed' => 0,
+                'total_success' => 0,
+                'total_failed' => count($params['activities']),
+                'results' => array()
+            );
+        }
+
+        // Extract all cmids for batch queries
+        $cmids = array_column($params['activities'], 'cmid');
+        $cmids = array_unique($cmids);
+
+        // Batch fetch all course modules (single query)
+        list($in_sql, $in_params) = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
+        $cms = $DB->get_records_select('course_modules', "id {$in_sql}", $in_params);
+        
+        // Build cmid => cm mapping
+        $cm_map = array();
+        $course_ids = array();
+        foreach ($cms as $cm_record) {
+            $cm_map[$cm_record->id] = $cm_record;
+            $course_ids[$cm_record->course] = $cm_record->course;
+        }
+
+        // Batch fetch all courses (single query)
+        $courses = array();
+        if (!empty($course_ids)) {
+            list($course_in_sql, $course_in_params) = $DB->get_in_or_equal(array_values($course_ids), SQL_PARAMS_NAMED);
+            $courses = $DB->get_records_select('course', "id {$course_in_sql}", $course_in_params);
+        }
+
+        // Batch fetch all modules for modname lookup (single query)
+        $module_ids = array_unique(array_column($cms, 'module'));
+        $modules = array();
+        if (!empty($module_ids)) {
+            list($mod_in_sql, $mod_in_params) = $DB->get_in_or_equal($module_ids, SQL_PARAMS_NAMED);
+            $modules = $DB->get_records_select('modules', "id {$mod_in_sql}", $mod_in_params);
+        }
+        $module_map = array();
+        foreach ($modules as $mod) {
+            $module_map[$mod->id] = $mod->name;
+        }
+
+        // Batch fetch existing completion records (single query)
+        $existing_completions = array();
+        if (!empty($cmids)) {
+            $sql = "SELECT * FROM {course_modules_completion} 
+                    WHERE userid = :userid AND coursemoduleid {$in_sql}";
+            $comp_params = array_merge(array('userid' => $params['userid']), $in_params);
+            $completions_records = $DB->get_records_sql($sql, $comp_params);
+            foreach ($completions_records as $comp) {
+                $existing_completions[$comp->coursemoduleid] = $comp;
+            }
+        }
+
+        // Batch fetch existing view records (single query)
+        $existing_views = array();
+        if (!empty($cmids)) {
+            $sql = "SELECT * FROM {course_modules_viewed} 
+                    WHERE userid = :userid AND coursemoduleid {$in_sql}";
+            $view_params = array_merge(array('userid' => $params['userid']), $in_params);
+            $view_records = $DB->get_records_sql($sql, $view_params);
+            foreach ($view_records as $view) {
+                $existing_views[$view->coursemoduleid] = $view;
+            }
+        }
+
+        // Cache completion_info objects per course
+        $completion_info_cache = array();
+
+        // Prepare batch operations
+        $results = array();
+        $insert_completions = array();
+        $update_completions = array();
+        $insert_views = array();
+        $total_success = 0;
+        $total_failed = 0;
+        $timemodified = time();
+
+        // Start transaction for atomic operations
+        $transaction = $DB->start_delegated_transaction();
+
+        try {
+            foreach ($params['activities'] as $activity) {
+                $cmid = $activity['cmid'];
+                $completionstate = $activity['completionstate'];
+                $forcecompletion = $activity['forcecompletion'] ?? false;
+
+                $result = array(
+                    'cmid' => $cmid,
+                    'success' => false,
+                    'message' => '',
+                    'previous_state' => 0,
+                    'new_state' => $completionstate,
+                    'courseid' => 0,
+                    'warnings' => array()
+                );
+
+                // Validate completion state
+                if (!in_array($completionstate, $valid_states)) {
+                    $result['message'] = 'Invalid completion state. Must be 0-3';
+                    $results[] = $result;
+                    $total_failed++;
+                    continue;
+                }
+
+                // Check if cm exists
+                if (!isset($cm_map[$cmid])) {
+                    $result['message'] = 'Course module not found';
+                    $results[] = $result;
+                    $total_failed++;
+                    continue;
+                }
+
+                $cm_record = $cm_map[$cmid];
+                $result['courseid'] = $cm_record->course;
+
+                // Check if course exists
+                if (!isset($courses[$cm_record->course])) {
+                    $result['message'] = 'Course not found';
+                    $results[] = $result;
+                    $total_failed++;
+                    continue;
+                }
+
+                $course = $courses[$cm_record->course];
+
+                // Get or create completion_info object (cached per course)
+                if (!isset($completion_info_cache[$course->id])) {
+                    $completion_info_cache[$course->id] = new completion_info($course);
+                }
+                $completion = $completion_info_cache[$course->id];
+
+                // Check if completion is enabled for course
+                if (!$completion->is_enabled()) {
+                    $result['message'] = 'Completion is not enabled for this course';
+                    $results[] = $result;
+                    $total_failed++;
+                    continue;
+                }
+
+                // Build full cm object for completion checks
+                $cm = get_coursemodule_from_id('', $cmid, 0, false, IGNORE_MISSING);
+                if (!$cm) {
+                    $result['message'] = 'Could not load course module';
+                    $results[] = $result;
+                    $total_failed++;
+                    continue;
+                }
+
+                // Check if completion is enabled for this activity
+                if (!$completion->is_enabled($cm)) {
+                    $result['message'] = 'Completion is not enabled for this activity';
+                    $results[] = $result;
+                    $total_failed++;
+                    continue;
+                }
+
+                // Check user enrollment
+                $context = context_course::instance($course->id);
+                if (!is_enrolled($context, $user)) {
+                    $result['message'] = 'User is not enrolled in this course';
+                    $results[] = $result;
+                    $total_failed++;
+                    continue;
+                }
+
+                // Get previous state
+                $previous_state = 0;
+                if (isset($existing_completions[$cmid])) {
+                    $previous_state = $existing_completions[$cmid]->completionstate;
+                }
+                $result['previous_state'] = $previous_state;
+
+                $warnings = array();
+
+                // Handle automatic completion requirements
+                if ($cm->completion == COMPLETION_TRACKING_AUTOMATIC && $completionstate == COMPLETION_COMPLETE) {
+                    $activity_params = array(
+                        'userid' => $params['userid'],
+                        'completionstate' => $completionstate,
+                        'forcecompletion' => $forcecompletion
+                    );
+
+                    // Handle different module types
+                    switch ($cm->modname) {
+                        case 'quiz':
+                            self::handle_quiz_completion($cm, $course, $activity_params, $warnings, $DB);
+                            break;
+                        case 'assign':
+                            self::handle_assignment_completion($cm, $course, $activity_params, $warnings, $DB);
+                            break;
+                        case 'resource':
+                            self::handle_resource_completion($cm, $course, $activity_params, $warnings, $DB);
+                            break;
+                        case 'url':
+                            self::handle_url_completion($cm, $course, $activity_params, $warnings, $DB);
+                            break;
+                        default:
+                            self::handle_common_completion_requirements($cm, $course, $activity_params, $warnings, $DB);
+                            break;
+                    }
+                }
+
+                // Handle view requirement
+                if ($cm->completionview == COMPLETION_VIEW_REQUIRED) {
+                    if (!isset($existing_views[$cmid]) && $completionstate == COMPLETION_COMPLETE) {
+                        $view_record = new stdClass();
+                        $view_record->coursemoduleid = $cmid;
+                        $view_record->userid = $params['userid'];
+                        $view_record->timecreated = $timemodified;
+                        $insert_views[] = $view_record;
+                        $existing_views[$cmid] = $view_record; // Mark as processed
+                        $warnings[] = 'Activity marked as viewed to satisfy completion criteria.';
+                    }
+                }
+
+                // Prepare completion record update
+                if (isset($existing_completions[$cmid])) {
+                    // Update existing
+                    if ($existing_completions[$cmid]->completionstate != $completionstate || $forcecompletion) {
+                        $update_rec = new stdClass();
+                        $update_rec->id = $existing_completions[$cmid]->id;
+                        $update_rec->completionstate = $completionstate;
+                        $update_rec->timemodified = $timemodified;
+                        $update_completions[] = $update_rec;
+                    } else {
+                        $warnings[] = 'Completion state already matches requested state - no update needed.';
+                    }
+                } else {
+                    // Insert new
+                    $insert_rec = new stdClass();
+                    $insert_rec->coursemoduleid = $cmid;
+                    $insert_rec->userid = $params['userid'];
+                    $insert_rec->completionstate = $completionstate;
+                    $insert_rec->viewed = 1;
+                    $insert_rec->timemodified = $timemodified;
+                    $insert_completions[] = $insert_rec;
+                    // Mark as processed to avoid duplicate inserts
+                    $existing_completions[$cmid] = $insert_rec;
+                }
+
+                $result['success'] = true;
+                $result['message'] = 'Activity completion status updated successfully';
+                $result['warnings'] = $warnings;
+                $results[] = $result;
+                $total_success++;
+            }
+
+            // Batch insert view records
+            if (!empty($insert_views)) {
+                $DB->insert_records('course_modules_viewed', $insert_views);
+            }
+
+            // Batch insert completion records
+            if (!empty($insert_completions)) {
+                $DB->insert_records('course_modules_completion', $insert_completions);
+            }
+
+            // Batch update completion records (must be done one by one due to different IDs)
+            foreach ($update_completions as $update_rec) {
+                $DB->update_record('course_modules_completion', $update_rec);
+            }
+
+            // Commit transaction
+            $transaction->allow_commit();
+
+        } catch (Exception $e) {
+            $transaction->rollback($e);
+            return array(
+                'success' => false,
+                'message' => 'Transaction failed: ' . $e->getMessage(),
+                'total_processed' => count($params['activities']),
+                'total_success' => 0,
+                'total_failed' => count($params['activities']),
+                'results' => array()
+            );
+        }
+
+        return array(
+            'success' => $total_failed == 0,
+            'message' => "Processed {$total_success} activities successfully, {$total_failed} failed",
+            'total_processed' => count($params['activities']),
+            'total_success' => $total_success,
+            'total_failed' => $total_failed,
+            'results' => $results
+        );
+    }
+
+    /**
+     * Return description for bulk_update_activity_completion().
+     *
+     * @return external_single_structure.
+     */
+    public static function bulk_update_activity_completion_returns()
+    {
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Overall operation success status'),
+                'message' => new external_value(PARAM_TEXT, 'Summary message'),
+                'total_processed' => new external_value(PARAM_INT, 'Total number of activities processed'),
+                'total_success' => new external_value(PARAM_INT, 'Number of successfully updated activities'),
+                'total_failed' => new external_value(PARAM_INT, 'Number of failed updates'),
+                'results' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'cmid' => new external_value(PARAM_INT, 'Course module ID'),
+                            'success' => new external_value(PARAM_BOOL, 'Operation success status for this activity'),
+                            'message' => new external_value(PARAM_TEXT, 'Result message'),
+                            'previous_state' => new external_value(PARAM_INT, 'Previous completion state'),
+                            'new_state' => new external_value(PARAM_INT, 'New completion state'),
+                            'courseid' => new external_value(PARAM_INT, 'Course ID'),
+                            'warnings' => new external_multiple_structure(
+                                new external_value(PARAM_TEXT, 'Warning message'),
+                                'List of warnings', VALUE_OPTIONAL
+                            )
+                        )
+                    ),
+                    'Results for each activity'
+                )
+            )
+        );
+    }
 }

@@ -617,6 +617,15 @@ $functions = array(
         'ajax'        => true,
         'capabilities'=> 'moodle/course:view',
     ),
+    'local_custom_service_bulk_update_activity_completion' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'bulk_update_activity_completion',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Bulk update activity completion status for multiple activities - Performance optimized',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/course:view',
+        'ajax'        => true,
+    ),
 );
 
 $services = array(
@@ -695,7 +704,8 @@ $services = array(
             'local_custom_service_create_activity_cmsvideo',
             'local_custom_service_update_activity_cmsvideo',
             'local_custom_service_get_student_incomplete_activities_timeline',
-            'local_custom_service_get_learning_courses'
+            'local_custom_service_get_learning_courses',
+            'local_custom_service_bulk_update_activity_completion'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

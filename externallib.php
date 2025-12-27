@@ -14073,8 +14073,8 @@ class local_custom_service_external extends external_api
                 }
 
                 // Prepare completion record update
-                if (isset($existing_completions[$cmid])) {
-                    // Update existing
+                if (isset($existing_completions[$cmid]) && isset($existing_completions[$cmid]->id)) {
+                    // Update existing (only if it has an ID, meaning it exists in DB)
                     if ($existing_completions[$cmid]->completionstate != $completionstate || $forcecompletion) {
                         $update_rec = new stdClass();
                         $update_rec->id = $existing_completions[$cmid]->id;
@@ -14085,16 +14085,29 @@ class local_custom_service_external extends external_api
                         $warnings[] = 'Completion state already matches requested state - no update needed.';
                     }
                 } else {
-                    // Insert new
-                    $insert_rec = new stdClass();
-                    $insert_rec->coursemoduleid = $cmid;
-                    $insert_rec->userid = $params['userid'];
-                    $insert_rec->completionstate = $completionstate;
-                    $insert_rec->viewed = 1;
-                    $insert_rec->timemodified = $timemodified;
-                    $insert_completions[] = $insert_rec;
-                    // Mark as processed to avoid duplicate inserts
-                    $existing_completions[$cmid] = $insert_rec;
+                    // Insert new (either doesn't exist in DB, or was already queued for insert)
+                    // Skip if already queued for insert (duplicate cmid in same batch)
+                    $already_queued = false;
+                    foreach ($insert_completions as $queued) {
+                        if ($queued->coursemoduleid == $cmid && $queued->userid == $params['userid']) {
+                            $already_queued = true;
+                            // Update the queued record's completionstate to the latest value
+                            $queued->completionstate = $completionstate;
+                            $queued->timemodified = $timemodified;
+                            $warnings[] = 'Duplicate cmid in batch - using latest completion state.';
+                            break;
+                        }
+                    }
+                    
+                    if (!$already_queued) {
+                        $insert_rec = new stdClass();
+                        $insert_rec->coursemoduleid = $cmid;
+                        $insert_rec->userid = $params['userid'];
+                        $insert_rec->completionstate = $completionstate;
+                        $insert_rec->viewed = 1;
+                        $insert_rec->timemodified = $timemodified;
+                        $insert_completions[] = $insert_rec;
+                    }
                 }
 
                 $result['success'] = true;
@@ -14116,7 +14129,10 @@ class local_custom_service_external extends external_api
 
             // Batch update completion records (must be done one by one due to different IDs)
             foreach ($update_completions as $update_rec) {
-                $DB->update_record('course_modules_completion', $update_rec);
+                // Ensure id is set before updating
+                if (isset($update_rec->id) && $update_rec->id > 0) {
+                    $DB->update_record('course_modules_completion', $update_rec);
+                }
             }
 
             // Commit transaction

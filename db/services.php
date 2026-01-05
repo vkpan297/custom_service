@@ -218,6 +218,15 @@ $functions = array(
         'type' => 'create',
         'capabilities' => 'moodle/course:update',
     ),
+    'local_custom_service_create_sections_multiple' => array(
+        'classname' => 'local_custom_service_external',
+        'methodname' => 'create_sections_multiple',
+        'classpath' => 'local/custom_service/externallib.php',
+        'description' => 'Create multiple sections with detailed information (name, summary, position, etc.).',
+        'type' => 'write',
+        'capabilities' => 'moodle/course:update',
+        'ajax' => true,
+    ),
     'local_custom_service_get_user_enrol_course' => array(
         'classname' => 'local_custom_service_external',
         'methodname' => 'get_user_enrol_course',
@@ -658,6 +667,7 @@ $services = array(
             'local_custom_service_update_sections',
             'local_custom_service_delete_sections',
             'local_custom_service_create_sections',
+            'local_custom_service_create_sections_multiple',
             'local_custom_service_get_user_enrol_course',
             'local_custom_service_get_data_student_by_teacher',
             'local_custom_service_add_image_course',

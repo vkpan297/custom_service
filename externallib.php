@@ -3245,6 +3245,190 @@ class local_custom_service_external extends external_api
         );
     }
 
+    // Functionset for create_sections_multiple() ******************************************************************************************.
+
+    /**
+     * Parameter description for create_sections_multiple().
+     *
+     * @return external_function_parameters.
+     */
+    public static function create_sections_multiple_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'id of course'),
+                'sections' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'position' => new external_value(PARAM_INT, 'Position to insert section (0 means at the end)', VALUE_DEFAULT, 0),
+                            'name' => new external_value(PARAM_TEXT, 'Section name', VALUE_OPTIONAL),
+                            'summary' => new external_value(PARAM_RAW, 'Section summary/description', VALUE_OPTIONAL),
+                            'summaryformat' => new external_value(PARAM_INT, 'Summary format (0=MOODLE, 1=HTML, 2=PLAIN, 4=MARKDOWN)', VALUE_DEFAULT, 1),
+                            'visible' => new external_value(PARAM_INT, 'Section visibility (0=hidden, 1=visible)', VALUE_DEFAULT, 1),
+                            'availability' => new external_value(PARAM_RAW, 'Availability conditions JSON', VALUE_OPTIONAL),
+                        )
+                    ),
+                    'Array of sections to create'
+                )
+            )
+        );
+    }
+
+    /**
+     * Create multiple sections with detailed information.
+     *
+     * This function creates multiple sections with name, summary, position, and other properties.
+     * Each section in the array will be created with its specified properties.
+     *
+     * @param int $courseid Course ID.
+     * @param array $sections Array of section data to create.
+     * @return array Array of arrays with sectionid, sectionnumber, and warnings for each created section.
+     */
+    public static function create_sections_multiple($courseid, $sections)
+    {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/course/lib.php');
+        require_once($CFG->dirroot . '/course/format/lib.php');
+
+        // Validate parameters passed from web service.
+        $params = self::validate_parameters(self::create_sections_multiple_parameters(), array(
+            'courseid' => $courseid,
+            'sections' => $sections
+        ));
+
+        $courseid = $params['courseid'];
+        $sections = $params['sections'];
+
+        // Validate course exists
+        if (!($course = $DB->get_record('course', array('id' => $courseid)))) {
+            throw new moodle_exception('invalidcourseid', 'local_custom_service', '', $courseid);
+        }
+
+        require_login($course);
+        require_capability('moodle/course:update', context_course::instance($courseid));
+
+        $courseformat = course_get_format($course);
+
+        // Test if courseformat allows sections
+        if (!$courseformat->uses_sections()) {
+            throw new moodle_exception('courseformatwithoutsections', 'local_custom_service', '', $courseformat);
+        }
+
+        $lastsectionnumber = $courseformat->get_last_section_number();
+        $maxsections = $courseformat->get_max_sections();
+        $return = array();
+        $warnings = array();
+
+        // Process each section
+        foreach ($sections as $index => $sectiondata) {
+            try {
+                // Get position, default to 0 (end of course)
+                $position = isset($sectiondata['position']) ? (int)$sectiondata['position'] : 0;
+
+                // Check if we exceed max sections
+                $desirednumsections = $lastsectionnumber + 1;
+                if ($desirednumsections > $maxsections) {
+                    throw new moodle_exception(
+                        'toomanysections',
+                        'local_custom_service',
+                        '',
+                        array('max' => $maxsections, 'desired' => $desirednumsections)
+                    );
+                }
+
+                if ($position > 0) {
+                    // Inserting sections at any position except in the very end requires capability to move sections
+                    require_capability('moodle/course:movesections', context_course::instance($course->id));
+                }
+
+                // Create the section
+                $section = course_create_section($course, $position);
+                $lastsectionnumber = $courseformat->get_last_section_number();
+
+                // Prepare data for updating section properties
+                $updatedata = array();
+
+                // Set name if provided
+                if (isset($sectiondata['name']) && !empty($sectiondata['name'])) {
+                    $updatedata['name'] = $sectiondata['name'];
+                }
+
+                // Set summary if provided
+                if (isset($sectiondata['summary'])) {
+                    $updatedata['summary'] = $sectiondata['summary'];
+                }
+
+                // Set summary format if provided
+                if (isset($sectiondata['summaryformat'])) {
+                    $updatedata['summaryformat'] = (int)$sectiondata['summaryformat'];
+                }
+
+                // Set visible if provided
+                if (isset($sectiondata['visible'])) {
+                    $updatedata['visible'] = (int)$sectiondata['visible'];
+                }
+
+                // Set availability if provided
+                if (isset($sectiondata['availability']) && !empty($sectiondata['availability'])) {
+                    $updatedata['availability'] = $sectiondata['availability'];
+                }
+
+                // Update section with provided data
+                if (!empty($updatedata)) {
+                    course_update_section($course, $section, $updatedata);
+                }
+
+                // Add to return array
+                $return[] = array(
+                    'sectionid' => $section->id,
+                    'sectionnumber' => $section->section,
+                    'name' => isset($updatedata['name']) ? $updatedata['name'] : '',
+                    'summary' => isset($updatedata['summary']) ? $updatedata['summary'] : ''
+                );
+
+            } catch (Exception $e) {
+                $warning = array();
+                $warning['index'] = $index;
+                if ($e instanceof moodle_exception) {
+                    $warning['warningcode'] = $e->errorcode;
+                } else {
+                    $warning['warningcode'] = $e->getCode();
+                }
+                $warning['message'] = $e->getMessage();
+                $warnings[] = $warning;
+            }
+        }
+
+        $result = array();
+        $result['sections'] = $return;
+        $result['warnings'] = $warnings;
+        return $result;
+    }
+
+    /**
+     * Parameter description for create_sections_multiple().
+     *
+     * @return external_description
+     */
+    public static function create_sections_multiple_returns()
+    {
+        return new external_single_structure(
+            array(
+                'sections' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'sectionid' => new external_value(PARAM_INT, 'section id'),
+                            'sectionnumber' => new external_value(PARAM_INT, 'position of the section'),
+                            'name' => new external_value(PARAM_TEXT, 'section name', VALUE_OPTIONAL),
+                            'summary' => new external_value(PARAM_RAW, 'section summary', VALUE_OPTIONAL),
+                        )
+                    )
+                ),
+                'warnings' => new external_warnings()
+            )
+        );
+    }
+
 
     // Functionset for get_user_enrol_course() ******************************************************************************************.
 

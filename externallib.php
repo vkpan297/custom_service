@@ -5273,7 +5273,8 @@ class local_custom_service_external extends external_api
         // 1: Được đánh dấu là hoàn thành thủ công bởi người dùng.
         // 2: Được đánh dấu là hoàn thành tự động khi đáp ứng các điều kiện.
         $myQuiz->completion = 2; // 2: Được đánh dấu là hoàn thành khi đáp ứng các điều kiện.
-        $myQuiz->completionview = 1; // Hoạt động được hoàn thành khi người dùng xem nó.
+        $myQuiz->completionview = 0; // Hoạt động được hoàn thành khi người dùng xem nó.
+        $myQuiz->completionminattempts = 1; // Số lần thi tối thiểu.
         // $myQuiz->completionexpected = time() + 7 * 24 * 60 * 60; // Thời gian mong đợi hoàn thành (ở đây là 7 ngày sau).
         // $myQuiz->completionusegrade = 1; // Được đánh dấu là hoàn thành khi đạt điểm yêu cầu.
 

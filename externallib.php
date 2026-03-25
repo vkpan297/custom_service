@@ -5750,8 +5750,8 @@ class local_custom_service_external extends external_api
                     'timeopen' => new external_value(PARAM_INT, 'Thời gian mở', VALUE_OPTIONAL),
                     'timeclose' => new external_value(PARAM_INT, 'Thời gian đóng', VALUE_OPTIONAL),
                     'attempts' => new external_value(PARAM_INT, 'Số lần làm bài tối đa', VALUE_OPTIONAL),
-                    'grade' => new external_value(PARAM_INT, 'Điểm', VALUE_OPTIONAL),
-                    'gradepass' => new external_value(PARAM_INT, 'Điểm để qua', VALUE_OPTIONAL),
+                    'grade' => new external_value(PARAM_FLOAT, 'Điểm', VALUE_OPTIONAL),
+                    'gradepass' => new external_value(PARAM_FLOAT, 'Điểm để qua', VALUE_OPTIONAL),
                     'sumgrades' => new external_value(PARAM_INT, 'Tổng điểm', VALUE_OPTIONAL),
                     'grademethod' => new external_value(PARAM_INT, 'Phương pháp chấm điểm', VALUE_OPTIONAL),
                     'shufflequestions' => new external_value(PARAM_INT, 'Xáo trộn câu hỏi', VALUE_OPTIONAL),
@@ -8996,7 +8996,7 @@ class local_custom_service_external extends external_api
 
         // ========================= Tối ưu hóa truy vấn =========================
         // Build SQL query with optional section filtering
-        $section_sql = "SELECT id, section, name, visible
+        $section_sql = "SELECT id, section, name, visible, sequence
                           FROM {course_sections}
                          WHERE course = :courseid";
         $section_params = ['courseid' => $courseid];
@@ -9028,16 +9028,13 @@ class local_custom_service_external extends external_api
                              m.name AS modname
                         FROM {course_modules} cm
                         JOIN {modules} m ON m.id = cm.module
-                       WHERE cm.course = :courseid
-                    ORDER BY cm.section, cm.id";
+                       WHERE cm.course = :courseid";
         $coursemoduleRecords = $DB->get_records_sql($modulesql, ['courseid' => $courseid]);
 
-        $modulesbysection = [];
         $modulesbyid = [];
         $allmoduleids = [];
         $instancesbymodname = [];
         foreach ($coursemoduleRecords as $cmrecord) {
-            $modulesbysection[$cmrecord->section][] = $cmrecord;
             $modulesbyid[$cmrecord->id] = $cmrecord;
             $allmoduleids[$cmrecord->id] = $cmrecord->id;
             if (!empty($cmrecord->instance)) {
@@ -9132,12 +9129,15 @@ class local_custom_service_external extends external_api
             if ($sectionname === '') {
                 $sectionname = 'Section ' . $section->section;
             }
-            $sectionmodules = $modulesbysection[$sectionid] ?? [];
-            $total_activity = count($sectionmodules);
-            $total_activity_completion = 0;
-            $activities = [];
 
-            if (empty($sectionmodules)) {
+            // KHỞI TẠO CÁC BIẾN CẦN THIẾT
+            $activities = [];
+            $total_activity_completion = 0;
+            
+            // LẤY DANH SÁCH ID ACTIVITY THEO THỨ TỰ (SEQUENCE)
+            $sequence = trim($section->sequence ?? '');
+            
+            if (empty($sequence)) {
                 $result[] = [
                     'id' => $sectionid,
                     'name' => $sectionname,
@@ -9150,18 +9150,27 @@ class local_custom_service_external extends external_api
                 continue;
             }
 
-            foreach ($sectionmodules as $module) {
-                $cmid = (int)$module->id;
-                if (!$cmid) {
+            // Tách chuỗi sequence (VD: "12,15,10") thành mảng các ID để duyệt
+            $cmids = explode(',', $sequence);
+
+            foreach ($cmids as $cmid) {
+                $cmid = (int)$cmid;
+                
+                // Kiểm tra xem CMID này có tồn tại trong dữ liệu đã query không
+                if (!isset($modulesbyid[$cmid])) {
                     continue;
                 }
 
+                $module = $modulesbyid[$cmid];
+
+                // --- Bắt đầu xử lý logic cho từng activity ---
                 $completionstate = $completionmap[$cmid] ?? null;
                 $is_completed = ($completionstate !== null && in_array((int)$completionstate, [1, 2]));
                 if ($is_completed) {
                     $total_activity_completion++;
                 }
 
+                // Xử lý availability (điều kiện hoàn thành của activity trước đó)
                 $availability = [];
                 $rawavailability = $module->availability ?? '';
                 if (!empty($rawavailability)) {
@@ -9205,11 +9214,14 @@ class local_custom_service_external extends external_api
 
                 $gradeinfo = $gradebymodule[$cmid] ?? null;
 
-                // Get grademethod for quiz activities only
+                // Get grademethod cho quiz
                 $grademethod = null;
                 if ($modname === 'quiz' && $detailrecord && property_exists($detailrecord, 'grademethod')) {
                     $grademethod = $detailrecord->grademethod;
                 }
+
+                // Encode module data
+                $module_data_json = $detailrecord ? json_encode($detailrecord) : '';
 
                 $activities[] = [
                     'id' => $cmid,
@@ -9227,9 +9239,11 @@ class local_custom_service_external extends external_api
                     'grade' => $gradeinfo['grade'] ?? 0,
                     'gradepass' => $gradeinfo['gradepass'] ?? 0,
                     'grademethod' => $grademethod,
+                    'module_data' => $module_data_json,
                 ];
             }
 
+            $total_activity = count($activities);
             $completion_percentage = ($total_activity > 0)
                 ? round(($total_activity_completion / $total_activity) * 100, 2)
                 : 0;
@@ -9418,7 +9432,7 @@ class local_custom_service_external extends external_api
 
         // ========================= Tối ưu hóa truy vấn =========================
         // Build SQL query with optional section filtering
-        $section_sql = "SELECT id, section, name, visible
+        $section_sql = "SELECT id, section, name, visible, sequence
                           FROM {course_sections}
                          WHERE course = :courseid";
         $section_params = ['courseid' => $courseid];
@@ -9450,16 +9464,13 @@ class local_custom_service_external extends external_api
                              m.name AS modname
                         FROM {course_modules} cm
                         JOIN {modules} m ON m.id = cm.module
-                       WHERE cm.course = :courseid
-                    ORDER BY cm.section, cm.id";
+                       WHERE cm.course = :courseid";
         $coursemoduleRecords = $DB->get_records_sql($modulesql, ['courseid' => $courseid]);
 
-        $modulesbysection = [];
         $modulesbyid = [];
         $allmoduleids = [];
         $instancesbymodname = [];
         foreach ($coursemoduleRecords as $cmrecord) {
-            $modulesbysection[$cmrecord->section][] = $cmrecord;
             $modulesbyid[$cmrecord->id] = $cmrecord;
             $allmoduleids[$cmrecord->id] = $cmrecord->id;
             if (!empty($cmrecord->instance)) {
@@ -9554,12 +9565,15 @@ class local_custom_service_external extends external_api
             if ($sectionname === '') {
                 $sectionname = 'Section ' . $section->section;
             }
-            $sectionmodules = $modulesbysection[$sectionid] ?? [];
-            $total_activity = count($sectionmodules);
-            $total_activity_completion = 0;
-            $activities = [];
 
-            if (empty($sectionmodules)) {
+            // KHỞI TẠO CÁC BIẾN CẦN THIẾT
+            $activities = [];
+            $total_activity_completion = 0;
+            
+            // LẤY DANH SÁCH ID ACTIVITY THEO THỨ TỰ (SEQUENCE)
+            $sequence = trim($section->sequence ?? '');
+            
+            if (empty($sequence)) {
                 $result[] = [
                     'id' => $sectionid,
                     'name' => $sectionname,
@@ -9572,18 +9586,27 @@ class local_custom_service_external extends external_api
                 continue;
             }
 
-            foreach ($sectionmodules as $module) {
-                $cmid = (int)$module->id;
-                if (!$cmid) {
+            // Tách chuỗi sequence (VD: "12,15,10") thành mảng các ID để duyệt
+            $cmids = explode(',', $sequence);
+
+            foreach ($cmids as $cmid) {
+                $cmid = (int)$cmid;
+                
+                // Kiểm tra xem CMID này có tồn tại trong dữ liệu đã query không
+                if (!isset($modulesbyid[$cmid])) {
                     continue;
                 }
 
+                $module = $modulesbyid[$cmid];
+
+                // --- Bắt đầu xử lý logic cho từng activity ---
                 $completionstate = $completionmap[$cmid] ?? null;
                 $is_completed = ($completionstate !== null && in_array((int)$completionstate, [1, 2]));
                 if ($is_completed) {
                     $total_activity_completion++;
                 }
 
+                // Xử lý availability (điều kiện hoàn thành của activity trước đó)
                 $availability = [];
                 $rawavailability = $module->availability ?? '';
                 if (!empty($rawavailability)) {
@@ -9627,11 +9650,14 @@ class local_custom_service_external extends external_api
 
                 $gradeinfo = $gradebymodule[$cmid] ?? null;
 
-                // Get grademethod for quiz activities only
+                // Get grademethod cho quiz
                 $grademethod = null;
                 if ($modname === 'quiz' && $detailrecord && property_exists($detailrecord, 'grademethod')) {
                     $grademethod = $detailrecord->grademethod;
                 }
+
+                // Encode module data
+                $module_data_json = $detailrecord ? json_encode($detailrecord) : '';
 
                 $activities[] = [
                     'id' => $cmid,
@@ -9649,9 +9675,11 @@ class local_custom_service_external extends external_api
                     'grade' => $gradeinfo['grade'] ?? 0,
                     'gradepass' => $gradeinfo['gradepass'] ?? 0,
                     'grademethod' => $grademethod,
+                    'module_data' => $module_data_json,
                 ];
             }
 
+            $total_activity = count($activities);
             $completion_percentage = ($total_activity > 0)
                 ? round(($total_activity_completion / $total_activity) * 100, 2)
                 : 0;
@@ -9755,6 +9783,7 @@ class local_custom_service_external extends external_api
                                 'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
                                 'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
                                 'grademethod' => new external_value(PARAM_INT, 'Phương pháp chấm điểm (chỉ áp dụng cho quiz)', VALUE_OPTIONAL),
+                                'module_data' => new external_value(PARAM_RAW, 'Module detail data in JSON format (same as get_detail_module)', VALUE_OPTIONAL),
                             ])
                         )
                     ]), 'Danh sách chủ đề', VALUE_OPTIONAL

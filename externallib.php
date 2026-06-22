@@ -327,8 +327,8 @@ class local_custom_service_external extends external_api
                 'returnusercount' => new external_value(
                     PARAM_BOOL,
                     'Include count of enrolled users for each course? This can add several seconds to the response time'
-                        . ' if a user is on several large courses, so set this to false if the value will not be used to'
-                        . ' improve performance.',
+                    . ' if a user is on several large courses, so set this to false if the value will not be used to'
+                    . ' improve performance.',
                     VALUE_DEFAULT,
                     true
                 ),
@@ -381,13 +381,13 @@ class local_custom_service_external extends external_api
         return new external_multiple_structure(
             new external_single_structure(
                 array(
-                    'id'        => new external_value(PARAM_INT, 'id of course'),
-                    'userid'        => new external_value(PARAM_INT, 'id of course'),
-                    'courseid'        => new external_value(PARAM_INT, 'id of course'),
+                    'id' => new external_value(PARAM_INT, 'id of course'),
+                    'userid' => new external_value(PARAM_INT, 'id of course'),
+                    'courseid' => new external_value(PARAM_INT, 'id of course'),
                     'shortname' => new external_value(PARAM_RAW, 'short name of course'),
-                    'coursename'  => new external_value(PARAM_RAW, 'long name of course'),
+                    'coursename' => new external_value(PARAM_RAW, 'long name of course'),
                     'firstname' => new external_value(PARAM_RAW, 'short name of course'),
-                    'lastname'  => new external_value(PARAM_RAW, 'long name of course')
+                    'lastname' => new external_value(PARAM_RAW, 'long name of course')
                 )
             )
         );
@@ -516,10 +516,10 @@ class local_custom_service_external extends external_api
         return new external_multiple_structure(
             new external_single_structure(
                 array(
-                    'id'        => new external_value(PARAM_INT, 'id of course'),
-                    'username'  => new external_value(PARAM_RAW, 'long name of course'),
+                    'id' => new external_value(PARAM_INT, 'id of course'),
+                    'username' => new external_value(PARAM_RAW, 'long name of course'),
                     'firstname' => new external_value(PARAM_RAW, 'short name of course'),
-                    'lastname'  => new external_value(PARAM_RAW, 'long name of course')
+                    'lastname' => new external_value(PARAM_RAW, 'long name of course')
                 )
             )
         );
@@ -587,15 +587,15 @@ class local_custom_service_external extends external_api
         return new external_multiple_structure(
             new external_single_structure(
                 array(
-                    'id'        => new external_value(PARAM_INT, 'id of course'),
-                    'userid'        => new external_value(PARAM_INT, 'id of course'),
-                    'username'        => new external_value(PARAM_RAW, 'id of course'),
+                    'id' => new external_value(PARAM_INT, 'id of course'),
+                    'userid' => new external_value(PARAM_INT, 'id of course'),
+                    'username' => new external_value(PARAM_RAW, 'id of course'),
                     'firstname' => new external_value(PARAM_RAW, 'short name of course'),
-                    'lastname'  => new external_value(PARAM_RAW, 'long name of course'),
+                    'lastname' => new external_value(PARAM_RAW, 'long name of course'),
                     'email' => new external_value(PARAM_RAW, 'short name of course'),
-                    'timestart'  => new external_value(PARAM_RAW, 'long name of course'),
-                    'name'  => new external_value(PARAM_RAW, 'long name of course'),
-                    'description'  => new external_value(PARAM_RAW, 'long name of course')
+                    'timestart' => new external_value(PARAM_RAW, 'long name of course'),
+                    'name' => new external_value(PARAM_RAW, 'long name of course'),
+                    'description' => new external_value(PARAM_RAW, 'long name of course')
                 )
             )
         );
@@ -705,13 +705,13 @@ class local_custom_service_external extends external_api
         $mods = $DB->get_records_sql($sql);
         foreach ($mods as $cm) {
             $courseresult = [
-                'courseid'   => $cm->courseid,
+                'courseid' => $cm->courseid,
                 'coursename' => $cm->coursename,
-                'groupid'    => $cm->groupid,
-                'groupname'  => $cm->groupname,
-                'total'      => $cm->total,
-                'view_url'   => $CFG->wwwroot . '/group/overview.php?grouping=0&id=' . $cm->courseid . '&group=' . $cm->groupid,
-                'grade_report_url'   => $CFG->wwwroot . '/grade/report/grader/index.php?id=' . $cm->courseid . '&group=' . $cm->groupid
+                'groupid' => $cm->groupid,
+                'groupname' => $cm->groupname,
+                'total' => $cm->total,
+                'view_url' => $CFG->wwwroot . '/group/overview.php?grouping=0&id=' . $cm->courseid . '&group=' . $cm->groupid,
+                'grade_report_url' => $CFG->wwwroot . '/grade/report/grader/index.php?id=' . $cm->courseid . '&group=' . $cm->groupid
             ];
             $result['datagroup'][] = $courseresult;
         }
@@ -723,13 +723,13 @@ class local_custom_service_external extends external_api
         return new external_single_structure([
             'count' => new external_value(PARAM_INT, 'count'),
             'datagroup' => new external_multiple_structure(new external_single_structure([
-                'courseid'   => new external_value(PARAM_INT, 'id of course'),
+                'courseid' => new external_value(PARAM_INT, 'id of course'),
                 'coursename' => new external_value(PARAM_RAW, 'name of course'),
-                'groupid'    => new external_value(PARAM_INT, 'id of group'),
-                'groupname'  => new external_value(PARAM_RAW, 'name of group'),
-                'total'      => new external_value(PARAM_INT, 'total student'),
-                'view_url'      => new external_value(PARAM_RAW, 'view url'),
-                'grade_report_url'      => new external_value(PARAM_RAW, 'grade_report_url')
+                'groupid' => new external_value(PARAM_INT, 'id of group'),
+                'groupname' => new external_value(PARAM_RAW, 'name of group'),
+                'total' => new external_value(PARAM_INT, 'total student'),
+                'view_url' => new external_value(PARAM_RAW, 'view url'),
+                'grade_report_url' => new external_value(PARAM_RAW, 'grade_report_url')
             ])),
         ]);
     }
@@ -769,7 +769,7 @@ class local_custom_service_external extends external_api
         $result = [];
         foreach ($mods as $cm) {
             $courseresult = [
-                'date'   => $cm->date,
+                'date' => $cm->date,
                 'user_count' => $cm->user_count
             ];
             $result[] = $courseresult;
@@ -781,7 +781,7 @@ class local_custom_service_external extends external_api
         return new external_multiple_structure(
             new external_single_structure(
                 array(
-                    'date'   => new external_value(PARAM_TEXT, 'date'),
+                    'date' => new external_value(PARAM_TEXT, 'date'),
                     'user_count' => new external_value(PARAM_INT, 'user_count')
                 )
             )
@@ -848,20 +848,20 @@ class local_custom_service_external extends external_api
 
         foreach ($mods as $cm) {
             $courseresult = [
-                'id'   => $cm->id,
+                'id' => $cm->id,
                 'name' => $cm->name,
-                'description'   => $cm->description,
+                'description' => $cm->description,
                 'categoryid' => $cm->categoryid,
-                'groupid'   => $cm->groupid,
+                'groupid' => $cm->groupid,
                 'userid' => $cm->userid,
                 'courseid' => $cm->courseid,
-                'eventtype'   => $cm->eventtype,
+                'eventtype' => $cm->eventtype,
                 'timestart' => $cm->timestart,
-                'timeduration'   => $cm->timeduration,
+                'timeduration' => $cm->timeduration,
                 'timesort' => $cm->timesort,
-                'timemodified'   => $cm->timemodified,
+                'timemodified' => $cm->timemodified,
                 'viewurl' => $CFG->wwwroot . '/calendar/view.php?view=day&course=' . $cm->courseid . '&time=' . $cm->timestart . '#event_' . $cm->id,
-                'formattedtime'   => "<a href=\"$CFG->wwwroot/calendar/view.php?view=day&amp;time=$cm->timestart\">" . date('d/m/Y H:i', $cm->timestart) . "</a>"
+                'formattedtime' => "<a href=\"$CFG->wwwroot/calendar/view.php?view=day&amp;time=$cm->timestart\">" . date('d/m/Y H:i', $cm->timestart) . "</a>"
             ];
             $result['datacalendar'][] = $courseresult;
         }
@@ -935,20 +935,20 @@ class local_custom_service_external extends external_api
 
         foreach ($mods as $cm) {
             $courseresult = [
-                'id'   => $cm->id,
+                'id' => $cm->id,
                 'name' => $cm->name,
-                'description'   => $cm->description,
+                'description' => $cm->description,
                 'categoryid' => $cm->categoryid,
-                'groupid'   => $cm->groupid,
+                'groupid' => $cm->groupid,
                 'userid' => $cm->userid,
                 'courseid' => $cm->courseid,
-                'eventtype'   => $cm->eventtype,
+                'eventtype' => $cm->eventtype,
                 'timestart' => $cm->timestart,
-                'timeduration'   => $cm->timeduration,
+                'timeduration' => $cm->timeduration,
                 'timesort' => $cm->timesort,
-                'timemodified'   => $cm->timemodified,
+                'timemodified' => $cm->timemodified,
                 'viewurl' => $CFG->wwwroot . '/calendar/view.php?view=day&course=' . $cm->courseid . '&time=' . $cm->timestart . '#event_' . $cm->id,
-                'formattedtime'   => "<a href=\"$CFG->wwwroot/calendar/view.php?view=day&amp;time=$cm->timestart\">" . date('d/m/Y H:i', $cm->timestart) . "</a>"
+                'formattedtime' => "<a href=\"$CFG->wwwroot/calendar/view.php?view=day&amp;time=$cm->timestart\">" . date('d/m/Y H:i', $cm->timestart) . "</a>"
             ];
             $result['datacalendar'][] = $courseresult;
         }
@@ -1023,7 +1023,7 @@ class local_custom_service_external extends external_api
         if (!empty($search)) {
             $sql_count .= " AND (c.fullname LIKE :search OR c.id = :searchint)";
             $params['search'] = '%' . $search . '%';
-            $params['searchint'] = is_numeric($search) ? (int)$search : -1;
+            $params['searchint'] = is_numeric($search) ? (int) $search : -1;
         }
 
         $mods_count = $DB->get_record_sql($sql_count, $params);
@@ -1053,7 +1053,7 @@ class local_custom_service_external extends external_api
         if (!empty($search)) {
             $sql .= " AND (c.fullname LIKE :search OR c.id = :searchint)";
             $params['search'] = '%' . $search . '%';
-            $params['searchint'] = is_numeric($search) ? (int)$search : -1;
+            $params['searchint'] = is_numeric($search) ? (int) $search : -1;
         }
 
         if (!empty($limit)) {
@@ -1064,9 +1064,9 @@ class local_custom_service_external extends external_api
         // var_dump($mods);die;
         foreach ($mods as $cm) {
             $courseresult = [
-                'courseid'   => $cm->id,
+                'courseid' => $cm->id,
                 'coursename' => $cm->coursename,
-                'view_url'    => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
+                'view_url' => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
             ];
             $result['datacourse'][] = $courseresult;
         }
@@ -1295,14 +1295,14 @@ class local_custom_service_external extends external_api
         return new external_multiple_structure(
             new external_single_structure(
                 array(
-                    'groupid'   => new external_value(PARAM_INT, 'groupid'),
+                    'groupid' => new external_value(PARAM_INT, 'groupid'),
                     'courseid' => new external_value(PARAM_INT, 'courseid'),
-                    'coursename'   => new external_value(PARAM_RAW, 'coursename'),
+                    'coursename' => new external_value(PARAM_RAW, 'coursename'),
                     'groupname' => new external_value(PARAM_RAW, 'groupname'),
-                    'total'   => new external_value(PARAM_INT, 'total'),
+                    'total' => new external_value(PARAM_INT, 'total'),
                     'relateduserid' => new external_value(PARAM_INT, 'relateduserid'),
                     'total_login_user' => new external_value(PARAM_INT, 'total_login_user'),
-                    'percentage'   => new external_value(PARAM_RAW, 'percentage'),
+                    'percentage' => new external_value(PARAM_RAW, 'percentage'),
                     'url' => new external_value(PARAM_RAW, 'url')
                 )
             )
@@ -1374,12 +1374,12 @@ class local_custom_service_external extends external_api
             // var_dump($mods);die;
             foreach ($mods as $cm) {
                 $courseresult = [
-                    'id'   => $cm->id,
+                    'id' => $cm->id,
                     'coursename' => '',
                     'firstname' => $cm->firstname,
-                    'lastname'   => $cm->lastname,
+                    'lastname' => $cm->lastname,
                     'email' => $cm->email,
-                    'view_url'    => $CFG->wwwroot . '/user/profile.php?id=' . $cm->id,
+                    'view_url' => $CFG->wwwroot . '/user/profile.php?id=' . $cm->id,
                 ];
                 $result['contentfilter'][] = $courseresult;
             }
@@ -1424,12 +1424,12 @@ class local_custom_service_external extends external_api
             // var_dump($mods);die;
             foreach ($mods1 as $cm) {
                 $courseresult = [
-                    'id'   => $cm->id,
+                    'id' => $cm->id,
                     'coursename' => $cm->fullname,
                     'firstname' => '',
-                    'lastname'   => '',
+                    'lastname' => '',
                     'email' => '',
-                    'view_url'    => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
+                    'view_url' => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
                 ];
                 $result['contentfilter'][] = $courseresult;
             }
@@ -1444,10 +1444,10 @@ class local_custom_service_external extends external_api
             'count' => new external_value(PARAM_INT, 'count'),
             'contentfilter' => new external_multiple_structure(new external_single_structure([
                 'id' => new external_value(PARAM_INT, 'id'),
-                'coursename'   => new external_value(PARAM_RAW, 'coursename'),
+                'coursename' => new external_value(PARAM_RAW, 'coursename'),
                 'view_url' => new external_value(PARAM_RAW, 'view_url'),
                 'firstname' => new external_value(PARAM_RAW, 'firstname'),
-                'lastname'   => new external_value(PARAM_RAW, 'lastname'),
+                'lastname' => new external_value(PARAM_RAW, 'lastname'),
                 'email' => new external_value(PARAM_RAW, 'email'),
             ])),
         ]);
@@ -1612,9 +1612,9 @@ class local_custom_service_external extends external_api
         // var_dump($mods);die;
         foreach ($mods as $cm) {
             $courseresult = [
-                'courseid'   => $cm->id,
+                'courseid' => $cm->id,
                 'coursename' => $cm->coursename,
-                'view_url'    => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
+                'view_url' => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
             ];
             $result['datacourse'][] = $courseresult;
         }
@@ -1679,7 +1679,7 @@ class local_custom_service_external extends external_api
         if (!empty($search)) {
             $sql_count .= " AND (c.fullname LIKE :search OR c.id = :searchint)";
             $params['search'] = '%' . $search . '%';
-            $params['searchint'] = is_numeric($search) ? (int)$search : -1;
+            $params['searchint'] = is_numeric($search) ? (int) $search : -1;
         }
 
         $mods_count = $DB->get_record_sql($sql_count, $params);
@@ -1708,7 +1708,7 @@ class local_custom_service_external extends external_api
         if (!empty($search)) {
             $sql .= " AND (c.fullname LIKE :search OR c.id = :searchint)";
             $params['search'] = '%' . $search . '%';
-            $params['searchint'] = is_numeric($search) ? (int)$search : -1;
+            $params['searchint'] = is_numeric($search) ? (int) $search : -1;
         }
 
         if (!empty($limit)) {
@@ -1719,9 +1719,9 @@ class local_custom_service_external extends external_api
         // var_dump($mods);die;
         foreach ($mods as $cm) {
             $courseresult = [
-                'courseid'   => $cm->id,
+                'courseid' => $cm->id,
                 'coursename' => $cm->coursename,
-                'view_url'    => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
+                'view_url' => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
             ];
             $result['datacourse'][] = $courseresult;
         }
@@ -1782,7 +1782,7 @@ class local_custom_service_external extends external_api
         if (!empty($search)) {
             $sql_count .= " AND (c.fullname LIKE :search OR c.id = :searchint)";
             $params['search'] = '%' . $search . '%';
-            $params['searchint'] = is_numeric($search) ? (int)$search : -1;
+            $params['searchint'] = is_numeric($search) ? (int) $search : -1;
         }
 
         $mods_count = $DB->get_record_sql($sql_count, $params);
@@ -1808,7 +1808,7 @@ class local_custom_service_external extends external_api
         if (!empty($search)) {
             $sql .= " AND (c.fullname LIKE :search OR c.id = :searchint)";
             $params['search'] = '%' . $search . '%';
-            $params['searchint'] = is_numeric($search) ? (int)$search : -1;
+            $params['searchint'] = is_numeric($search) ? (int) $search : -1;
         }
 
         if (!empty($limit)) {
@@ -1819,9 +1819,9 @@ class local_custom_service_external extends external_api
         // var_dump($mods);die;
         foreach ($mods as $cm) {
             $courseresult = [
-                'courseid'   => $cm->id,
+                'courseid' => $cm->id,
                 'coursename' => $cm->coursename,
-                'view_url'    => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
+                'view_url' => $CFG->wwwroot . '/course/view.php?id=' . $cm->id,
             ];
             $result['datacourse'][] = $courseresult;
         }
@@ -1956,7 +1956,7 @@ class local_custom_service_external extends external_api
                 'id' => new external_value(PARAM_INT, 'id'),
                 'view_url' => new external_value(PARAM_RAW, 'view_url'),
                 'firstname' => new external_value(PARAM_RAW, 'firstname'),
-                'lastname'   => new external_value(PARAM_RAW, 'lastname'),
+                'lastname' => new external_value(PARAM_RAW, 'lastname'),
                 'email' => new external_value(PARAM_RAW, 'email'),
             ])),
         ]);
@@ -2043,7 +2043,8 @@ class local_custom_service_external extends external_api
             $section_data = [];
             foreach ($results as $record) {
 
-                if ($record->section_number == 0) continue;
+                if ($record->section_number == 0)
+                    continue;
 
                 $section_id = $record->section_id;
                 if (!isset($section_data[$section_id])) {
@@ -2133,9 +2134,12 @@ class local_custom_service_external extends external_api
                     $stepbystep_content = $DB->get_record('stepbystep', ['id' => $record->instance_id]);
                     if ($stepbystep_content) {
                         // Get all steps for this stepbystep activity
-                        $steps = $DB->get_records('stepbystep_content', 
-                            ['stepbystep_id' => $record->instance_id], 'sortorder ASC');
-                        
+                        $steps = $DB->get_records(
+                            'stepbystep_content',
+                            ['stepbystep_id' => $record->instance_id],
+                            'sortorder ASC'
+                        );
+
                         // Process steps data
                         $processed_steps = [];
                         foreach ($steps as $step) {
@@ -2150,15 +2154,15 @@ class local_custom_service_external extends external_api
                                 'definition' => $step->definition ?? '',
                                 'example' => $step->example ?? '',
                                 'audio_file' => $step->audio_file ?? '',
-                                'response_text' => $step->response_text 
-                                    ? html_entity_decode($step->response_text) 
+                                'response_text' => $step->response_text
+                                    ? html_entity_decode($step->response_text)
                                     : 'Continue',
                                 'storage_path' => $step->storage_path ?? '',
                                 'sortorder' => $step->sortorder,
                                 'timecreated' => $step->timecreated,
                                 'paragraphs' => [] // Default empty array
                             ];
-                            
+
                             // Process content_paragraphs for text type
                             if ($step->type === 'text' && !empty($step->content_paragraphs)) {
                                 $paragraphs = json_decode($step->content_paragraphs, true);
@@ -2170,16 +2174,16 @@ class local_custom_service_external extends external_api
                                     $step_data['paragraphs'] = array_filter(array_map('trim', $paragraphs));
                                 }
                             }
-                            
+
                             $processed_steps[] = $step_data;
                         }
-                        
+
                         // Add steps data to module
                         $module_data['steps'] = $processed_steps;
                         $module_data['total_steps'] = count($processed_steps);
                         $module_data['url_type'] = 'stepbystep';
                         $module_data['contents'] = []; // Add empty contents array
-                        
+
                         // Add to listStepbystep
                         $section_data[$section_id]['listStepbystep'][] = $module_data;
                         $section_data[$section_id]['listActivities'][] = $module_data;
@@ -2197,7 +2201,7 @@ class local_custom_service_external extends external_api
                         $module_data['timemodified'] = $readingflow_content->timemodified ?? 0;
                         $module_data['url_type'] = 'readingflow';
                         $module_data['contents'] = []; // Add empty contents array
-                        
+
                         // Add to listOther
                         $section_data[$section_id]['listOther'][] = $module_data;
                         $section_data[$section_id]['listActivities'][] = $module_data;
@@ -2228,14 +2232,15 @@ class local_custom_service_external extends external_api
                         $file->get_filepath(),
                         $file->get_filename()
                     )->out();
-            
+
                     // Xóa '/0/' trong đường dẫn nếu tồn tại
                     $thumbnail = str_replace('/0/', '/', $thumbnail);
                     break; // Chỉ lấy file đầu tiên
                 }
             }
 
-            if ($course->id == 1) continue;
+            if ($course->id == 1)
+                continue;
             // Build the final result structure for each course
             $result[] = [
                 'idCourse' => $course->id,
@@ -2245,7 +2250,7 @@ class local_custom_service_external extends external_api
                 'listSection' => $listSection
             ];
         }
-        
+
         // Return the result
         return $result;
     }
@@ -2378,7 +2383,8 @@ class local_custom_service_external extends external_api
                                 'modname' => new external_value(PARAM_RAW, 'Module Type'),
                                 'modplural' => new external_value(PARAM_RAW, 'Module Plural'),
                                 'contents' => new external_multiple_structure(
-                                    new external_value(PARAM_RAW, 'Content'), VALUE_OPTIONAL
+                                    new external_value(PARAM_RAW, 'Content'),
+                                    VALUE_OPTIONAL
                                 ),
                                 'url_type' => new external_value(PARAM_RAW, 'Url Type'),
                                 'position' => new external_value(PARAM_INT, 'Position in Section'),
@@ -2391,7 +2397,8 @@ class local_custom_service_external extends external_api
                                         'sub_heading' => new external_value(PARAM_RAW, 'Sub Heading'),
                                         'content_paragraphs' => new external_value(PARAM_RAW, 'Content Paragraphs'),
                                         'paragraphs' => new external_multiple_structure(
-                                            new external_value(PARAM_RAW, 'Paragraph Text'), VALUE_OPTIONAL
+                                            new external_value(PARAM_RAW, 'Paragraph Text'),
+                                            VALUE_OPTIONAL
                                         ),
                                         'term' => new external_value(PARAM_RAW, 'Term'),
                                         'phonetic' => new external_value(PARAM_RAW, 'Phonetic'),
@@ -2489,7 +2496,8 @@ class local_custom_service_external extends external_api
                                         'sub_heading' => new external_value(PARAM_RAW, 'Sub Heading'),
                                         'content_paragraphs' => new external_value(PARAM_RAW, 'Content Paragraphs'),
                                         'paragraphs' => new external_multiple_structure(
-                                            new external_value(PARAM_RAW, 'Paragraph Text'), VALUE_OPTIONAL
+                                            new external_value(PARAM_RAW, 'Paragraph Text'),
+                                            VALUE_OPTIONAL
                                         ),
                                         'term' => new external_value(PARAM_RAW, 'Term'),
                                         'phonetic' => new external_value(PARAM_RAW, 'Phonetic'),
@@ -2500,7 +2508,8 @@ class local_custom_service_external extends external_api
                                         'storage_path' => new external_value(PARAM_RAW, 'Storage Path'),
                                         'sortorder' => new external_value(PARAM_INT, 'Sort Order'),
                                         'timecreated' => new external_value(PARAM_INT, 'Time Created')
-                                    ]), VALUE_OPTIONAL
+                                    ]),
+                                    VALUE_OPTIONAL
                                 )
                             ])
                         ),
@@ -2588,11 +2597,11 @@ class local_custom_service_external extends external_api
                     $completedCompletions = array_filter($completionStatus['completions'], function ($completion) {
                         return isset($completion['complete']) && $completion['complete'] === true;
                     });
-    
+
                     $completedCount = count($completedCompletions);
-    
+
                     $hasOtherType = array_reduce($completionStatus['completions'], function ($carry, $completion) {
-                        return $carry || (int)$completion['type'] !== 4;
+                        return $carry || (int) $completion['type'] !== 4;
                     }, false);
 
                     if ($hasOtherType) {
@@ -2604,7 +2613,7 @@ class local_custom_service_external extends external_api
                             ? round(($completedCount / $totalCompletions) * 100, 2)
                             : 0;
                     }
-                }else{
+                } else {
                     $completionPercentage = $totalActivity > 0
                         ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
                         : 0;
@@ -2698,7 +2707,7 @@ class local_custom_service_external extends external_api
             'sectionids' => $sectionids
         ));
 
-        if (! ($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
+        if (!($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
             throw new moodle_exception('invalidcourseid', 'local_custom_service', '', $courseid);
         }
 
@@ -2786,7 +2795,7 @@ class local_custom_service_external extends external_api
         return new external_multiple_structure(
             new external_single_structure(
                 array(
-                    'sectionnum'  => new external_value(PARAM_INT, 'sectionnumber (position of section)'),
+                    'sectionnum' => new external_value(PARAM_INT, 'sectionnumber (position of section)'),
                     'id' => new external_value(PARAM_INT, 'section id'),
                     'name' => new external_value(PARAM_TEXT, 'section name'),
                     'summary' => new external_value(PARAM_RAW, 'Section description'),
@@ -2909,7 +2918,7 @@ class local_custom_service_external extends external_api
         $sectionSummary = base64_decode($sections['0']['summary']);
         $sections['0']['summary'] = $sectionSummary;
 
-        if (! ($course = $DB->get_record('course', array('id' => $courseid)))) {
+        if (!($course = $DB->get_record('course', array('id' => $courseid)))) {
             throw new moodle_exception('invalidcourseid', 'local_custom_service', '', $courseid);
         }
 
@@ -2931,7 +2940,7 @@ class local_custom_service_external extends external_api
                 // Get the section that belongs to $secname['sectionnumber'].
                 $found = 0;
                 foreach ($coursesections as $key => $cs) {
-                    
+
                     if ($sectiondata['type'] == 'id' and $sectiondata['section'] == $cs->id) {
                         $found = 1;
                     } else if ($sectiondata['section'] == $key) {
@@ -2958,7 +2967,7 @@ class local_custom_service_external extends external_api
                 // Set or unset marker if neccessary.
                 if (isset($sectiondata['highlight'])) {
                     require_capability('moodle/course:setcurrentsection', context_course::instance($courseid));
-                    if ($sectiondata['highlight'] == 1  and $course->marker != strval($section->section)) {
+                    if ($sectiondata['highlight'] == 1 and $course->marker != strval($section->section)) {
                         course_set_marker($courseid, strval($section->section));
                     } else if ($sectiondata['highlight'] == 0 and $course->marker == $section->section) {
                         course_set_marker($courseid, "0");
@@ -3065,7 +3074,7 @@ class local_custom_service_external extends external_api
             'coursesectionids' => $coursesectionids
         ));
 
-        if (! ($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
+        if (!($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
             throw new moodle_exception('invalidcourseid', 'local_custom_service', '', $courseid);
         }
 
@@ -3185,7 +3194,7 @@ class local_custom_service_external extends external_api
             'number' => $number
         ));
 
-        if (! ($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
+        if (!($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
             throw new moodle_exception('invalidcourseid', 'local_custom_service', '', $courseid);
         }
 
@@ -3225,7 +3234,7 @@ class local_custom_service_external extends external_api
             $return[] = array('sectionid' => $section->id, 'sectionnumber' => $section->section + $number - $i);
         }
 
-        return  $return;
+        return $return;
     }
 
     /**
@@ -3239,7 +3248,7 @@ class local_custom_service_external extends external_api
             new external_single_structure(
                 array(
                     'sectionid' => new external_value(PARAM_INT, 'section id'),
-                    'sectionnumber'  => new external_value(PARAM_INT, 'position of the section'),
+                    'sectionnumber' => new external_value(PARAM_INT, 'position of the section'),
                 )
             )
         );
@@ -3323,7 +3332,7 @@ class local_custom_service_external extends external_api
         foreach ($sections as $index => $sectiondata) {
             try {
                 // Get position, default to 0 (end of course)
-                $position = isset($sectiondata['position']) ? (int)$sectiondata['position'] : 0;
+                $position = isset($sectiondata['position']) ? (int) $sectiondata['position'] : 0;
 
                 // Check if we exceed max sections
                 $desirednumsections = $lastsectionnumber + 1;
@@ -3360,12 +3369,12 @@ class local_custom_service_external extends external_api
 
                 // Set summary format if provided
                 if (isset($sectiondata['summaryformat'])) {
-                    $updatedata['summaryformat'] = (int)$sectiondata['summaryformat'];
+                    $updatedata['summaryformat'] = (int) $sectiondata['summaryformat'];
                 }
 
                 // Set visible if provided
                 if (isset($sectiondata['visible'])) {
-                    $updatedata['visible'] = (int)$sectiondata['visible'];
+                    $updatedata['visible'] = (int) $sectiondata['visible'];
                 }
 
                 // Set availability if provided
@@ -3582,7 +3591,7 @@ class local_custom_service_external extends external_api
                 'categoryname' => new external_value(PARAM_RAW, 'Category Name'),
             ])),
         ]);
-        
+
     }
 
     // Functionset for get_data_student_by_teacher() ******************************************************************************************.
@@ -3620,7 +3629,7 @@ class local_custom_service_external extends external_api
     public static function get_data_student_by_teacher($courseid, $coursename, $userid, $role, $limit, $offset)
     {
         global $CFG, $USER, $DB;
-    
+
         // Câu SQL lấy thông tin group của giáo viên
         $query = "SELECT DISTINCT g.id as groupid, c.fullname, c.id, c.summary, f.filename AS course_image, f.contextid AS f_contextid, g.name as groupname
                     FROM mdl_user u
@@ -3632,7 +3641,7 @@ class local_custom_service_external extends external_api
                     JOIN mdl_groups g ON g.courseid = c.id
                     JOIN mdl_groups_members gm ON gm.groupid = g.id AND gm.userid = u.id
                     WHERE u.id = :userid";
-    
+
         if ($role == 'student') {
             $query .= " AND r.shortname = 'student'";
         }
@@ -3645,26 +3654,26 @@ class local_custom_service_external extends external_api
         if (!empty($coursename)) {
             $query .= " AND c.fullname LIKE :coursename";
         }
-    
+
         if (!empty($limit)) {
             $query .= " LIMIT :limit OFFSET :offset";
         }
-    
+
         $params = array(
             'userid' => $userid,
             'courseid' => $courseid,
             'coursename' => '%' . $coursename . '%',
         );
-    
+
         if (!empty($limit)) {
             $params['limit'] = $limit;
             $params['offset'] = $offset;
         }
-    
+
         $mods = $DB->get_records_sql($query, $params);
-    
+
         // Lấy danh sách groupids từ kết quả và chuyển thành mảng chỉ số, đảm bảo kiểu dữ liệu là integer
-        $groupids = array_values(array_map(function($mod) {
+        $groupids = array_values(array_map(function ($mod) {
             return intval($mod->groupid);
         }, $mods));
 
@@ -3674,17 +3683,17 @@ class local_custom_service_external extends external_api
                 'student_data' => []
             ];
         }
-    
+
         // Gọi hàm để lấy thông tin học sinh từ các group
         $students = self::get_students_by_groups($groupids);
-    
+
         // Kiểm tra kết quả truy vấn
         // var_dump($students, $groupids); die;
-    
+
         // Chuẩn bị kết quả trả về
         $result['count'] = count($students);
         $result['student_data'] = [];
-    
+
         foreach ($students as $student) {
             $result['student_data'][] = [
                 'userid' => $student->userid,
@@ -3696,22 +3705,22 @@ class local_custom_service_external extends external_api
                 'coursename' => $student->coursename,      // Thêm coursename
             ];
         }
-    
+
         return $result;
     }
-    
+
     public static function get_students_by_groups($groupids)
     {
         global $DB;
-    
+
         if (empty($groupids)) {
             return [];
         }
-    
+
         list($insql, $params) = $DB->get_in_or_equal($groupids, SQL_PARAMS_NAMED, 'groupid');
-    
+
         $groupids_string = implode(',', $groupids);
-    
+
         $sql = "
             SELECT 
                 ROW_NUMBER() OVER (ORDER BY g.id, u.firstname, u.lastname) AS row_number,
@@ -3736,10 +3745,10 @@ class local_custom_service_external extends external_api
         ";
 
         // var_dump($sql);die;
-    
+
         return $DB->get_records_sql($sql);
     }
-    
+
     /**
      * Parameter description for get_course_image().
      *
@@ -3771,45 +3780,47 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters.
      */
-    public static function add_image_course_parameters() {
+    public static function add_image_course_parameters()
+    {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
             'filecontent' => new external_value(PARAM_RAW, 'Nội dung file dưới dạng base64'),
             'filename' => new external_value(PARAM_FILE, 'Tên của file')
         ]);
     }
-    
-    public static function add_image_course($courseid, $filecontent, $filename) {
+
+    public static function add_image_course($courseid, $filecontent, $filename)
+    {
         global $DB, $USER;
-    
+
         // Xác thực tham số từ body
         $params = self::validate_parameters(self::add_image_course_parameters(), [
             'courseid' => $courseid,
             'filecontent' => $filecontent,
             'filename' => $filename
         ]);
-    
+
         // Kiểm tra khóa học tồn tại hay không
         if (!$course = $DB->get_record('course', ['id' => $courseid])) {
             throw new moodle_exception('invalidcourse', 'error', '', $courseid);
         }
-    
+
         // Lấy context của khóa học
         $context = context_course::instance($courseid);
-    
+
         // Kiểm tra quyền của người dùng hiện tại có thể upload ảnh cho khóa học không
         require_capability('moodle/course:update', $context);
-    
+
         // Chuyển nội dung file từ base64 thành dữ liệu thực
         $decodedcontent = base64_decode($filecontent);
         if ($decodedcontent === false) {
             throw new moodle_exception('invalidfilecontent', 'error');
         }
-    
+
         // **Bước 1: Upload vào khu vực draft**
         // Tạo một draft itemid
         $draftItemId = file_get_unused_draft_itemid();
-    
+
         // Định nghĩa tệp cần upload vào draft
         $draftFileInfo = [
             'contextid' => context_user::instance($USER->id)->id, // Context của người dùng
@@ -3821,17 +3832,17 @@ class local_custom_service_external extends external_api
             'author' => 'Admin User',
             'license' => 'unknown'
         ];
-    
+
         // Lấy hệ thống file
         $fs = get_file_storage();
-    
+
         // Tạo file mới trong khu vực draft từ nội dung đã giải mã
         $draftFile = $fs->create_file_from_string($draftFileInfo, $decodedcontent);
-    
+
         if (!$draftFile) {
             throw new moodle_exception('fileuploaddraftfailed', 'error');
         }
-    
+
         // **Bước 2: Chuyển file từ draft sang overviewfiles**
         $finalFileInfo = [
             'contextid' => $context->id,       // Context của khóa học
@@ -3843,20 +3854,20 @@ class local_custom_service_external extends external_api
             'author' => 'Admin User',
             'license' => 'unknown'
         ];
-    
+
         // Xóa các file hiện tại trong overviewfiles để tránh trùng lặp
         $fs->delete_area_files($context->id, 'course', 'overviewfiles', 0);
-    
+
         // Sao chép file từ draft sang overviewfiles
         $finalFile = $fs->create_file_from_storedfile($finalFileInfo, $draftFile);
-    
+
         if (!$finalFile) {
             throw new moodle_exception('fileuploadfinalfailed', 'error');
         }
-    
+
         // **Bước 3: Xóa file trong draft sau khi đã chuyển thành công**
         $draftFile->delete(); // Sử dụng phương thức delete() trên đối tượng stored_file
-    
+
         // Lấy URL của file đã upload
         $fileurl = moodle_url::make_pluginfile_url(
             $finalFile->get_contextid(),
@@ -3866,18 +3877,18 @@ class local_custom_service_external extends external_api
             $finalFile->get_filepath(),
             $finalFile->get_filename()
         )->out();
-    
+
         // **Bước 4: Cập Nhật Trường 'summary' của Khóa Học để Hiển Thị Hình Ảnh**
         // Điều này sẽ giúp hình ảnh hiển thị trên dashboard và các vị trí khác nếu cần.
         // Bạn có thể tuỳ chỉnh cách thêm hình ảnh vào 'summary' theo nhu cầu.
         // $existing_summary = $course->summary;
         // $new_summary = '<img src="' . $fileurl . '" alt="Course Image" />' . $existing_summary;
-        
+
         // // Cập nhật trường 'summary' với định dạng HTML
         // $DB->set_field('course', 'summary', $new_summary, ['id' => $courseid]);
         // $DB->set_field('course', 'summaryformat', FORMAT_HTML, ['id' => $courseid]);
         // $DB->set_field('course', 'timemodified', time(), ['id' => $courseid]);
-    
+
         // **Bước 5: Trả Về Kết Quả**
         return [
             'status' => true,
@@ -3887,9 +3898,10 @@ class local_custom_service_external extends external_api
             'url' => $fileurl
         ];
     }
-    
-    
-    public static function add_image_course_returns() {
+
+
+    public static function add_image_course_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái upload thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -3898,7 +3910,7 @@ class local_custom_service_external extends external_api
             'url' => new external_value(PARAM_URL, 'URL truy cập file đã upload')
         ]);
     }
-    
+
 
     // Functionset for create_activity_label() ******************************************************************************************.
 
@@ -3907,7 +3919,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters.
      */
-    public static function create_activity_label_parameters() {
+    public static function create_activity_label_parameters()
+    {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
             'content' => new external_value(PARAM_RAW, 'Nội dung của activity'),
@@ -3920,7 +3933,7 @@ class local_custom_service_external extends external_api
             'cmsh5ptoolid' => new external_value(PARAM_RAW, 'ID CMS H5P Tool', VALUE_OPTIONAL),
         ]);
     }
-    
+
 
     /**
      * Function to create a label activity in a course.
@@ -3932,9 +3945,10 @@ class local_custom_service_external extends external_api
      * @return array
      * @throws moodle_exception
      */
-    public static function create_activity_label($courseid, $content, $name, $module, $section = 0, $display = 0, $visible, $description = '', $cmsh5ptoolid = '') {
+    public static function create_activity_label($courseid, $content, $name, $module, $section = 0, $display = 0, $visible, $description = '', $cmsh5ptoolid = '')
+    {
         global $DB, $USER;
-    
+
         // Validate the parameters.
         $params = self::validate_parameters(self::create_activity_label_parameters(), [
             'courseid' => $courseid,
@@ -3946,17 +3960,17 @@ class local_custom_service_external extends external_api
             'visible' => $visible
         ]);
 
-    
+
         // Tải thông tin khóa học.
         $course = $DB->get_record('course', ['id' => $params['courseid']], '*', MUST_EXIST);
-    
+
         // Kiểm tra quyền của người dùng.
         $context = context_course::instance($course->id);
         require_login($course);
         if (!has_capability('moodle/course:manageactivities', $context)) {
             throw new moodle_exception('nopermissions', 'error', '', 'manage activities');
         }
-    
+
         // Lấy thông tin format của khóa học để xác định section.
         $format = course_get_format($course);
         // if ($params['section'] > 0) {
@@ -3969,7 +3983,7 @@ class local_custom_service_external extends external_api
         //     $sectionnumber = $format->get_last_section_number();
         // }
         $sectionnumber = $params['section'];
-    
+
         // Lấy module id dựa trên loại module (label hoặc url).
         if ($params['module'] == 'label') {
             $modulename = 'label';
@@ -3996,14 +4010,14 @@ class local_custom_service_external extends external_api
             throw new moodle_exception('invalidmodule', 'error', '', 'Invalid module type');
         }
         $moduleid = $module->id;
-    
+
         // Chuẩn bị đối tượng moduleinfo.
         $moduleinfo = new stdClass();
         $moduleinfo->modulename = $modulename;
         $moduleinfo->module = $moduleid;
         $moduleinfo->section = $sectionnumber;
         $moduleinfo->name = $params['name'];
-    
+
         // Xử lý nội dung cho label hoặc url.
         if ($params['module'] == 'label') {
             if (plugin_supports('mod', 'label', FEATURE_MOD_INTRO, true)) {
@@ -4106,7 +4120,7 @@ class local_custom_service_external extends external_api
             $moduleinfo->display = $params['display'];
             $moduleinfo->cms_h5p_tool_id = $cmsh5ptoolid;
         }
-    
+
         $moduleinfo->visible = $params['visible'];
         $moduleinfo->groupmode = 0;
         $moduleinfo->groupingid = 0;
@@ -4120,12 +4134,12 @@ class local_custom_service_external extends external_api
             debugging('Lỗi khi tạo activity: ' . $e->getMessage(), DEBUG_DEVELOPER);
             throw new moodle_exception('errorcreatingactivity', 'local_yourplugin', '', $e->getMessage());
         }
-    
+
         if (!$created_moduleinfo || empty($created_moduleinfo->instance)) {
             debugging('add_moduleinfo trả về kết quả không hợp lệ.', DEBUG_DEVELOPER);
             throw new moodle_exception('errorcreatingactivity', 'local_yourplugin');
         }
-    
+
         return [
             'cmid' => $created_moduleinfo->coursemodule,
             'instanceid' => $created_moduleinfo->instance,
@@ -4140,7 +4154,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function create_activity_label_returns() {
+    public static function create_activity_label_returns()
+    {
         return new external_single_structure([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của label'),
             'instanceid' => new external_value(PARAM_INT, 'Instance ID của label'),
@@ -4150,7 +4165,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function update_activity_parameters() {
+    public static function update_activity_parameters()
+    {
         return new external_function_parameters([
             'coursemoduleid' => new external_value(PARAM_INT, 'ID của course module cần cập nhật'),
             'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
@@ -4168,11 +4184,12 @@ class local_custom_service_external extends external_api
             'showdescription' => new external_value(PARAM_INT, 'Hiển thị mô tả', VALUE_OPTIONAL)
         ]);
     }
-    
-    
-    public static function update_activity($coursemoduleid, $courseid, $name, $content = null, $visible = 1, $module, $groupmode = null, $groupingid = null, $completion = null, $completionview = null, $completiongradeitemnumber = null, $completionexpected = null, $availability = null, $showdescription = 0) {
+
+
+    public static function update_activity($coursemoduleid, $courseid, $name, $content = null, $visible = 1, $module, $groupmode = null, $groupingid = null, $completion = null, $completionview = null, $completiongradeitemnumber = null, $completionexpected = null, $availability = null, $showdescription = 0)
+    {
         global $DB, $USER, $CFG;
-    
+
         // Validate parameters.
         $params = self::validate_parameters(self::update_activity_parameters(), [
             'coursemoduleid' => $coursemoduleid,
@@ -4190,11 +4207,11 @@ class local_custom_service_external extends external_api
             'availability' => $availability,
             'showdescription' => $showdescription
         ]);
-    
+
         // Load course and module information.
         $course = $DB->get_record('course', ['id' => $params['courseid']], '*', MUST_EXIST);
         $cm = get_coursemodule_from_id('', $params['coursemoduleid'], 0, false, MUST_EXIST);
-    
+
         // Check user capabilities.
         $context = context_module::instance($cm->id);
         require_login($course);
@@ -4207,7 +4224,7 @@ class local_custom_service_external extends external_api
         } elseif ($params['module'] == 'url') {
             $modulename = 'url';
         }
-    
+
         // Load module info.
         $moduleinfo = new stdClass();
         $moduleinfo->id = $cm->instance;
@@ -4223,7 +4240,7 @@ class local_custom_service_external extends external_api
         $moduleinfo->availability = $params['availability'];
         $moduleinfo->showdescription = $params['showdescription'];
         $moduleinfo->coursemodule = $params['coursemoduleid'];
-    
+
         if ($params['module'] == 'label') {
             if (plugin_supports('mod', 'label', FEATURE_MOD_INTRO, true)) {
                 $editor = 'introeditor';
@@ -4250,19 +4267,20 @@ class local_custom_service_external extends external_api
                 $moduleinfo->intro = $params['content'];
                 $moduleinfo->introformat = FORMAT_HTML;
             }
-        
+
             $moduleinfo->externalurl = $params['content'];
         }
-    
+
         // Call update_moduleinfo to update the activity.
         list($cm, $moduleinfo) = update_moduleinfo($cm, $moduleinfo, $course);
-    
+
         // Return success or error message.
         return array('status' => 'success', 'message' => 'Activity updated successfully');
     }
-    
-    
-    public static function update_activity_returns() {
+
+
+    public static function update_activity_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Status of the update'),
             'message' => new external_value(PARAM_TEXT, 'Message describing the outcome')
@@ -4295,7 +4313,7 @@ class local_custom_service_external extends external_api
     //     // Kiểm tra nếu json_decode thất bại, vì vậy ta cần làm sạch chuỗi theo cách thủ công
     //     $emailsString = implode("','", $user_emails_array);
     //     $emailsString = "'" . $emailsString . "'";
-        
+
     //     // // Lấy danh sách khóa học mà người dùng đã enroll
     //     $sql = "SELECT 
     //         c.id as course_id,
@@ -4319,7 +4337,7 @@ class local_custom_service_external extends external_api
     //             )
     //         GROUP BY c.fullname, c.id
     //         ORDER BY course_id ASC";
-        
+
     //     $enrolled_courses = $DB->get_records_sql($sql);
     //     // Tổ chức lại dữ liệu
     //     $courses_enrolled = [];
@@ -4330,7 +4348,7 @@ class local_custom_service_external extends external_api
     //             WHERE g.courseid = :course_id";
 
     //         $groups = $DB->get_records_sql($groupQuery, ['course_id' => $course->course_id]);
-                    
+
     //         $group_list = [];
     //         foreach ($groups as $group) {
     //             $studentsQuery = "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email
@@ -4399,7 +4417,7 @@ class local_custom_service_external extends external_api
     //         ";
 
     //         $students = $DB->get_records_sql($studentsQuery, ['course_id' => $course->course_id]);
-                                
+
     //         $student_list = [];
     //         foreach ($students as $student) {
     //             $student_list[] = [
@@ -4422,7 +4440,7 @@ class local_custom_service_external extends external_api
     //         ";
 
     //         $teachers = $DB->get_records_sql($teachersQuery, ['course_id' => $course->course_id]);
-                                
+
     //         $teacher_list = [];
     //         foreach ($teachers as $teacher) {
     //             $teacher_list[] = [
@@ -4490,7 +4508,7 @@ class local_custom_service_external extends external_api
     //         )
     //         ORDER BY course_id ASC
     //         ";
-        
+
     //         $resultRemainingCourses = $DB->get_records_sql($queryRemainingCourses);
     //     }
 
@@ -4498,9 +4516,9 @@ class local_custom_service_external extends external_api
     //         $groupQuery = "SELECT g.id AS group_id, g.name AS group_name
     //             FROM mdl_groups g
     //             WHERE g.courseid = :course_id";
-    
+
     //         $groups = $DB->get_records_sql($groupQuery, ['course_id' => $course->course_id]);
-    
+
     //         $group_list = [];
     //         foreach ($groups as $group) {
     //             $group_list[] = [
@@ -4522,7 +4540,8 @@ class local_custom_service_external extends external_api
     //     ];
     // }
 
-    public static function unique_users_by_id(array $users): array {
+    public static function unique_users_by_id(array $users): array
+    {
         $unique = [];
         foreach ($users as $u) {
             $uid = is_array($u) ? $u['id'] : $u->user_id; // hỗ trợ cả array và object
@@ -4576,7 +4595,7 @@ class local_custom_service_external extends external_api
             GROUP BY c.id, c.fullname
             ORDER BY c.id ASC
         ";
-        
+
         $enrolled_courses = $DB->get_records_sql($sql_courses, $params);
         if (!$enrolled_courses) {
             $enrolled_courses = [];
@@ -5109,7 +5128,7 @@ class local_custom_service_external extends external_api
                     'groupid' => new external_value(PARAM_INT, 'groupid'),
                     'groupname' => new external_value(PARAM_TEXT, 'groupname'),
                     'courseid' => new external_value(PARAM_INT, 'courseid'),             // Thêm courseid
-                    'coursename' => new external_value(PARAM_TEXT, 'coursename'),   
+                    'coursename' => new external_value(PARAM_TEXT, 'coursename'),
                     'completed_activities' => new external_value(PARAM_INT, 'completed_activities'),     // Thêm coursename
                 ])),
                 'total_activities' => new external_value(PARAM_INT, 'Total activities in course'),
@@ -5117,7 +5136,7 @@ class local_custom_service_external extends external_api
                 'total_activities_completion' => new external_value(PARAM_INT, 'Total activities completion'),
             ])),
         ]);
-        
+
     }
 
     public static function get_user_completed_activities($userid, $courseid)
@@ -5156,7 +5175,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters.
      */
-    public static function create_activity_quiz_parameters() {
+    public static function create_activity_quiz_parameters()
+    {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
             'name' => new external_value(PARAM_TEXT, 'Tên của activity'),
@@ -5165,14 +5185,15 @@ class local_custom_service_external extends external_api
             // 'completioncmid' => new external_value(PARAM_INT, 'ID của activity cần hoàn thành (null nếu không có)', VALUE_DEFAULT, null, VALUE_OPTIONAL),
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function create_activity_quiz($courseid, $name, $section = 0, $description = '') {
+    public static function create_activity_quiz($courseid, $name, $section = 0, $description = '')
+    {
         global $DB, $USER;
-    
+
         // Validate the parameters.
         $params = self::validate_parameters(self::create_activity_quiz_parameters(), [
             'courseid' => $courseid,
@@ -5182,12 +5203,12 @@ class local_custom_service_external extends external_api
         ]);
 
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-    
+
         $module = $DB->get_record('modules', ['name' => 'quiz'], '*', MUST_EXIST);
         $moduleid = $module->id;
         //create an object with all of the neccesary information to build a quiz
         $myQuiz = new stdClass();
-        $myQuiz->modulename='quiz';
+        $myQuiz->modulename = 'quiz';
         $myQuiz->module = $moduleid;
         $myQuiz->name = $name;
         $myQuiz->introformat = FORMAT_HTML;
@@ -5209,34 +5230,34 @@ class local_custom_service_external extends external_api
         $myQuiz->questiondecimalpoints = 2;
         $myQuiz->visible = 1;
         $myQuiz->questionsperpage = 1;
-        $myQuiz->introeditor = array('text' => 'A matching quiz','format' => 1);
+        $myQuiz->introeditor = array('text' => 'A matching quiz', 'format' => 1);
 
         //all of the review options
-        $myQuiz->attemptduring=1;
-        $myQuiz->correctnessduring=1;
-        $myQuiz->marksduring=1;
-        $myQuiz->specificfeedbackduring=1;
-        $myQuiz->generalfeedbackduring=1;
-        $myQuiz->rightanswerduring=1;
-        $myQuiz->overallfeedbackduring=1;
+        $myQuiz->attemptduring = 1;
+        $myQuiz->correctnessduring = 1;
+        $myQuiz->marksduring = 1;
+        $myQuiz->specificfeedbackduring = 1;
+        $myQuiz->generalfeedbackduring = 1;
+        $myQuiz->rightanswerduring = 1;
+        $myQuiz->overallfeedbackduring = 1;
 
-        $myQuiz->attemptimmediately=1;
-        $myQuiz->correctnessimmediately=1;
-        $myQuiz->marksimmediately=1;
-        $myQuiz->specificfeedbackimmediately=1;
-        $myQuiz->generalfeedbackimmediately=1;
-        $myQuiz->rightanswerimmediately=1;
-        $myQuiz->overallfeedbackimmediately=1;
+        $myQuiz->attemptimmediately = 1;
+        $myQuiz->correctnessimmediately = 1;
+        $myQuiz->marksimmediately = 1;
+        $myQuiz->specificfeedbackimmediately = 1;
+        $myQuiz->generalfeedbackimmediately = 1;
+        $myQuiz->rightanswerimmediately = 1;
+        $myQuiz->overallfeedbackimmediately = 1;
 
-        $myQuiz->marksopen=1;
+        $myQuiz->marksopen = 1;
 
-        $myQuiz->attemptclosed=1;
-        $myQuiz->correctnessclosed=1;
-        $myQuiz->marksclosed=1;
-        $myQuiz->specificfeedbackclosed=1;
-        $myQuiz->generalfeedbackclosed=1;
-        $myQuiz->rightanswerclosed=1;
-        $myQuiz->overallfeedbackclosed=1;
+        $myQuiz->attemptclosed = 1;
+        $myQuiz->correctnessclosed = 1;
+        $myQuiz->marksclosed = 1;
+        $myQuiz->specificfeedbackclosed = 1;
+        $myQuiz->generalfeedbackclosed = 1;
+        $myQuiz->rightanswerclosed = 1;
+        $myQuiz->overallfeedbackclosed = 1;
 
         // Thiết lập các biến điều kiện
         // $timeopen = time() + 3600; // Mở quiz sau 1 giờ từ thời điểm hiện tại.
@@ -5319,7 +5340,8 @@ class local_custom_service_external extends external_api
      * @param int|null $completioncmid Completion condition based on activity ID.
      * @return string JSON string of availability conditions.
      */
-    public static function generate_availability_conditions($timeopen = null, $timeclose = null, $gradeitemid = null, $min = null, $max = null, $completioncmids = null) {
+    public static function generate_availability_conditions($timeopen = null, $timeclose = null, $gradeitemid = null, $min = null, $max = null, $completioncmids = null)
+    {
         $conditions = [];
         $showc = [];
 
@@ -5331,7 +5353,7 @@ class local_custom_service_external extends external_api
                 "t" => $timeopen
             ];
             $showc[] = true;
-            
+
             $conditions[] = [
                 "type" => "date",
                 "d" => "<",
@@ -5374,7 +5396,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function create_activity_quiz_returns() {
+    public static function create_activity_quiz_returns()
+    {
         return new external_single_structure([
             'modulename' => new external_value(PARAM_TEXT, 'Module name'),
             'cmid' => new external_value(PARAM_INT, 'Course module ID của label'),
@@ -5385,21 +5408,22 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function get_user_data_certificate($page = 0, $per_page = 10, $user_id = 0) {
+    public static function get_user_data_certificate($page = 0, $per_page = 10, $user_id = 0)
+    {
         global $DB, $OUTPUT;
-    
+
         // Kiểm tra và gán giá trị mặc định cho page và per_page nếu không có giá trị
         if ($page <= 0) {
             $page = 1; // Mặc định là trang 1
         }
-        
+
         if ($per_page <= 0) {
             $per_page = 9999; // Mặc định là lấy toàn bộ dữ liệu
         }
-    
+
         // Tính toán offset
         $offset = ($page - 1) * $per_page;
-    
+
         // Truy vấn SQL (thêm điều kiện nếu không phân trang)
         $sql = "SELECT
                 mdl_course_modules.id,
@@ -5415,12 +5439,12 @@ class local_custom_service_external extends external_api
                 mdl_course_modules_completion.userid = $user_id 
                 AND mdl_course_modules_completion.completionstate = 1 
                 AND mdl_modules.name = 'customcert'";
-    
+
         // Nếu có phân trang, thêm LIMIT
         if ($per_page != 9999) {
             $sql .= " LIMIT $offset, $per_page";
         }
-    
+
         $count_sql = "SELECT
                     COUNT(*)
                 FROM
@@ -5432,11 +5456,11 @@ class local_custom_service_external extends external_api
                 mdl_course_modules_completion.userid = $user_id 
                 AND mdl_course_modules_completion.completionstate = 1 
                 AND mdl_modules.name = 'customcert'";
-    
+
         // Thực hiện truy vấn và đếm tổng số bản ghi
         $res = $DB->get_records_sql($sql);
         $total_count = $DB->get_field_sql($count_sql);
-    
+
         // Chuyển đổi dữ liệu thành mảng
         $users = array();
         foreach ($res as $v) {
@@ -5449,17 +5473,18 @@ class local_custom_service_external extends external_api
                 'time' => date('l, j F Y, g:i A', $v->timemodified),
             );
         }
-    
+
         // Tính tổng số trang nếu có phân trang
         $result = [
             'users' => $users,
             'total_page' => ceil($total_count / $per_page),
         ];
-    
+
         return $result;
     }
 
-    public static function get_user_data_certificate_parameters() {
+    public static function get_user_data_certificate_parameters()
+    {
         return new external_function_parameters(
             array(
                 'page' => new external_value(PARAM_INT, 'Page number', VALUE_DEFAULT, 0),
@@ -5470,7 +5495,8 @@ class local_custom_service_external extends external_api
     }
 
     // Định nghĩa kiểu dữ liệu trả về
-    public static function get_user_data_certificate_returns() {
+    public static function get_user_data_certificate_returns()
+    {
         return new external_single_structure(
             array(
                 'total_page' => new external_value(PARAM_INT, 'Tổng số page'),
@@ -5497,7 +5523,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters.
      */
-    public static function move_section_parameters() {
+    public static function move_section_parameters()
+    {
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'id of course'),
@@ -5518,7 +5545,8 @@ class local_custom_service_external extends external_api
      * @param int $position Position the section is moved to.
      * @return null.
      */
-    public static function move_section($courseid, $sectionnumber, $position) {
+    public static function move_section($courseid, $sectionnumber, $position)
+    {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
         require_once($CFG->dirroot . '/course/format/lib.php');
@@ -5527,9 +5555,10 @@ class local_custom_service_external extends external_api
         $params = self::validate_parameters(self::move_section_parameters(), array(
             'courseid' => $courseid,
             'sectionnumber' => $sectionnumber,
-            'position' => $position));
+            'position' => $position
+        ));
 
-        if (! ($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
+        if (!($course = $DB->get_record('course', array('id' => $params['courseid'])))) {
             throw new moodle_exception('invalidcourseid', 'local_custom_service', '', $courseid);
         }
 
@@ -5546,8 +5575,12 @@ class local_custom_service_external extends external_api
         $lastsectionnumber = $courseformat->get_last_section_number();
         // Test if section with $sectionnumber exist.
         if ($sectionnumber < 0 or $sectionnumber > $lastsectionnumber) {
-            throw new moodle_exception('invalidsectionnumber', 'local_custom_service', '',
-                array('sectionnumber' => $sectionumber, 'lastsectionnumber' => $lastsectionnumber));
+            throw new moodle_exception(
+                'invalidsectionnumber',
+                'local_custom_service',
+                '',
+                array('sectionnumber' => $sectionumber, 'lastsectionnumber' => $lastsectionnumber)
+            );
         }
 
         // Move section.
@@ -5555,7 +5588,7 @@ class local_custom_service_external extends external_api
             throw new moodle_exception('movesectionerror', 'local_custom_service');
         }
 
-        return  null;
+        return null;
     }
 
     /**
@@ -5563,7 +5596,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_description
      */
-    public static function move_section_returns() {
+    public static function move_section_returns()
+    {
         return null;
     }
 
@@ -5575,7 +5609,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters
      */
-    public static function move_activity_to_section_parameters() {
+    public static function move_activity_to_section_parameters()
+    {
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'id of course'),
@@ -5595,7 +5630,8 @@ class local_custom_service_external extends external_api
      * @param int $newsection The ID of the section to move the activity to.
      * @return null.
      */
-    public static function move_activity_to_section($courseid, $moduleid, $newsection) {
+    public static function move_activity_to_section($courseid, $moduleid, $newsection)
+    {
         global $DB, $USER;
 
         // Validate parameters passed from web service.
@@ -5649,7 +5685,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_description
      */
-    public static function move_activity_to_section_returns() {
+    public static function move_activity_to_section_returns()
+    {
         return null;
     }
 
@@ -5658,7 +5695,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters
      */
-    public static function move_activity_before_after_parameters() {
+    public static function move_activity_before_after_parameters()
+    {
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'id of course'),
@@ -5680,7 +5718,8 @@ class local_custom_service_external extends external_api
      * @param int $section The ID of the section.
      * @return null.
      */
-    public static function move_activity_before_after($courseid, $moduleid, $newsection, $targetmoduleid) {
+    public static function move_activity_before_after($courseid, $moduleid, $newsection, $targetmoduleid)
+    {
         global $DB;
 
         // Validate parameters passed from web service.
@@ -5734,12 +5773,14 @@ class local_custom_service_external extends external_api
      *
      * @return external_description
      */
-    public static function move_activity_before_after_returns() {
+    public static function move_activity_before_after_returns()
+    {
         return null;
     }
 
     //update_activity_quiz
-    public static function update_activity_quiz_parameters() {
+    public static function update_activity_quiz_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của quiz cần cập nhật'),
             'fields' => new external_multiple_structure(
@@ -5792,32 +5833,33 @@ class local_custom_service_external extends external_api
             )
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function update_activity_quiz($cmid, $fields) {
+    public static function update_activity_quiz($cmid, $fields)
+    {
         global $DB;
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::update_activity_quiz_parameters(), [
             'cmid' => $cmid,
             'fields' => $fields
         ]);
-    
+
         // Retrieve course module and course details
         $cm = get_coursemodule_from_id('', $cmid, 0, false, MUST_EXIST);
         $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-    
+
         // Check if quiz exists
         if (!$DB->record_exists('quiz', ['id' => $cm->instance])) {
             throw new moodle_exception('invalidquizid', 'mod_quiz', '', $cm->instance);
         }
-    
+
         // Get quiz record
         $quiz = $DB->get_record('quiz', ['id' => $cm->instance], '*', MUST_EXIST);
-    
+
         // Update quiz fields
         foreach ($params['fields'] as $field_data) {
             foreach ($field_data as $field => $value) {
@@ -5826,7 +5868,7 @@ class local_custom_service_external extends external_api
                 }
             }
         }
-    
+
         // Update review settings
         $attemptimmediately = 65536;
         $correctnessimmediately = 0;
@@ -5837,28 +5879,28 @@ class local_custom_service_external extends external_api
         $overallfeedbackimmediately = 0;
         $completionminattempts = 0;
 
-        if(!empty($params['fields'][0]['completionminattempts'])){
+        if (!empty($params['fields'][0]['completionminattempts'])) {
             $completionminattempts = $params['fields'][0]['completionminattempts'];
         }
-        if(!empty($params['fields'][0]['attemptimmediately'])){
+        if (!empty($params['fields'][0]['attemptimmediately'])) {
             $attemptimmediately |= QUIZ_REVIEW_IMMEDIATELY_AFTER_ATTEMPT;
         }
-        if(!empty($params['fields'][0]['correctnessimmediately'])){
+        if (!empty($params['fields'][0]['correctnessimmediately'])) {
             $correctnessimmediately |= QUIZ_REVIEW_IMMEDIATELY_WHETHER_CORRECT;
         }
-        if(!empty($params['fields'][0]['marksimmediately'])){
+        if (!empty($params['fields'][0]['marksimmediately'])) {
             $marksimmediately |= QUIZ_REVIEW_IMMEDIATELY_MARKS;
         }
-        if(!empty($params['fields'][0]['specificfeedbackimmediately'])){
+        if (!empty($params['fields'][0]['specificfeedbackimmediately'])) {
             $specificfeedbackimmediately |= QUIZ_REVIEW_IMMEDIATELY_SPECIFIC_FEEDBACK;
         }
-        if(!empty($params['fields'][0]['generalfeedbackimmediately'])){
+        if (!empty($params['fields'][0]['generalfeedbackimmediately'])) {
             $generalfeedbackimmediately |= QUIZ_REVIEW_IMMEDIATELY_GENERAL_FEEDBACK;
         }
-        if(!empty($params['fields'][0]['rightanswerimmediately'])){
+        if (!empty($params['fields'][0]['rightanswerimmediately'])) {
             $rightanswerimmediately |= QUIZ_REVIEW_IMMEDIATELY_RIGHT_ANSWER;
         }
-        if(!empty($params['fields'][0]['overallfeedbackimmediately'])){
+        if (!empty($params['fields'][0]['overallfeedbackimmediately'])) {
             $overallfeedbackimmediately |= QUIZ_REVIEW_IMMEDIATELY_OVERALL_FEEDBACK;
         }
 
@@ -5871,18 +5913,18 @@ class local_custom_service_external extends external_api
         $quiz->reviewrightanswer = $rightanswerimmediately;
         $quiz->reviewspecificfeedback = $specificfeedbackimmediately;
         $quiz->completionminattempts = $completionminattempts;
-        
+
         $DB->update_record('quiz', $quiz);
-    
+
         // Update availability if provided
         if (!empty($params['fields'][0]['availability'])) {
             $availability_params = $params['fields'][0]['availability'];
             $completioncmids = $availability_params['completioncmid'] ?? [];
-    
+
             if (!is_array($completioncmids)) {
                 $completioncmids = [$completioncmids];
             }
-    
+
             $availability_json = self::generate_availability_conditions(
                 $availability_params['timeopen'] ?? null,
                 $availability_params['timeclose'] ?? null,
@@ -5891,41 +5933,41 @@ class local_custom_service_external extends external_api
                 $availability_params['max'] ?? null,
                 $completioncmids
             );
-    
+
             $cm->availability = $availability_json;
             $DB->update_record('course_modules', $cm);
-        }else{
+        } else {
             $cm->availability = '';
             $DB->update_record('course_modules', $cm);
         }
-    
+
         // Update section and visibility
         if (!empty($params['fields'][0]['section'])) {
             $section = $DB->get_record('course_sections', [
-                'course' => $cm->course, 
+                'course' => $cm->course,
                 'section' => $params['fields'][0]['section']
             ], '*', MUST_EXIST);
-    
+
             if ($section->id != $cm->section) {
                 self::move_activity_to_section($cm->course, $cmid, $params['fields'][0]['section']);
             }
         }
-    
+
         if (isset($params['fields'][0]['visible'])) {
             $cm->visible = $params['fields'][0]['visible'];
         }
-    
+
         $completion = 0;
         $completionview = 0;
         $completionpassgrade = 0;
         $completiongradeitemnumber = Null;
-        
 
-        if(!empty($params['fields'][0]['completion'])){
+
+        if (!empty($params['fields'][0]['completion'])) {
             $completion = $params['fields'][0]['completion'] ?? 0;
             $completionview = $params['fields'][0]['completionview'] ?? 0;
             $completionpassgrade = $params['fields'][0]['completionpassgrade'] ?? 0;
-            if(!empty($params['fields'][0]['completionpassgrade'])){
+            if (!empty($params['fields'][0]['completionpassgrade'])) {
                 $completiongradeitemnumber = 0;
             }
         }
@@ -5937,7 +5979,7 @@ class local_custom_service_external extends external_api
         $cm->completiongradeitemnumber = $completiongradeitemnumber;
 
         $cm->showdescription = $params['fields'][0]['showdescription'] ?? 0;
-        
+
         $DB->update_record('course_modules', $cm);
 
         $grade_item = $DB->get_record('grade_items', [
@@ -5951,10 +5993,10 @@ class local_custom_service_external extends external_api
         } else {
             throw new moodle_exception('invalidgradeitem', 'error', '', $quiz->id);
         }
-    
+
         // Rebuild course cache
         rebuild_course_cache($cm->course, true);
-    
+
         return [
             'status' => 'success',
             'message' => 'Quiz updated successfully',
@@ -5963,9 +6005,10 @@ class local_custom_service_external extends external_api
         ];
     }
 
-    public static function get_moduleid_from_cmid($cmid, $modulename) {
+    public static function get_moduleid_from_cmid($cmid, $modulename)
+    {
         global $DB;
-    
+
         // Truy vấn để lấy quizid từ cmid
         $sql = "SELECT m.name AS modulename, cm.instance AS moduleid
             FROM {course_modules} cm
@@ -5985,7 +6028,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function update_activity_quiz_returns() {
+    public static function update_activity_quiz_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -5996,7 +6040,8 @@ class local_custom_service_external extends external_api
 
 
     //update_activity_url
-    public static function update_activity_url_parameters() {
+    public static function update_activity_url_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của url cần cập nhật'),
             'fields' => new external_multiple_structure(
@@ -6032,31 +6077,32 @@ class local_custom_service_external extends external_api
             )
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function update_activity_url($cmid, $fields) {
+    public static function update_activity_url($cmid, $fields)
+    {
         global $DB;
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::update_activity_url_parameters(), [
             'cmid' => $cmid,
             'fields' => $fields
         ]);
-        
+
         // Lấy urlid từ cmid
         $urlid = self::get_moduleid_from_cmid($cmid, 'url');
-        
+
         // Kiểm tra url có tồn tại không
         if (!$DB->record_exists('url', ['id' => $urlid])) {
             throw new moodle_exception('invalidurlid', 'mod_url', '', $urlid);
         }
-    
+
         // Lấy thông tin url hiện tại
         $url = $DB->get_record('url', ['id' => $urlid], '*', MUST_EXIST);
-    
+
         // Cập nhật các trường được cung cấp
         foreach ($params['fields'] as $field_data) {
             foreach ($field_data as $field => $value) {
@@ -6087,17 +6133,17 @@ class local_custom_service_external extends external_api
             // Cập nhật availability trong bảng course_modules
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = $availability_json;
-        
+
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
-        }else{
+        } else {
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = '';
-        
+
             // Cập nhật lại course_modules
-            $DB->update_record('course_modules', $cm); 
+            $DB->update_record('course_modules', $cm);
         }
-        
+
         // Xử lý section và visible nếu được truyền
         $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
 
@@ -6118,12 +6164,12 @@ class local_custom_service_external extends external_api
         $completionview = 0;
         $completionexpected = 0;
         if (!empty($params['fields'][0]['completion'])) {
-            if($params['fields'][0]['completion'] == 1){
+            if ($params['fields'][0]['completion'] == 1) {
                 $completion = $params['fields'][0]['completion'];
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
             }
 
-            if($params['fields'][0]['completion'] == 2){
+            if ($params['fields'][0]['completion'] == 2) {
                 $completion = $params['fields'][0]['completion'];
                 $completionview = $params['fields'][0]['completionview'] ?? 0;
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
@@ -6138,7 +6184,7 @@ class local_custom_service_external extends external_api
         $DB->update_record('course_modules', $cm1);
 
         rebuild_course_cache($cm1->course, true);
-    
+
         return [
             'status' => 'success',
             'message' => 'Url updated successfully',
@@ -6152,7 +6198,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function update_activity_url_returns() {
+    public static function update_activity_url_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -6162,38 +6209,40 @@ class local_custom_service_external extends external_api
     }
 
     //get detail module
-    public static function get_detail_module_parameters() {
+    public static function get_detail_module_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của quiz cần cập nhật'),
             'modulename' => new external_value(PARAM_TEXT, 'Tên module'),
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function get_detail_module($cmid, $modulename) {
+    public static function get_detail_module($cmid, $modulename)
+    {
         global $DB;
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::get_detail_module_parameters(), [
             'cmid' => $cmid,
             'modulename' => $modulename
         ]);
-    
+
         // Retrieve course module and course details
         $cm = get_coursemodule_from_id('', $params['cmid'], 0, false, MUST_EXIST);
         $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
-    
+
         // Check if quiz exists
         if (!$DB->record_exists($params['modulename'], ['id' => $cm->instance])) {
             throw new moodle_exception('invalidmoduleid', 'error', '', $cm->instance);
         }
-    
+
         // Get quiz record
         $module = $DB->get_record($params['modulename'], ['id' => $cm->instance], '*', MUST_EXIST);
-    
+
         $plugin_config = [];
         if ($params['modulename'] === 'assign') {
             // Retrieve all plugin configuration for the assignment
@@ -6219,11 +6268,39 @@ class local_custom_service_external extends external_api
             }
         }
 
+        // Lấy grade và gradepass từ grade_items
+        $grade = 0;
+        $gradepass = 0;
+        $gradeitem = $DB->get_record_sql(
+            "SELECT gi.grademax, gi.gradepass
+               FROM {grade_items} gi
+              WHERE gi.iteminstance = :instance
+                AND gi.courseid     = :courseid
+                AND gi.itemtype     = 'mod'
+                AND gi.itemmodule   = :modname",
+            [
+                'instance' => $cm->instance,
+                'courseid' => $cm->course,
+                'modname' => $params['modulename'],
+            ]
+        );
+        if ($gradeitem) {
+            $grade = (float) $gradeitem->grademax;
+            $gradepass = (float) $gradeitem->gradepass;
+        }
+
         return [
             'status' => 'success',
             'data' => json_encode($module),
             'plugin_config' => $plugin_config,
-            'file_urls' => $file_urls
+            'file_urls' => $file_urls,
+            'completion' => (int) ($cm->completion ?? 0),
+            'visible' => (int) ($cm->visible ?? 0),
+            'completiongradeitemnumber' => (string) ($cm->completiongradeitemnumber ?? ''),
+            'completionpassgrade' => (int) ($cm->completionpassgrade ?? 0),
+            'completionview' => (int) ($cm->completionview ?? 0),
+            'grade' => $grade,
+            'gradepass' => $gradepass,
         ];
     }
 
@@ -6232,7 +6309,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function get_detail_module_returns() {
+    public static function get_detail_module_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'data' => new external_value(PARAM_RAW, 'Dữ liệu chi tiết của module (có thể thay đổi tùy module)'),
@@ -6251,13 +6329,21 @@ class local_custom_service_external extends external_api
                 'Danh sách URL file',
                 VALUE_DEFAULT,
                 []
-            )
+            ),
+            'completion' => new external_value(PARAM_INT, 'Kiểu completion tracking (0=none,1=manual,2=auto)'),
+            'visible' => new external_value(PARAM_INT, 'Module hiển thị hay ẩn'),
+            'completiongradeitemnumber' => new external_value(PARAM_TEXT, 'Grade item number dùng cho completion', VALUE_OPTIONAL),
+            'completionpassgrade' => new external_value(PARAM_INT, 'Hoàn thành khi đạt điểm pass'),
+            'completionview' => new external_value(PARAM_INT, 'Hoàn thành khi đã xem'),
+            'grade' => new external_value(PARAM_FLOAT, 'Điểm tối đa (grade max)'),
+            'gradepass' => new external_value(PARAM_FLOAT, 'Điểm cần đạt để pass'),
         ]);
     }
 
     // Functionset for add_file_resource() ******************************************************************************************.
 
-    public static function add_file_resource_parameters() {
+    public static function add_file_resource_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'ID của activity'),
             'component' => new external_value(PARAM_TEXT, 'component ex: mod_assign, mod_resource'),
@@ -6270,9 +6356,10 @@ class local_custom_service_external extends external_api
             )
         ]);
     }
-    
 
-    public static function add_file_resource($cmid, $component, $filearea, $files) {
+
+    public static function add_file_resource($cmid, $component, $filearea, $files)
+    {
         global $DB, $USER;
 
         // Validate parameters.
@@ -6308,11 +6395,11 @@ class local_custom_service_external extends external_api
 
             // Check if the file already exists in the content area.
             $existingFile = $fs->get_file(
-                $context->id, 
-                $component, 
-                $filearea, 
-                0, 
-                '/', 
+                $context->id,
+                $component,
+                $filearea,
+                0,
+                '/',
                 $file['filename']
             );
 
@@ -6359,7 +6446,8 @@ class local_custom_service_external extends external_api
         ];
     }
 
-    public static function add_file_resource_returns() {
+    public static function add_file_resource_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái upload thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -6373,7 +6461,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function update_activity_resource_parameters() {
+    public static function update_activity_resource_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của url cần cập nhật'),
             'fields' => new external_multiple_structure(
@@ -6408,31 +6497,32 @@ class local_custom_service_external extends external_api
             )
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function update_activity_resource($cmid, $fields) {
+    public static function update_activity_resource($cmid, $fields)
+    {
         global $DB;
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::update_activity_resource_parameters(), [
             'cmid' => $cmid,
             'fields' => $fields
         ]);
-        
+
         // Lấy resourceid từ cmid
         $resourceid = self::get_moduleid_from_cmid($cmid, 'resource');
-        
+
         // Kiểm tra resource có tồn tại không
         if (!$DB->record_exists('resource', ['id' => $resourceid])) {
             throw new moodle_exception('invalidresourceid', 'mod_resource', '', $resourceid);
         }
-    
+
         // Lấy thông tin resource hiện tại
         $resource = $DB->get_record('resource', ['id' => $resourceid], '*', MUST_EXIST);
-    
+
         // Cập nhật các trường được cung cấp
         foreach ($params['fields'] as $field_data) {
             foreach ($field_data as $field => $value) {
@@ -6463,17 +6553,17 @@ class local_custom_service_external extends external_api
             // Cập nhật availability trong bảng course_modules
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = $availability_json;
-        
+
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
-        }else{
+        } else {
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = '';
-        
+
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
         }
-        
+
         // Xử lý section và visible nếu được truyền
         $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
 
@@ -6494,12 +6584,12 @@ class local_custom_service_external extends external_api
         $completionview = 0;
         $completionexpected = 0;
         if (!empty($params['fields'][0]['completion'])) {
-            if($params['fields'][0]['completion'] == 1){
+            if ($params['fields'][0]['completion'] == 1) {
                 $completion = $params['fields'][0]['completion'];
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
             }
 
-            if($params['fields'][0]['completion'] == 2){
+            if ($params['fields'][0]['completion'] == 2) {
                 $completion = $params['fields'][0]['completion'];
                 $completionview = $params['fields'][0]['completionview'] ?? 0;
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
@@ -6514,7 +6604,7 @@ class local_custom_service_external extends external_api
         $DB->update_record('course_modules', $cm1);
 
         rebuild_course_cache($cm1->course, true);
-    
+
         return [
             'status' => 'success',
             'message' => 'resource updated successfully',
@@ -6528,7 +6618,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function update_activity_resource_returns() {
+    public static function update_activity_resource_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -6537,7 +6628,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function update_activity_assign_parameters() {
+    public static function update_activity_assign_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của url cần cập nhật'),
             'fields' => new external_multiple_structure(
@@ -6580,12 +6672,13 @@ class local_custom_service_external extends external_api
             )
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function update_activity_assign($cmid, $fields) {
+    public static function update_activity_assign($cmid, $fields)
+    {
         global $DB;
 
         // var_dump($cmid, $fields);die;
@@ -6597,7 +6690,7 @@ class local_custom_service_external extends external_api
 
         $course = $DB->get_record('course', ['id' => $params['fields'][0]['courseid']], '*', MUST_EXIST);
         $cm = get_coursemodule_from_id('', $cmid, 0, false, MUST_EXIST);
-        
+
         // Check user capabilities.
         $context = context_module::instance($cm->id);
         require_login($course);
@@ -6606,12 +6699,12 @@ class local_custom_service_external extends external_api
         }
 
         $assignid = self::get_moduleid_from_cmid($cmid, 'assign');
-        
+
         // Kiểm tra assign có tồn tại không
         if (!$DB->record_exists('assign', ['id' => $assignid])) {
             throw new moodle_exception('invalidassignid', 'mod_assign', '', $assignid);
         }
-    
+
         // Lấy thông tin assign hiện tại
         $assign = $DB->get_record('assign', ['id' => $assignid], '*', MUST_EXIST);
 
@@ -6622,12 +6715,12 @@ class local_custom_service_external extends external_api
         $completionpassgrade = 0;
         $completiongradeitemnumber = Null;
         $completionsubmit = 0;
-        if(!empty($params['fields'][0]['completion'])){
+        if (!empty($params['fields'][0]['completion'])) {
             $completion = $params['fields'][0]['completion'] ?? 0;
             $completionview = $params['fields'][0]['completionview'] ?? 0;
             $completionpassgrade = $params['fields'][0]['completionpassgrade'] ?? 0;
             $completionsubmit = $params['fields'][0]['completionsubmit'] ?? 0;
-            if(!empty($params['fields'][0]['completionpassgrade'])){
+            if (!empty($params['fields'][0]['completionpassgrade'])) {
                 $completiongradeitemnumber = 0;
             }
         }
@@ -6700,7 +6793,7 @@ class local_custom_service_external extends external_api
                 $completioncmids
             );
             $moduleinfo->availability = $availability_json;
-        }else{
+        } else {
             $moduleinfo->availability = '';
         }
 
@@ -6717,7 +6810,7 @@ class local_custom_service_external extends external_api
         $DB->update_record('assign', $moduleinfo);
         // Call update_moduleinfo to update the activity.
         $update_moduleinfo = update_moduleinfo($cm, $moduleinfo, $course);
-    
+
         return [
             'status' => 'success',
             'message' => 'assign updated successfully',
@@ -6731,7 +6824,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function update_activity_assign_returns() {
+    public static function update_activity_assign_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -6740,17 +6834,19 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function get_uploaded_files_parameters() {
+    public static function get_uploaded_files_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'ID của activity cần lấy danh sách file'),
             'component' => new external_value(PARAM_TEXT, 'Component (module) cần lấy file, ví dụ: mod_resource, mod_assign'),
             'filearea' => new external_value(PARAM_TEXT, 'File area cần lấy file, ví dụ: content, introattachment')
         ]);
     }
-    
-    public static function get_uploaded_files($cmid, $component, $filearea) {
+
+    public static function get_uploaded_files($cmid, $component, $filearea)
+    {
         global $DB;
-    
+
         // Validate parameters.
         $params = self::validate_parameters(
             self::get_uploaded_files_parameters(),
@@ -6760,18 +6856,18 @@ class local_custom_service_external extends external_api
                 'filearea' => $filearea
             ]
         );
-    
+
         // Check if the activity exists.
         if (!$cm = $DB->get_record('course_modules', ['id' => $cmid])) {
             throw new moodle_exception('invalidcoursemodule', 'error', '', $cmid);
         }
-    
+
         // Get the module context.
         $context = context_module::instance($cmid);
-    
+
         // Get the file_storage instance.
         $fs = get_file_storage();
-    
+
         // Get files from the specified area of this activity.
         $files = $fs->get_area_files(
             $context->id,
@@ -6781,7 +6877,7 @@ class local_custom_service_external extends external_api
             'filename', // Sort by filename.
             false       // Exclude directories.
         );
-    
+
         // Prepare the response.
         $fileList = [];
         foreach ($files as $file) {
@@ -6800,15 +6896,16 @@ class local_custom_service_external extends external_api
                 )->out()
             ];
         }
-    
+
         return [
             'status' => true,
             'message' => count($fileList) . ' files found',
             'files' => $fileList
         ];
     }
-    
-    public static function get_uploaded_files_returns() {
+
+    public static function get_uploaded_files_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -6876,25 +6973,25 @@ class local_custom_service_external extends external_api
                 throw new Exception('Course Step is required.');
             }
 
-            if($step == 1){
+            if ($step == 1) {
                 if (empty($useridlms)) {
                     throw new Exception('You don\'t have an account on plearn yet.');
                 }
                 $dataJson['topicdetail'] = $topicdetail;
                 $courseCreationStep1 = create_course_with_json_step_1($dataJson);
-                if(!$courseCreationStep1['status']){
+                if (!$courseCreationStep1['status']) {
                     throw new Exception($courseCreationStep1['message']);
                 }
             }
 
-            if($step == 2){
+            if ($step == 2) {
                 if (empty($useridlms)) {
                     throw new Exception('You don\'t have an account on plearn yet.');
                 }
                 $dataJson['activitydetail'] = $activitydetail;
                 $courseCreationStep2 = create_course_with_json_step_2($dataJson);
 
-                if(!$courseCreationStep2['status']){
+                if (!$courseCreationStep2['status']) {
                     throw new Exception($courseCreationStep2['message']);
                 }
             }
@@ -6917,7 +7014,7 @@ class local_custom_service_external extends external_api
             if (!empty($transaction) && !$transaction->is_disposed()) {
                 $transaction->rollback($e);
             }
-            
+
             return [
                 'status' => false,
                 'message' => $e->getMessage(),
@@ -6925,8 +7022,9 @@ class local_custom_service_external extends external_api
             ];
         }
     }
-    
-    public static function create_course_with_json_returns() {
+
+    public static function create_course_with_json_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -6936,17 +7034,18 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function enrol_user_to_course($user_id, $course_id, $role_id) {
+    public static function enrol_user_to_course($user_id, $course_id, $role_id)
+    {
         try {
             $enrolment = [
                 'roleid' => $role_id, // ID của vai trò, ví dụ: 5 (student), 3 (teacher)
                 'userid' => $user_id, // ID của người dùng
                 'courseid' => $course_id // ID của khóa học
             ];
-    
+
             // Gọi hàm API để thực hiện ghi danh
             $result = \enrol_manual_external::enrol_users([$enrolment]);
-    
+
             return [
                 'status' => true,
                 'message' => 'User enrolled successfully.',
@@ -6988,7 +7087,7 @@ class local_custom_service_external extends external_api
             if (empty($useridlms)) {
                 throw new Exception('You don\'t have an account on plearn yet.');
             }
-            
+
             if (empty($shortname)) {
                 throw new Exception('Course Shortname is required.');
             }
@@ -6996,7 +7095,7 @@ class local_custom_service_external extends external_api
             if (empty($activities)) {
                 throw new Exception('Activities is required.');
             }
-        
+
             $decoded_data = json_decode($activities, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new Exception('Invalid JSON for activities: ' . json_last_error_msg());
@@ -7042,11 +7141,11 @@ class local_custom_service_external extends external_api
                         }
 
                         if ($question['question_type'] == 'ddwtos') {
-                            if(empty($question['ddwtos_texts'])){
+                            if (empty($question['ddwtos_texts'])) {
                                 throw new Exception('Question text cannot be empty for question type ddwtos.');
                             }
 
-                            if(empty($question['ddwtos_answers'])){
+                            if (empty($question['ddwtos_answers'])) {
                                 throw new Exception('Question answers cannot be empty for question type ddwtos.');
                             }
                         }
@@ -7060,15 +7159,15 @@ class local_custom_service_external extends external_api
                         }
 
                         if ($question['question_type'] == 'multichoice') {
-                            if(empty($question['question_single'])){
+                            if (empty($question['question_single'])) {
                                 throw new Exception('Question Single cannot be empty for question type multichoice.');
                             }
 
-                            if(empty($question['question_noanswers'])){
+                            if (empty($question['question_noanswers'])) {
                                 throw new Exception('Question noanswers cannot be empty for question type multichoice.');
                             }
 
-                            if(empty($question['answers'])){
+                            if (empty($question['answers'])) {
                                 throw new Exception('Question answers cannot be empty for question type multichoice.');
                             }
                         }
@@ -7100,9 +7199,9 @@ class local_custom_service_external extends external_api
                 ['contextid' => $context_course_id, 'name' => 'top']
             );
 
-            if(!$existing_question_category_course){
+            if (!$existing_question_category_course) {
                 $topCategoryCourse = question_get_top_category($context_course_id, $create = true);
-            
+
                 $category = new stdClass();
                 $contextname = $context_course->get_context_name(false, true);
                 // Max length of name field is 255.
@@ -7187,7 +7286,7 @@ class local_custom_service_external extends external_api
                 foreach ($activity['questions'] as $question) {
 
                     $correctanswer = 1; // true
-                    if($question['correct_answer'] == 'False'){
+                    if ($question['correct_answer'] == 'False') {
                         $correctanswer = 0; // true
                     }
 
@@ -7195,17 +7294,17 @@ class local_custom_service_external extends external_api
                     $dataJson['form_name'] = $question['question_name'];
                     $dataJson['form_questiontext'] = $question['question_text'];
                     $dataJson['form_cmid'] = $cmid;
-                    $dataJson['form_returnurl'] = '/mod/quiz/edit.php?cmid='.$cmid.'&cat='.$questionCategory.'%2C'.$context_course_id.'&addonpage=0';
-                    
-                    if($question['question_type'] == 'truefalse'){
+                    $dataJson['form_returnurl'] = '/mod/quiz/edit.php?cmid=' . $cmid . '&cat=' . $questionCategory . '%2C' . $context_course_id . '&addonpage=0';
+
+                    if ($question['question_type'] == 'truefalse') {
                         $dataJson['form_correctanswer'] = $correctanswer;
                     }
 
-                    if($question['question_type'] == 'multichoice'){
+                    if ($question['question_type'] == 'multichoice') {
 
                         $dataJson['form_single'] = 0; // muiltiple answer
 
-                        if($question['question_single'] == 'oneanswer'){
+                        if ($question['question_single'] == 'oneanswer') {
                             $dataJson['form_single'] = 1;
                         }
 
@@ -7232,7 +7331,7 @@ class local_custom_service_external extends external_api
                         }, $question['answers']);
                     }
 
-                    if($question['question_type'] == 'match'){
+                    if ($question['question_type'] == 'match') {
                         $dataJson['form_noanswers'] = $question['question_noanswers'];
 
                         // $dataJson['form_noanswers'] = count($question['matches']);
@@ -7249,14 +7348,14 @@ class local_custom_service_external extends external_api
                         }, $question['matches']);
                     }
 
-                    if($question['question_type'] == 'ddwtos'){
+                    if ($question['question_type'] == 'ddwtos') {
                         $dataJson['form_noanswers'] = $question['question_noanswers'];
 
                         // $dataJson['form_noanswers'] = count($question['matches']);
                         $count_ddwtos_texts = count($question['ddwtos_texts']);
                         $count_ddwtos_answers = count($question['ddwtos_answers']);
 
-                        if($count_ddwtos_texts != $count_ddwtos_answers){
+                        if ($count_ddwtos_texts != $count_ddwtos_answers) {
                             throw new Exception('The number of question texts and answers for the ddwtos type do not match. Please try again.');
                         }
 
@@ -7286,7 +7385,7 @@ class local_custom_service_external extends external_api
 
                     $action_save_question = save_question_type_truefalse($dataJson);
 
-                    if(isset($action_save_question->errorcode)){
+                    if (isset($action_save_question->errorcode)) {
                         throw new Exception($action_save_question->message);
                     }
 
@@ -7310,7 +7409,7 @@ class local_custom_service_external extends external_api
                     $slot++;
                     //step 3: insert mdl_question_references -> itemid = slotid, questionbankentryid = questionbankentryid ở bảng mdl_question_versions dựa vào questionid
                     $question_version_data = $DB->get_record('question_versions', ['questionid' => $question_data->id]);
-                    
+
                     if ($question_version_data) {
                         $reference_data = new stdClass();
                         $reference_data->usingcontextid = $context_module_id;
@@ -7349,8 +7448,9 @@ class local_custom_service_external extends external_api
             ];
         }
     }
-    
-    public static function create_quiz_and_question_returns() {
+
+    public static function create_quiz_and_question_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -7380,7 +7480,7 @@ class local_custom_service_external extends external_api
         $role
     ) {
         global $DB, $OUTPUT;
-    
+
         // Kiểm tra userid có hợp lệ không
         if (empty($userid)) {
             return [
@@ -7389,14 +7489,14 @@ class local_custom_service_external extends external_api
                 'data' => []
             ];
         }
-    
+
         // Xử lý trường hợp page và perpage không được cung cấp
         $limitClause = '';
         if (!empty($perpage)) {
             $offset = (int) $page * (int) $perpage;
             $limitClause = "LIMIT {$perpage} OFFSET {$offset}";
         }
-    
+
         // Tạo điều kiện cho role
         $roleCondition = '';
         if ($role === 'student') {
@@ -7408,7 +7508,7 @@ class local_custom_service_external extends external_api
         // $enrolledCourses = enrol_get_users_courses($userid);
 
         // var_dump($enrolledCourses);die;
-    
+
         // Truy vấn lấy danh sách activity đã hoàn thành
         $sql = "
             SELECT 
@@ -7453,7 +7553,7 @@ class local_custom_service_external extends external_api
             ORDER BY 
                 cmc.timemodified DESC
             $limitClause";
-    
+
         $params = [
             'userid' => $userid,
             'completionstate' => COMPLETION_COMPLETE,
@@ -7464,19 +7564,19 @@ class local_custom_service_external extends external_api
             $params['perpage'] = $perpage;
             $params['offset'] = $offset;
         }
-    
+
         $activities = $DB->get_records_sql($sql, $params);
-    
+
         // Định dạng dữ liệu trả về
         $completedActivities = [];
         foreach ($activities as $activity) {
             $tablename = $activity->activity_type; // Module name (e.g., 'assign', 'quiz')
             $activityName = $DB->get_field($tablename, 'name', ['id' => $activity->activity_instance_id]);
-    
+
             $activityUrl = (new moodle_url('/mod/' . $activity->activity_type . '/view.php', ['id' => $activity->activity_id]))->out();
             $viewUrl = (new moodle_url('/course/view.php', ['id' => $activity->course_id]))->out();
             $activityImage = $OUTPUT->image_url('monologo', 'mod_' . $activity->activity_type)->out();
-    
+
             $completedActivities[] = [
                 'course_id' => $activity->course_id,
                 'coursename' => $activity->course_name,
@@ -7491,7 +7591,7 @@ class local_custom_service_external extends external_api
                 'activity_url' => $activityUrl,
             ];
         }
-    
+
         // Đếm tổng số activity hoàn thành nếu phân trang
         $countSql = "
             SELECT COUNT(DISTINCT cm.id)
@@ -7521,14 +7621,14 @@ class local_custom_service_external extends external_api
                 AND m.name != 'vedubotleanbothoctap'
                 AND c.visible = 1
                 $roleCondition";
-    
+
         $totalActivities = $DB->count_records_sql($countSql, $params);
 
         // $totalActivities = count($completedActivities);
-    
+
         $totalPages = ($perpage > 0) ? ceil($totalActivities / $perpage) : 1;
-        $currentPage = (int)$page;
-    
+        $currentPage = (int) $page;
+
         return [
             'status' => true,
             'message' => 'Completed activities retrieved successfully.',
@@ -7540,8 +7640,9 @@ class local_custom_service_external extends external_api
             ]
         ];
     }
-    
-    public static function get_activity_complete_returns() {
+
+    public static function get_activity_complete_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -7737,7 +7838,7 @@ class local_custom_service_external extends external_api
 
         // Tính toán số trang (kiểm tra perpage)
         $totalPages = ($perpage > 0) ? ceil($totalActivities / $perpage) : 1; // Nếu $perpage <= 0 thì số trang mặc định là 1
-        $currentPage = (int)$page; // Trang hiện tại
+        $currentPage = (int) $page; // Trang hiện tại
 
         return [
             'status' => true,
@@ -7751,7 +7852,8 @@ class local_custom_service_external extends external_api
         ];
     }
 
-    public static function get_activity_due_returns() {
+    public static function get_activity_due_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -7793,9 +7895,10 @@ class local_custom_service_external extends external_api
         );
     }
 
-    public static function get_data_basic_course_information($userid, $role, $limit, $offset, $courseid, $coursename) {
+    public static function get_data_basic_course_information($userid, $role, $limit, $offset, $courseid, $coursename)
+    {
         global $DB, $OUTPUT;
-    
+
         // Kiểm tra userid có hợp lệ không
         if (empty($userid)) {
             return [
@@ -7804,9 +7907,9 @@ class local_custom_service_external extends external_api
                 'data' => []
             ];
         }
-    
+
         $total_course_enrolled = $DB->count_records('user_enrolments', ['userid' => $userid]);
-    
+
         // $enrolledCourses = enrol_get_users_courses($userid);
 
         $enrolledCoursesSql = "SELECT DISTINCT c.fullname, c.id, c.summary, f.filename AS course_image, f.contextid AS f_contextid,
@@ -7876,7 +7979,7 @@ class local_custom_service_external extends external_api
                     });
                     $numberActivityCompletion = count($completedActivities);
                     $totalActivityDue = $totalActivity - count($completedActivities);
-        
+
                     $countTotalActivityDue += $totalActivityDue;
                     $countActivityCompleted += $numberActivityCompletion;
                 }
@@ -7893,11 +7996,11 @@ class local_custom_service_external extends external_api
                         $completedCompletions = array_filter($completionStatus['completions'], function ($completion) {
                             return isset($completion['complete']) && $completion['complete'] === true;
                         });
-        
+
                         $completedCount = count($completedCompletions);
-        
+
                         $hasOtherType = array_reduce($completionStatus['completions'], function ($carry, $completion) {
-                            return $carry || (int)$completion['type'] !== 4;
+                            return $carry || (int) $completion['type'] !== 4;
                         }, false);
 
                         if ($hasOtherType) {
@@ -7909,7 +8012,7 @@ class local_custom_service_external extends external_api
                                 ? round(($completedCount / $totalCompletions) * 100, 2)
                                 : 0;
                         }
-                    }else{
+                    } else {
                         $completionPercentage = $totalActivity > 0
                             ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
                             : 0;
@@ -7964,7 +8067,7 @@ class local_custom_service_external extends external_api
         $currentpage = 1;
 
         if (!empty($limit)) {
-            $totalpage = ($limit > 0) ? ceil($countTotalCourses / $limit) : 1; 
+            $totalpage = ($limit > 0) ? ceil($countTotalCourses / $limit) : 1;
             $currentpage = ($offset / $limit) + 1; // Trang hiện tại
         }
 
@@ -7987,7 +8090,8 @@ class local_custom_service_external extends external_api
         return $dataReturn;
     }
 
-    public static function get_data_basic_course_information_returns() {
+    public static function get_data_basic_course_information_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -8061,7 +8165,7 @@ class local_custom_service_external extends external_api
     //             ]
     //         ];
     //     }
-    
+
     //     // Kiểm tra userid có hợp lệ không
     //     // if (empty($userid)) {
     //     //     return [
@@ -8071,9 +8175,9 @@ class local_custom_service_external extends external_api
     //     //     ];
     //     // }
     //     $userid = $user->id;
-    
+
     //     $total_course_enrolled = $DB->count_records('user_enrolments', ['userid' => $userid]);
-    
+
     //     // $enrolledCourses = enrol_get_users_courses($userid);
 
     //     $enrolledCoursesSql = "SELECT DISTINCT c.fullname, c.id, c.summary, f.filename AS course_image, f.contextid AS f_contextid,
@@ -8144,7 +8248,7 @@ class local_custom_service_external extends external_api
     //                 });
     //                 $numberActivityCompletion = count($completedActivities);
     //                 $totalActivityDue = $totalActivity - count($completedActivities);
-        
+
     //                 $countTotalActivityDue += $totalActivityDue;
     //                 $countActivityCompleted += $numberActivityCompletion;
     //             }
@@ -8161,9 +8265,9 @@ class local_custom_service_external extends external_api
     //                     $completedCompletions = array_filter($completionStatus['completions'], function ($completion) {
     //                         return isset($completion['complete']) && $completion['complete'] === true;
     //                     });
-        
+
     //                     $completedCount = count($completedCompletions);
-        
+
     //                     $hasOtherType = array_reduce($completionStatus['completions'], function ($carry, $completion) {
     //                         return $carry || (int)$completion['type'] !== 4;
     //                     }, false);
@@ -8254,7 +8358,8 @@ class local_custom_service_external extends external_api
     //     return $dataReturn;
     // }
 
-    public static function get_data_basic_course_information_checkmate($useremail, $role, $limit, $offset, $courseid, $coursename) {
+    public static function get_data_basic_course_information_checkmate($useremail, $role, $limit, $offset, $courseid, $coursename)
+    {
         global $DB, $OUTPUT;
 
         if (empty($useremail)) {
@@ -8282,7 +8387,7 @@ class local_custom_service_external extends external_api
                 ]
             ];
         }
-    
+
         // Kiểm tra userid có hợp lệ không
         // if (empty($userid)) {
         //     return [
@@ -8292,9 +8397,9 @@ class local_custom_service_external extends external_api
         //     ];
         // }
         $userid = $user->id;
-    
+
         $total_course_enrolled = $DB->count_records('user_enrolments', ['userid' => $userid]);
-    
+
         // $enrolledCourses = enrol_get_users_courses($userid);
 
         $enrolledCoursesSql = "SELECT DISTINCT c.fullname, c.id, c.summary, f.filename AS course_image, f.contextid AS f_contextid,
@@ -8343,15 +8448,17 @@ class local_custom_service_external extends external_api
 
         if (!empty($enrolledCoursesQuery)) {
             // ========================= Tối ưu hóa: Preload completion data =========================
-            $courseIds = array_map(function($c) { return (int)$c->id; }, $enrolledCoursesQuery);
-            
+            $courseIds = array_map(function ($c) {
+                return (int) $c->id;
+            }, $enrolledCoursesQuery);
+
             // Batch load sections và course modules (giống get_content_course - bỏ qua section 0)
             $allCmidByCourse = [];
             $completionByCmid = [];
             if (!empty($courseIds)) {
                 list($insql, $params) = $DB->get_in_or_equal($courseIds, SQL_PARAMS_NAMED);
                 $params['userid'] = $userid;
-                
+
                 // Load sections (bỏ qua section 0) - giống get_content_course
                 $sections = $DB->get_records_sql(
                     "SELECT id, course, section
@@ -8360,10 +8467,12 @@ class local_custom_service_external extends external_api
                         AND section > 0",
                     $params
                 );
-                
+
                 // Lấy section IDs (không phải section 0)
-                $sectionIds = array_map(function($s) { return (int)$s->id; }, $sections);
-                
+                $sectionIds = array_map(function ($s) {
+                    return (int) $s->id;
+                }, $sections);
+
                 // Load course modules CHỈ trong các sections (không phải section 0)
                 // Giống như get_content_course để đếm đúng total_activity
                 if (!empty($sectionIds)) {
@@ -8375,17 +8484,19 @@ class local_custom_service_external extends external_api
                             AND cm.section {$sectioninsql}",
                         array_merge($params, $sectionparams)
                     );
-                    
+
                     foreach ($cms as $cm) {
                         $allCmidByCourse[$cm->course][] = $cm->id;
                     }
-                    
+
                     // Batch load completion states cho tất cả modules
                     if (!empty($cms)) {
-                        $allCmids = array_map(function($cm) { return $cm->id; }, $cms);
+                        $allCmids = array_map(function ($cm) {
+                            return $cm->id;
+                        }, $cms);
                         list($cmidsql, $cmidparams) = $DB->get_in_or_equal($allCmids, SQL_PARAMS_NAMED);
                         $cmidparams['userid'] = $userid;
-                        
+
                         $completions = $DB->get_records_sql(
                             "SELECT coursemoduleid, completionstate
                                FROM {course_modules_completion}
@@ -8393,13 +8504,13 @@ class local_custom_service_external extends external_api
                                 AND coursemoduleid {$cmidsql}",
                             $cmidparams
                         );
-                        
+
                         foreach ($completions as $comp) {
-                            $completionByCmid[$comp->coursemoduleid] = (int)$comp->completionstate;
+                            $completionByCmid[$comp->coursemoduleid] = (int) $comp->completionstate;
                         }
                     }
                 }
-                
+
                 // Batch load course completion criteria
                 $courseCompletionCriteria = [];
                 $criteria = $DB->get_records_sql(
@@ -8409,10 +8520,10 @@ class local_custom_service_external extends external_api
                       WHERE c.id {$insql}",
                     $params
                 );
-                
+
                 foreach ($criteria as $criterion) {
                     $courseCompletionCriteria[$criterion->courseid][] = [
-                        'type' => (int)$criterion->criteriatype,
+                        'type' => (int) $criterion->criteriatype,
                         'complete' => false // Sẽ tính sau
                     ];
                 }
@@ -8420,7 +8531,7 @@ class local_custom_service_external extends external_api
             // ======================= Hết phần tối ưu hóa =========================
 
             foreach ($enrolledCoursesQuery as $course) {
-                $courseId = (int)$course->id;
+                $courseId = (int) $course->id;
                 $courseData = [
                     'id' => $course->id,
                     'coursename' => $course->fullname,
@@ -8437,36 +8548,36 @@ class local_custom_service_external extends external_api
                 $courseCmids = $allCmidByCourse[$courseId] ?? [];
                 $totalActivity = count($courseCmids);
                 $numberActivityCompletion = 0;
-                
+
                 foreach ($courseCmids as $cmid) {
                     $state = $completionByCmid[$cmid] ?? null;
                     if ($state !== null && in_array($state, [1, 2])) {
                         $numberActivityCompletion++;
                     }
                 }
-                
+
                 $totalActivityDue = $totalActivity - $numberActivityCompletion;
                 $countTotalActivityDue += $totalActivityDue;
                 $countActivityCompleted += $numberActivityCompletion;
-                
+
                 $courseData['total_activity_completion'] = (int) $numberActivityCompletion;
                 $courseData['total_activity_due'] = (int) $totalActivityDue;
                 $courseData['total_activity'] = (int) $totalActivity;
-                
+
                 // Tính completion percentage
                 $completionPercentage = 0;
                 $courseCriteria = $courseCompletionCriteria[$courseId] ?? [];
-                
+
                 if (!empty($courseCriteria)) {
                     $totalCompletions = count($courseCriteria);
                     $hasOtherType = false;
                     foreach ($courseCriteria as $criterion) {
-                        if ((int)$criterion['type'] !== 4) {
+                        if ((int) $criterion['type'] !== 4) {
                             $hasOtherType = true;
                             break;
                         }
                     }
-                    
+
                     if ($hasOtherType) {
                         $completionPercentage = $totalActivity > 0
                             ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
@@ -8525,7 +8636,7 @@ class local_custom_service_external extends external_api
         $currentpage = 1;
 
         if (!empty($limit)) {
-            $totalpage = ($limit > 0) ? ceil($countTotalCourses / $limit) : 1; 
+            $totalpage = ($limit > 0) ? ceil($countTotalCourses / $limit) : 1;
             $currentpage = ($offset / $limit) + 1; // Trang hiện tại
         }
 
@@ -8547,7 +8658,8 @@ class local_custom_service_external extends external_api
         return $dataReturn;
     }
 
-    public static function get_data_basic_course_information_checkmate_returns() {
+    public static function get_data_basic_course_information_checkmate_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -8594,7 +8706,8 @@ class local_custom_service_external extends external_api
         );
     }
 
-    public static function get_data_course_information($useremail, $role, $limit, $offset, $courseid, $coursename) {
+    public static function get_data_course_information($useremail, $role, $limit, $offset, $courseid, $coursename)
+    {
         global $DB, $OUTPUT;
 
         if (empty($useremail)) {
@@ -8622,7 +8735,7 @@ class local_custom_service_external extends external_api
                 ]
             ];
         }
-    
+
         // Kiểm tra userid có hợp lệ không
         // if (empty($userid)) {
         //     return [
@@ -8632,9 +8745,9 @@ class local_custom_service_external extends external_api
         //     ];
         // }
         $userid = $user->id;
-    
+
         $total_course_enrolled = $DB->count_records('user_enrolments', ['userid' => $userid]);
-    
+
         // $enrolledCourses = enrol_get_users_courses($userid);
 
         $enrolledCoursesSql = "SELECT DISTINCT c.fullname, c.id, c.summary, f.filename AS course_image, f.contextid AS f_contextid,
@@ -8683,49 +8796,74 @@ class local_custom_service_external extends external_api
 
         if (!empty($enrolledCoursesQuery)) {
             // ========================= Tối ưu hóa: Preload completion data =========================
-            $courseIds = array_map(function($c) { return (int)$c->id; }, $enrolledCoursesQuery);
-            
+            $courseIds = array_map(function ($c) {
+                return (int) $c->id;
+            }, $enrolledCoursesQuery);
+
             // Batch load sections và course modules (giống get_content_course - bỏ qua section 0)
             $allCmidByCourse = [];
             $completionByCmid = [];
             if (!empty($courseIds)) {
                 list($insql, $params) = $DB->get_in_or_equal($courseIds, SQL_PARAMS_NAMED);
                 $params['userid'] = $userid;
-                
+
                 // Load sections (bỏ qua section 0) - giống get_content_course
                 $sections = $DB->get_records_sql(
-                    "SELECT id, course, section
+                    "SELECT id, course, section, name, visible, sequence
                        FROM {course_sections}
                       WHERE course {$insql}
-                        AND section > 0",
+                        AND section > 0
+                      ORDER BY section ASC",
                     $params
                 );
-                
+
+                // Nhóm sections theo course để dùng khi build activities
+                $sectionsByCourse = [];
+                foreach ($sections as $section) {
+                    $sectionsByCourse[$section->course][] = $section;
+                }
+
                 // Lấy section IDs (không phải section 0)
-                $sectionIds = array_map(function($s) { return (int)$s->id; }, $sections);
-                
+                $sectionIds = array_map(function ($s) {
+                    return (int) $s->id;
+                }, $sections);
+
                 // Load course modules CHỈ trong các sections (không phải section 0)
                 // Giống như get_content_course để đếm đúng total_activity
                 if (!empty($sectionIds)) {
                     list($sectioninsql, $sectionparams) = $DB->get_in_or_equal($sectionIds, SQL_PARAMS_NAMED);
                     $cms = $DB->get_records_sql(
-                        "SELECT cm.id, cm.course
+                        "SELECT cm.id, cm.course, cm.section, cm.instance, cm.visible,
+                                cm.availability, cm.completionview, cm.completionexpected,
+                                cm.completionpassgrade, cm.completiongradeitemnumber,
+                                m.name AS modname
                            FROM {course_modules} cm
+                           JOIN {modules} m ON m.id = cm.module
                           WHERE cm.course {$insql}
                             AND cm.section {$sectioninsql}",
                         array_merge($params, $sectionparams)
                     );
-                    
+
+                    // Index cm theo nhiều chiều để dùng khi build activities
+                    $cmById = [];
+                    $instancesByModname = [];
+
                     foreach ($cms as $cm) {
                         $allCmidByCourse[$cm->course][] = $cm->id;
+                        $cmById[$cm->id] = $cm;
+                        if (!empty($cm->instance)) {
+                            $instancesByModname[$cm->modname][] = (int) $cm->instance;
+                        }
                     }
-                    
+
                     // Batch load completion states cho tất cả modules
                     if (!empty($cms)) {
-                        $allCmids = array_map(function($cm) { return $cm->id; }, $cms);
+                        $allCmids = array_map(function ($cm) {
+                            return $cm->id;
+                        }, $cms);
                         list($cmidsql, $cmidparams) = $DB->get_in_or_equal($allCmids, SQL_PARAMS_NAMED);
                         $cmidparams['userid'] = $userid;
-                        
+
                         $completions = $DB->get_records_sql(
                             "SELECT coursemoduleid, completionstate
                                FROM {course_modules_completion}
@@ -8733,13 +8871,29 @@ class local_custom_service_external extends external_api
                                 AND coursemoduleid {$cmidsql}",
                             $cmidparams
                         );
-                        
+
                         foreach ($completions as $comp) {
-                            $completionByCmid[$comp->coursemoduleid] = (int)$comp->completionstate;
+                            $completionByCmid[$comp->coursemoduleid] = (int) $comp->completionstate;
                         }
+
+                        // Batch load module names theo modname (chỉ lấy id, name — nhẹ hơn SELECT *)
+                        $moduleNamesByModname = [];
+                        foreach ($instancesByModname as $modname => $instanceids) {
+                            $instanceids = array_values(array_unique($instanceids));
+                            if (empty($instanceids))
+                                continue;
+                            list($modinsql, $modparams) = $DB->get_in_or_equal($instanceids, SQL_PARAMS_NAMED);
+                            try {
+                                $records = $DB->get_records_sql("SELECT id, name FROM {{$modname}} WHERE id {$modinsql}", $modparams);
+                                $moduleNamesByModname[$modname] = $records;
+                            } catch (Exception $e) {
+                                $moduleNamesByModname[$modname] = [];
+                            }
+                        }
+                        // Grade items query đã bỏ — không cần thiết cho simplified activities
                     }
                 }
-                
+
                 // Batch load course completion criteria
                 $courseCompletionCriteria = [];
                 $criteria = $DB->get_records_sql(
@@ -8749,10 +8903,10 @@ class local_custom_service_external extends external_api
                       WHERE c.id {$insql}",
                     $params
                 );
-                
+
                 foreach ($criteria as $criterion) {
                     $courseCompletionCriteria[$criterion->courseid][] = [
-                        'type' => (int)$criterion->criteriatype,
+                        'type' => (int) $criterion->criteriatype,
                         'complete' => false // Sẽ tính sau
                     ];
                 }
@@ -8760,7 +8914,7 @@ class local_custom_service_external extends external_api
             // ======================= Hết phần tối ưu hóa =========================
 
             foreach ($enrolledCoursesQuery as $course) {
-                $courseId = (int)$course->id;
+                $courseId = (int) $course->id;
                 $courseData = [
                     'id' => $course->id,
                     'coursename' => $course->fullname,
@@ -8777,36 +8931,36 @@ class local_custom_service_external extends external_api
                 $courseCmids = $allCmidByCourse[$courseId] ?? [];
                 $totalActivity = count($courseCmids);
                 $numberActivityCompletion = 0;
-                
+
                 foreach ($courseCmids as $cmid) {
                     $state = $completionByCmid[$cmid] ?? null;
                     if ($state !== null && in_array($state, [1, 2])) {
                         $numberActivityCompletion++;
                     }
                 }
-                
+
                 $totalActivityDue = $totalActivity - $numberActivityCompletion;
                 $countTotalActivityDue += $totalActivityDue;
                 $countActivityCompleted += $numberActivityCompletion;
-                
+
                 $courseData['total_activity_completion'] = (int) $numberActivityCompletion;
                 $courseData['total_activity_due'] = (int) $totalActivityDue;
                 $courseData['total_activity'] = (int) $totalActivity;
-                
+
                 // Tính completion percentage
                 $completionPercentage = 0;
                 $courseCriteria = $courseCompletionCriteria[$courseId] ?? [];
-                
+
                 if (!empty($courseCriteria)) {
                     $totalCompletions = count($courseCriteria);
                     $hasOtherType = false;
                     foreach ($courseCriteria as $criterion) {
-                        if ((int)$criterion['type'] !== 4) {
+                        if ((int) $criterion['type'] !== 4) {
                             $hasOtherType = true;
                             break;
                         }
                     }
-                    
+
                     if ($hasOtherType) {
                         $completionPercentage = $totalActivity > 0
                             ? round(($numberActivityCompletion / $totalActivity) * 100, 2)
@@ -8828,6 +8982,44 @@ class local_custom_service_external extends external_api
                 if ($completionPercentage == 100) {
                     $countCourseCompleted++;
                 }
+
+                // Build activities list — chỉ lấy các field cần thiết
+                $courseActivities = [];
+                $courseSections = $sectionsByCourse[$courseId] ?? [];
+                foreach ($courseSections as $section) {
+                    $sequence = trim($section->sequence ?? '');
+                    if (empty($sequence))
+                        continue;
+
+                    $sectionId = (string) $section->id;
+                    $sectionName = trim((string) $section->name) ?: 'Section ' . $section->section;
+
+                    foreach (explode(',', $sequence) as $cmid) {
+                        $cmid = (int) $cmid;
+                        if (!isset($cmById[$cmid]))
+                            continue;
+
+                        $module = $cmById[$cmid];
+                        $modname = $module->modname;
+                        $instanceid = $module->instance;
+                        $completionstate = $completionByCmid[$cmid] ?? null;
+                        $is_completed = ($completionstate !== null && in_array((int) $completionstate, [1, 2]));
+
+                        // Lấy name từ bảng module (chỉ id,name đã query)
+                        $activityname = $moduleNamesByModname[$modname][$instanceid]->name ?? $modname;
+
+                        $courseActivities[] = [
+                            'id' => $cmid,
+                            'name' => $activityname,
+                            'modname' => $modname,
+                            'completed' => $is_completed,
+                            'visible' => (int) ($module->visible ?? 0),
+                            'topic_id' => $sectionId,
+                            'topic_name' => $sectionName,
+                        ];
+                    }
+                }
+                $courseData['activities'] = $courseActivities;
 
                 $courseDetails[] = $courseData;
             }
@@ -8865,7 +9057,7 @@ class local_custom_service_external extends external_api
         $currentpage = 1;
 
         if (!empty($limit)) {
-            $totalpage = ($limit > 0) ? ceil($countTotalCourses / $limit) : 1; 
+            $totalpage = ($limit > 0) ? ceil($countTotalCourses / $limit) : 1;
             $currentpage = ($offset / $limit) + 1; // Trang hiện tại
         }
 
@@ -8887,17 +9079,14 @@ class local_custom_service_external extends external_api
         return $dataReturn;
     }
 
-    public static function get_data_course_information_returns() {
+    public static function get_data_course_information_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
             'data' => new external_single_structure([
                 'totalpage' => new external_value(PARAM_INT, 'Tổng số trang'),
                 'currentpage' => new external_value(PARAM_INT, 'Trang hiện tại'),
-                // 'total_course_enrolled' => new external_value(PARAM_INT, 'Tổng số khóa học đã tham gia'),
-                // 'total_course_completed' => new external_value(PARAM_INT, 'Tổng số khóa học đã hoàn thành'),
-                // 'total_activity_completed' => new external_value(PARAM_INT, 'Tổng số activity đã hoàn thành'),
-                // 'total_activity_due' => new external_value(PARAM_INT, 'Tổng số activity cần hoàn thành'),
                 'courses' => new external_multiple_structure(
                     new external_single_structure([
                         'id' => new external_value(PARAM_TEXT, 'ID khóa học'),
@@ -8909,10 +9098,23 @@ class local_custom_service_external extends external_api
                         'categoryid' => new external_value(PARAM_TEXT, 'ID danh mục'),
                         'categoryname' => new external_value(PARAM_TEXT, 'Tên danh mục'),
                         'view_url' => new external_value(PARAM_TEXT, 'URL khóa học'),
-                        'total_activity_completion' => new external_value(PARAM_INT, 'Tổng số hoạt động chưa hoàn thành'),
+                        'total_activity_completion' => new external_value(PARAM_INT, 'Tổng số hoạt động đã hoàn thành'),
                         'total_activity_due' => new external_value(PARAM_INT, 'Tổng số hoạt động cần hoàn thành'),
                         'total_activity' => new external_value(PARAM_INT, 'Tổng số hoạt động'),
-                        'completionPercentage' => new external_value(PARAM_INT, 'Phần trăm hoàn thành khóa học')
+                        'completionPercentage' => new external_value(PARAM_INT, 'Phần trăm hoàn thành khóa học'),
+                        'activities' => new external_multiple_structure(
+                            new external_single_structure([
+                                'id' => new external_value(PARAM_INT, 'Course module ID'),
+                                'name' => new external_value(PARAM_TEXT, 'Tên activity'),
+                                'modname' => new external_value(PARAM_TEXT, 'Loại module (quiz, assign, ...)'),
+                                'completed' => new external_value(PARAM_BOOL, 'Đã hoàn thành hay chưa'),
+                                'visible' => new external_value(PARAM_INT, 'Hiển thị hay ẩn'),
+                                'topic_id' => new external_value(PARAM_TEXT, 'ID của section chứa activity'),
+                                'topic_name' => new external_value(PARAM_TEXT, 'Tên section chứa activity'),
+                            ]),
+                            'Danh sách activities trong khóa học',
+                            VALUE_OPTIONAL
+                        ),
                     ])
                 )
             ])
@@ -8982,7 +9184,7 @@ class local_custom_service_external extends external_api
 
         // Lấy thông tin khóa học
         $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber, category, enddate');
-        
+
         if (!$course) {
             return [
                 'status' => false,
@@ -9000,7 +9202,7 @@ class local_custom_service_external extends external_api
                           FROM {course_sections}
                          WHERE course = :courseid";
         $section_params = ['courseid' => $courseid];
-        
+
         if (!empty($section_id)) {
             $section_sql .= " AND id = :section_id";
             $section_params['section_id'] = $section_id;
@@ -9012,7 +9214,7 @@ class local_custom_service_external extends external_api
                 $section_params = array_merge($section_params, $inparams);
             }
         }
-        
+
         $section_sql .= " ORDER BY section ASC";
         $sections = $DB->get_records_sql($section_sql, $section_params);
 
@@ -9041,7 +9243,7 @@ class local_custom_service_external extends external_api
                 if (!isset($instancesbymodname[$cmrecord->modname])) {
                     $instancesbymodname[$cmrecord->modname] = [];
                 }
-                $instancesbymodname[$cmrecord->modname][] = (int)$cmrecord->instance;
+                $instancesbymodname[$cmrecord->modname][] = (int) $cmrecord->instance;
             }
         }
 
@@ -9124,8 +9326,8 @@ class local_custom_service_external extends external_api
         foreach ($paginated_sections as $section) {
 
             $sectionid = $section->id;
-            $sectionname = trim((string)$section->name);
-            $sectionvisible = isset($section->visible) ? (int)$section->visible : 1;
+            $sectionname = trim((string) $section->name);
+            $sectionvisible = isset($section->visible) ? (int) $section->visible : 1;
             if ($sectionname === '') {
                 $sectionname = 'Section ' . $section->section;
             }
@@ -9133,10 +9335,10 @@ class local_custom_service_external extends external_api
             // KHỞI TẠO CÁC BIẾN CẦN THIẾT
             $activities = [];
             $total_activity_completion = 0;
-            
+
             // LẤY DANH SÁCH ID ACTIVITY THEO THỨ TỰ (SEQUENCE)
             $sequence = trim($section->sequence ?? '');
-            
+
             if (empty($sequence)) {
                 $result[] = [
                     'id' => $sectionid,
@@ -9154,8 +9356,8 @@ class local_custom_service_external extends external_api
             $cmids = explode(',', $sequence);
 
             foreach ($cmids as $cmid) {
-                $cmid = (int)$cmid;
-                
+                $cmid = (int) $cmid;
+
                 // Kiểm tra xem CMID này có tồn tại trong dữ liệu đã query không
                 if (!isset($modulesbyid[$cmid])) {
                     continue;
@@ -9165,7 +9367,7 @@ class local_custom_service_external extends external_api
 
                 // --- Bắt đầu xử lý logic cho từng activity ---
                 $completionstate = $completionmap[$cmid] ?? null;
-                $is_completed = ($completionstate !== null && in_array((int)$completionstate, [1, 2]));
+                $is_completed = ($completionstate !== null && in_array((int) $completionstate, [1, 2]));
                 if ($is_completed) {
                     $total_activity_completion++;
                 }
@@ -9178,7 +9380,7 @@ class local_custom_service_external extends external_api
                     if (!empty($availability_data['c'])) {
                         foreach ($availability_data['c'] as $condition) {
                             if ($condition['type'] === 'completion' && !empty($condition['cm'])) {
-                                $requiredcmid = (int)$condition['cm'];
+                                $requiredcmid = (int) $condition['cm'];
                                 if (!isset($modulesbyid[$requiredcmid])) {
                                     continue;
                                 }
@@ -9190,7 +9392,7 @@ class local_custom_service_external extends external_api
                                     'name' => $requireddetail->name ?? $requiredcm->modname ?? 'Unknown',
                                     'modname' => $requiredcm->modname ?? 'Unknown',
                                     'topic_id' => $requiredcm->section ?? null,
-                                    'completed' => ($required_completion !== null && in_array((int)$required_completion, [1, 2]))
+                                    'completed' => ($required_completion !== null && in_array((int) $required_completion, [1, 2]))
                                 ];
                             }
                         }
@@ -9267,7 +9469,7 @@ class local_custom_service_external extends external_api
         $course_completion_percentage = ($course_total_activity > 0)
             ? round(($course_total_activity_completion / $course_total_activity) * 100, 2)
             : 0;
-        
+
         // Build course summary without the removed fields
         $course_summary = self::build_course_summary(
             $course,
@@ -9349,7 +9551,9 @@ class local_custom_service_external extends external_api
                                 'grademethod' => new external_value(PARAM_INT, 'Phương pháp chấm điểm (chỉ áp dụng cho quiz)', VALUE_OPTIONAL),
                             ])
                         )
-                    ]), 'Danh sách chủ đề', VALUE_OPTIONAL
+                    ]),
+                    'Danh sách chủ đề',
+                    VALUE_OPTIONAL
                 )
             ])
         ]);
@@ -9418,7 +9622,7 @@ class local_custom_service_external extends external_api
 
         // Lấy thông tin khóa học
         $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, shortname, summary, idnumber, category, enddate');
-        
+
         if (!$course) {
             return [
                 'status' => false,
@@ -9436,7 +9640,7 @@ class local_custom_service_external extends external_api
                           FROM {course_sections}
                          WHERE course = :courseid";
         $section_params = ['courseid' => $courseid];
-        
+
         if (!empty($section_id)) {
             $section_sql .= " AND id = :section_id";
             $section_params['section_id'] = $section_id;
@@ -9448,7 +9652,7 @@ class local_custom_service_external extends external_api
                 $section_params = array_merge($section_params, $inparams);
             }
         }
-        
+
         $section_sql .= " ORDER BY section ASC";
         $sections = $DB->get_records_sql($section_sql, $section_params);
 
@@ -9477,7 +9681,7 @@ class local_custom_service_external extends external_api
                 if (!isset($instancesbymodname[$cmrecord->modname])) {
                     $instancesbymodname[$cmrecord->modname] = [];
                 }
-                $instancesbymodname[$cmrecord->modname][] = (int)$cmrecord->instance;
+                $instancesbymodname[$cmrecord->modname][] = (int) $cmrecord->instance;
             }
         }
 
@@ -9560,8 +9764,8 @@ class local_custom_service_external extends external_api
         foreach ($paginated_sections as $section) {
 
             $sectionid = $section->id;
-            $sectionname = trim((string)$section->name);
-            $sectionvisible = isset($section->visible) ? (int)$section->visible : 1;
+            $sectionname = trim((string) $section->name);
+            $sectionvisible = isset($section->visible) ? (int) $section->visible : 1;
             if ($sectionname === '') {
                 $sectionname = 'Section ' . $section->section;
             }
@@ -9569,10 +9773,10 @@ class local_custom_service_external extends external_api
             // KHỞI TẠO CÁC BIẾN CẦN THIẾT
             $activities = [];
             $total_activity_completion = 0;
-            
+
             // LẤY DANH SÁCH ID ACTIVITY THEO THỨ TỰ (SEQUENCE)
             $sequence = trim($section->sequence ?? '');
-            
+
             if (empty($sequence)) {
                 $result[] = [
                     'id' => $sectionid,
@@ -9590,8 +9794,8 @@ class local_custom_service_external extends external_api
             $cmids = explode(',', $sequence);
 
             foreach ($cmids as $cmid) {
-                $cmid = (int)$cmid;
-                
+                $cmid = (int) $cmid;
+
                 // Kiểm tra xem CMID này có tồn tại trong dữ liệu đã query không
                 if (!isset($modulesbyid[$cmid])) {
                     continue;
@@ -9601,7 +9805,7 @@ class local_custom_service_external extends external_api
 
                 // --- Bắt đầu xử lý logic cho từng activity ---
                 $completionstate = $completionmap[$cmid] ?? null;
-                $is_completed = ($completionstate !== null && in_array((int)$completionstate, [1, 2]));
+                $is_completed = ($completionstate !== null && in_array((int) $completionstate, [1, 2]));
                 if ($is_completed) {
                     $total_activity_completion++;
                 }
@@ -9614,7 +9818,7 @@ class local_custom_service_external extends external_api
                     if (!empty($availability_data['c'])) {
                         foreach ($availability_data['c'] as $condition) {
                             if ($condition['type'] === 'completion' && !empty($condition['cm'])) {
-                                $requiredcmid = (int)$condition['cm'];
+                                $requiredcmid = (int) $condition['cm'];
                                 if (!isset($modulesbyid[$requiredcmid])) {
                                     continue;
                                 }
@@ -9626,7 +9830,7 @@ class local_custom_service_external extends external_api
                                     'name' => $requireddetail->name ?? $requiredcm->modname ?? 'Unknown',
                                     'modname' => $requiredcm->modname ?? 'Unknown',
                                     'topic_id' => $requiredcm->section ?? null,
-                                    'completed' => ($required_completion !== null && in_array((int)$required_completion, [1, 2]))
+                                    'completed' => ($required_completion !== null && in_array((int) $required_completion, [1, 2]))
                                 ];
                             }
                         }
@@ -9703,7 +9907,7 @@ class local_custom_service_external extends external_api
         $course_completion_percentage = ($course_total_activity > 0)
             ? round(($course_total_activity_completion / $course_total_activity) * 100, 2)
             : 0;
-        
+
         // Build course summary without the removed fields
         $course_summary = self::build_course_summary(
             $course,
@@ -9786,13 +9990,16 @@ class local_custom_service_external extends external_api
                                 'module_data' => new external_value(PARAM_RAW, 'Module detail data in JSON format (same as get_detail_module)', VALUE_OPTIONAL),
                             ])
                         )
-                    ]), 'Danh sách chủ đề', VALUE_OPTIONAL
+                    ]),
+                    'Danh sách chủ đề',
+                    VALUE_OPTIONAL
                 )
             ])
         ]);
     }
 
-    private static function get_empty_course_structure() {
+    private static function get_empty_course_structure()
+    {
         return [
             'id' => '',
             'coursename' => '',
@@ -9806,7 +10013,8 @@ class local_custom_service_external extends external_api
         ];
     }
 
-    private static function build_course_summary(stdClass $course, int $userid): array {
+    private static function build_course_summary(stdClass $course, int $userid): array
+    {
         global $DB, $CFG;
 
         $category = $DB->get_record('course_categories', ['id' => $course->category], 'id, name');
@@ -9850,11 +10058,11 @@ class local_custom_service_external extends external_api
             'view_url' => (new moodle_url('/course/view.php', ['id' => $course->id]))->out(false)
         ];
     }
-    
+
     // block html(text)
     public static function create_content_block_html_parameters()
     {
-        return new external_function_parameters (
+        return new external_function_parameters(
             array(
                 'shortname' => new external_value(PARAM_TEXT, 'Course shortname', VALUE_REQUIRED, '', NULL_NOT_ALLOWED),
                 // 'url_images' => new external_multiple_structure(new external_value(PARAM_RAW, 'content html block',
@@ -9875,7 +10083,7 @@ class local_custom_service_external extends external_api
         );
 
         $transaction = $DB->start_delegated_transaction();
-        
+
         try {
             $slide_convert_decode = json_decode($slide_convert, true);
             $totalSlides = count($slide_convert_decode);
@@ -9907,7 +10115,7 @@ class local_custom_service_external extends external_api
                 $html .= '</audio>';
                 $html .= '</div>';
             }
-            
+
             $html .= '</div>';
 
             // Navigation buttons
@@ -10041,7 +10249,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function create_activity_book_parameters() {
+    public static function create_activity_book_parameters()
+    {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
             'name' => new external_value(PARAM_TEXT, 'Tên của activity'),
@@ -10052,7 +10261,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function create_activity_book($courseid, $name, $section = 0, $description = '', $chapters = '', $slideCode = '') {
+    public static function create_activity_book($courseid, $name, $section = 0, $description = '', $chapters = '', $slideCode = '')
+    {
         global $DB, $USER;
 
         // Validate the parameters.
@@ -10062,18 +10272,18 @@ class local_custom_service_external extends external_api
             'section' => $section,
             // 'completioncmid' => $completioncmid
         ]);
-        
+
         $transaction = $DB->start_delegated_transaction();
 
         try {
 
             $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-    
+
             $module = $DB->get_record('modules', ['name' => 'book'], '*', MUST_EXIST);
             $moduleid = $module->id;
             //create an object with all of the neccesary information to build a quiz
             $myBook = new stdClass();
-            $myBook->modulename='book';
+            $myBook->modulename = 'book';
             $myBook->module = $moduleid;
             $myBook->name = $name;
             $myBook->introformat = FORMAT_HTML;
@@ -10084,8 +10294,8 @@ class local_custom_service_external extends external_api
             $myBook->customtitles = 0;
             $myBook->revision = 0;
             $myBook->visible = 1;
-            
-            $myBook->completion = 2; 
+
+            $myBook->completion = 2;
             $myBook->completionview = 1;
 
             if (plugin_supports('mod', 'book', FEATURE_MOD_INTRO, true)) {
@@ -10108,19 +10318,19 @@ class local_custom_service_external extends external_api
 
             $decode_chapters = json_decode($chapters, true);
 
-            if($slideCode){
+            if ($slideCode) {
                 $postdata = array(
                     'code' => $slideCode,
                 );
-            
+
                 $get_data_slide_by_code = get_data_slide_by_code($postdata);
-                
-                if($get_data_slide_by_code['status']){
+
+                if ($get_data_slide_by_code['status']) {
                     foreach ($get_data_slide_by_code['data'] as $key => $value) {
                         try {
                             $title = 'Chapter ' . ($value['slideIndex'] + 1);
                             $content = stripslashes($value['html']);
-                    
+
                             $dataChapter = new stdClass();
                             $dataChapter->bookid = $created_moduleinfo->instance;
                             $dataChapter->pagenum = $key;
@@ -10131,9 +10341,9 @@ class local_custom_service_external extends external_api
                             $dataChapter->hidden = 0;
                             $dataChapter->timecreated = time();
                             $dataChapter->timemodified = time();
-                    
+
                             $id = $DB->insert_record('book_chapters', $dataChapter);
-                    
+
                             if (!$id) {
                                 throw new Exception("Insert failed at index $key");
                             }
@@ -10142,19 +10352,19 @@ class local_custom_service_external extends external_api
                         }
                     }
                 }
-            }else{
-                if($decode_chapters){
-                    foreach($decode_chapters as $key => $chapter){
+            } else {
+                if ($decode_chapters) {
+                    foreach ($decode_chapters as $key => $chapter) {
                         $title = $chapter['title'];
                         $content = $chapter['content'];
                         $subchapter = $chapter['subchapter'];
-    
+
                         $isSubchapter = 0;
-    
-                        if($subchapter == "true"){
+
+                        if ($subchapter == "true") {
                             $isSubchapter = 1;
                         }
-    
+
                         $dataChapter = new stdClass();
                         $dataChapter->bookid = $created_moduleinfo->instance;
                         $dataChapter->pagenum = $key;
@@ -10165,7 +10375,7 @@ class local_custom_service_external extends external_api
                         $dataChapter->hidden = 0;
                         $dataChapter->timecreated = time();
                         $dataChapter->timemodified = time();
-    
+
                         $id = $DB->insert_record('book_chapters', $dataChapter);
                     }
                 }
@@ -10196,7 +10406,8 @@ class local_custom_service_external extends external_api
         }
     }
 
-    public static function create_activity_book_returns() {
+    public static function create_activity_book_returns()
+    {
         return new external_single_structure([
             'modulename' => new external_value(PARAM_TEXT, 'Module name'),
             'cmid' => new external_value(PARAM_INT, 'Course module ID của label'),
@@ -10245,7 +10456,7 @@ class local_custom_service_external extends external_api
 
                     // Thêm field view_url vào từng course
                     $course['view_url'] = (new moodle_url('/course/view.php', ['id' => $course['id']]))->out();
-                    
+
                     $course['course_image'] = '';
 
                     // Kiểm tra nếu overviewfiles có dữ liệu
@@ -10273,7 +10484,7 @@ class local_custom_service_external extends external_api
             $currentPage = 1;
         } else {
             $totalPages = ceil($totalCourses / $perpage);
-            
+
             // Đảm bảo page >= 1
             $page = max(1, $page);
 
@@ -10347,7 +10558,7 @@ class local_custom_service_external extends external_api
 
                     // Thêm field view_url vào từng course
                     $course['view_url'] = (new moodle_url('/course/view.php', ['id' => $course['id']]))->out();
-                    
+
                     $course['course_image'] = '';
 
                     // Kiểm tra nếu overviewfiles có dữ liệu
@@ -10375,7 +10586,7 @@ class local_custom_service_external extends external_api
             $currentPage = 1;
         } else {
             $totalPages = ceil($totalCourses / $perpage);
-            
+
             // Đảm bảo page >= 1
             $page = max(1, $page);
 
@@ -10413,7 +10624,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function get_course_structure($onlypublicdata = true) {
+    public static function get_course_structure($onlypublicdata = true)
+    {
         $coursestructure = array(
             'id' => new external_value(PARAM_INT, 'course id'),
             'fullname' => new external_value(PARAM_RAW, 'course full name'),
@@ -10428,13 +10640,15 @@ class local_custom_service_external extends external_api
             'summaryfiles' => new external_files('summary files in the summary field', VALUE_OPTIONAL),
             'overviewfiles' => new external_files('additional overview files attached to this course'),
             'showactivitydates' => new external_value(PARAM_BOOL, 'Whether the activity dates are shown or not'),
-            'showcompletionconditions' => new external_value(PARAM_BOOL,
-                'Whether the activity completion conditions are shown or not'),
+            'showcompletionconditions' => new external_value(
+                PARAM_BOOL,
+                'Whether the activity completion conditions are shown or not'
+            ),
             'contacts' => new external_multiple_structure(
                 new external_single_structure(
                     array(
                         'id' => new external_value(PARAM_INT, 'contact user id'),
-                        'fullname'  => new external_value(PARAM_NOTAGS, 'contact user fullname'),
+                        'fullname' => new external_value(PARAM_NOTAGS, 'contact user fullname'),
                     )
                 ),
                 'contact users'
@@ -10447,14 +10661,21 @@ class local_custom_service_external extends external_api
                 new external_single_structure(
                     array(
                         'name' => new external_value(PARAM_RAW, 'The name of the custom field'),
-                        'shortname' => new external_value(PARAM_RAW,
-                            'The shortname of the custom field - to be able to build the field class in the code'),
-                        'type'  => new external_value(PARAM_ALPHANUMEXT,
-                            'The type of the custom field - text field, checkbox...'),
+                        'shortname' => new external_value(
+                            PARAM_RAW,
+                            'The shortname of the custom field - to be able to build the field class in the code'
+                        ),
+                        'type' => new external_value(
+                            PARAM_ALPHANUMEXT,
+                            'The type of the custom field - text field, checkbox...'
+                        ),
                         'valueraw' => new external_value(PARAM_RAW, 'The raw value of the custom field'),
                         'value' => new external_value(PARAM_RAW, 'The value of the custom field'),
                     )
-                ), 'Custom fields', VALUE_OPTIONAL),
+                ),
+                'Custom fields',
+                VALUE_OPTIONAL
+            ),
             'view_url' => new external_value(PARAM_TEXT, 'URL khóa học'),
             'course_image' => new external_value(PARAM_RAW, 'Ảnh khóa học'),
         );
@@ -10487,12 +10708,13 @@ class local_custom_service_external extends external_api
                 'filters' => new external_multiple_structure(
                     new external_single_structure(
                         array(
-                            'filter'  => new external_value(PARAM_PLUGIN, 'Filter plugin name'),
+                            'filter' => new external_value(PARAM_PLUGIN, 'Filter plugin name'),
                             'localstate' => new external_value(PARAM_INT, 'Filter state: 1 for on, -1 for off, 0 if inherit'),
                             'inheritedstate' => new external_value(PARAM_INT, '1 or 0 to use when localstate is set to inherit'),
                         )
                     ),
-                    'Course filters', VALUE_OPTIONAL
+                    'Course filters',
+                    VALUE_OPTIONAL
                 ),
                 'courseformatoptions' => new external_multiple_structure(
                     new external_single_structure(
@@ -10501,7 +10723,8 @@ class local_custom_service_external extends external_api
                             'value' => new external_value(PARAM_RAW, 'Course format option value.'),
                         )
                     ),
-                    'Additional options for particular course format.', VALUE_OPTIONAL
+                    'Additional options for particular course format.',
+                    VALUE_OPTIONAL
                 ),
             );
             $coursestructure = array_merge($coursestructure, $extra);
@@ -10509,7 +10732,8 @@ class local_custom_service_external extends external_api
         return new external_single_structure($coursestructure);
     }
 
-    public static function save_definitions_custom_service_parameters() {
+    public static function save_definitions_custom_service_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course Module ID'),
             'useridlms' => new external_value(PARAM_TEXT, 'User ID Moodle', VALUE_DEFAULT, ''),
@@ -10517,7 +10741,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function save_definitions_custom_service($cmid, $useridlms, $json_convert) {
+    public static function save_definitions_custom_service($cmid, $useridlms, $json_convert)
+    {
         global $DB, $USER;
 
         // Validate the parameters.
@@ -10543,7 +10768,7 @@ class local_custom_service_external extends external_api
                 'cmid' => $cmid,
                 'contextid' => $context->id,
                 'component' => 'mod_assign',
-                'areaname'  => 'submissions',
+                'areaname' => 'submissions',
                 'activemethod' => 'rubric',
                 'definitions' => []
             ];
@@ -10575,7 +10800,7 @@ class local_custom_service_external extends external_api
 
                 foreach ($criteria['levels'] as $levelIndex => $level) {
                     $rubriclevels[] = [
-                        'score' => (double)$level['score'],
+                        'score' => (double) $level['score'],
                         'definition' => $level['definition'],
                         'definitionformat' => 0
                     ];
@@ -10594,7 +10819,7 @@ class local_custom_service_external extends external_api
 
             // Định nghĩa toàn bộ API request
             $areas = ['areas' => [$gradingarea]];
-            
+
             // Gọi API của Moodle để lưu
             $results = core_grading_external::save_definitions($areas['areas']);
 
@@ -10617,7 +10842,8 @@ class local_custom_service_external extends external_api
         }
     }
 
-    public static function save_definitions_custom_service_returns() {
+    public static function save_definitions_custom_service_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'status'),
             'cmid' => new external_value(PARAM_INT, 'Course module ID của label'),
@@ -10630,7 +10856,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters
      */
-    public static function reorder_category_parameters() {
+    public static function reorder_category_parameters()
+    {
         return new external_function_parameters(
             array(
                 'categoryid' => new external_value(PARAM_INT, 'id of the category to reorder'),
@@ -10646,10 +10873,11 @@ class local_custom_service_external extends external_api
      * @param int $afterid ID of the category to place this category after (0 for first position)
      * @return null
      */
-    public static function reorder_category($categoryid, $afterid) {
+    public static function reorder_category($categoryid, $afterid)
+    {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
-        
+
         // Validate parameters passed from web service
         $params = self::validate_parameters(self::reorder_category_parameters(), array(
             'categoryid' => $categoryid,
@@ -10658,7 +10886,7 @@ class local_custom_service_external extends external_api
 
         // Get the category to move
         $category = $DB->get_record('course_categories', array('id' => $params['categoryid']), '*', MUST_EXIST);
-        
+
         // Check permissions
         $categorycontext = context_coursecat::instance($category->id);
         require_capability('moodle/category:manage', $categorycontext);
@@ -10669,20 +10897,23 @@ class local_custom_service_external extends external_api
         if ($params['afterid'] == 0) {
             // Move to the first position
             // First get the parent category's first child's sortorder
-            $firstcategory = $DB->get_records_select('course_categories', 
-                'parent = ? ORDER BY sortorder ASC', 
-                array($category->parent), 
-                'sortorder ASC', 
-                'id, sortorder', 
-                0, 1);
-                
+            $firstcategory = $DB->get_records_select(
+                'course_categories',
+                'parent = ? ORDER BY sortorder ASC',
+                array($category->parent),
+                'sortorder ASC',
+                'id, sortorder',
+                0,
+                1
+            );
+
             if ($firstcategory) {
                 $firstcategory = reset($firstcategory);
                 // If the category is already the first one, do nothing
                 if ($firstcategory->id == $category->id) {
                     return null;
                 }
-                
+
                 // Set the sortorder to be less than the first category
                 $newsortorder = $firstcategory->sortorder - 1;
                 if ($newsortorder < 1) {
@@ -10690,13 +10921,13 @@ class local_custom_service_external extends external_api
                     fix_course_sortorder();
                     return null;
                 }
-                
+
                 $DB->set_field('course_categories', 'sortorder', $newsortorder, array('id' => $category->id));
             }
         } else {
             // Get the reference category
             $aftercat = $DB->get_record('course_categories', array('id' => $params['afterid']), '*', MUST_EXIST);
-            
+
             // Make sure they're in the same parent
             if ($category->parent != $aftercat->parent) {
                 throw new moodle_exception('categoriesnotsameparent', 'local_custom_service');
@@ -10710,41 +10941,44 @@ class local_custom_service_external extends external_api
                     array($aftercat->parent, $aftercat->sortorder),
                     'sortorder ASC',
                     'id, sortorder',
-                    0, 1
+                    0,
+                    1
                 );
             } catch (Exception $e) {
                 debugging($e->getMessage());
             }
-            
+
             if ($nextcategory) {
                 $nextcategory = reset($nextcategory);
                 if ($nextcategory->id == $category->id) {
                     return null;
                 }
             }
-            
+
             // Get all categories with the same parent sorted by sortorder
-            $categories = $DB->get_records('course_categories', 
-                array('parent' => $category->parent), 
-                'sortorder ASC', 
-                'id, sortorder');
-                
+            $categories = $DB->get_records(
+                'course_categories',
+                array('parent' => $category->parent),
+                'sortorder ASC',
+                'id, sortorder'
+            );
+
             // Remove the category we're moving from the list
             unset($categories[$category->id]);
-            
+
             // Rebuild the sortorder
             $newsortorder = array();
             $position = 0;
-            
+
             foreach ($categories as $cat) {
                 $newsortorder[$cat->id] = ++$position;
-                
+
                 // Insert our category after the specified category
                 if ($cat->id == $aftercat->id) {
                     $newsortorder[$category->id] = ++$position;
                 }
             }
-            
+
             // If the aftercat was not found (shouldn't happen), add the category at the end
             if (!isset($newsortorder[$category->id])) {
                 $newsortorder[$category->id] = ++$position;
@@ -10754,13 +10988,13 @@ class local_custom_service_external extends external_api
                 $DB->set_field('course_categories', 'sortorder', $sortorder, array('id' => $catid));
             }
         }
-        
+
         // Fix course sortorder
         fix_course_sortorder();
-        
+
         // Purge caches
         cache_helper::purge_by_event('changesincoursecat');
-        
+
         return null;
     }
 
@@ -10769,7 +11003,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_description
      */
-    public static function reorder_category_returns() {
+    public static function reorder_category_returns()
+    {
         return null;
     }
 
@@ -10781,7 +11016,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters
      */
-    public static function move_category_parameters() {
+    public static function move_category_parameters()
+    {
         return new external_function_parameters(
             array(
                 'categoryid' => new external_value(PARAM_INT, 'id of the category to move'),
@@ -10797,7 +11033,8 @@ class local_custom_service_external extends external_api
      * @param int $parentid ID of the parent category to move to
      * @return null
      */
-    public static function move_category($categoryid, $parentid) {
+    public static function move_category($categoryid, $parentid)
+    {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
 
@@ -10809,7 +11046,7 @@ class local_custom_service_external extends external_api
 
         // Get the category
         $category = $DB->get_record('course_categories', array('id' => $params['categoryid']), '*', MUST_EXIST);
-        
+
         // Get the parent category
         if ($params['parentid'] != 0) {
             $parent = $DB->get_record('course_categories', array('id' => $params['parentid']), '*', MUST_EXIST);
@@ -10822,7 +11059,7 @@ class local_custom_service_external extends external_api
         // Move the category
         $coursecat = core_course_category::get($category->id);
         $newparentcat = core_course_category::get($params['parentid']);
-        
+
         if (!$coursecat->change_parent($newparentcat)) {
             throw new moodle_exception('movecategoryerror', 'local_custom_service');
         }
@@ -10835,7 +11072,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_description
      */
-    public static function move_category_returns() {
+    public static function move_category_returns()
+    {
         return null;
     }
 
@@ -10844,7 +11082,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters
      */
-    public static function reorder_course_parameters() {
+    public static function reorder_course_parameters()
+    {
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'id of the course to reorder'),
@@ -10860,7 +11099,8 @@ class local_custom_service_external extends external_api
      * @param int $afterid ID of the course to place this course after (0 for first position)
      * @return null
      */
-    public static function reorder_course($courseid, $afterid) {
+    public static function reorder_course($courseid, $afterid)
+    {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
 
@@ -10872,7 +11112,7 @@ class local_custom_service_external extends external_api
 
         // Get the course to move
         $course = $DB->get_record('course', array('id' => $params['courseid']), '*', MUST_EXIST);
-        
+
         // Check permissions
         $coursecontext = context_course::instance($course->id);
         $categorycontext = context_coursecat::instance($course->category);
@@ -10882,20 +11122,23 @@ class local_custom_service_external extends external_api
         if ($params['afterid'] == 0) {
             // Move to the first position in the category
             // First get the category's first course's sortorder
-            $firstcourse = $DB->get_records_select('course', 
-                'category = ? ORDER BY sortorder ASC', 
-                array($course->category), 
-                'sortorder ASC', 
-                'id, sortorder', 
-                0, 1);
-                
+            $firstcourse = $DB->get_records_select(
+                'course',
+                'category = ? ORDER BY sortorder ASC',
+                array($course->category),
+                'sortorder ASC',
+                'id, sortorder',
+                0,
+                1
+            );
+
             if ($firstcourse) {
                 $firstcourse = reset($firstcourse);
                 // If the course is already the first one, do nothing
                 if ($firstcourse->id == $course->id) {
                     return null;
                 }
-                
+
                 // Set the sortorder to be less than the first course
                 $newsortorder = $firstcourse->sortorder - 1;
                 if ($newsortorder < 1) {
@@ -10903,72 +11146,77 @@ class local_custom_service_external extends external_api
                     fix_course_sortorder();
                     return null;
                 }
-                
+
                 $DB->set_field('course', 'sortorder', $newsortorder, array('id' => $course->id));
             }
         } else {
             // Get the reference course
             $aftercourse = $DB->get_record('course', array('id' => $params['afterid']), '*', MUST_EXIST);
-            
+
             // Make sure they're in the same category
             if ($course->category != $aftercourse->category) {
                 throw new moodle_exception('coursesnotsamecategory', 'local_custom_service');
             }
-            
+
             // If the course is already after the specified course, do nothing
-            $nextcourse = $DB->get_records_select('course', 
-                'category = ? AND sortorder > ? ORDER BY sortorder ASC', 
-                array($aftercourse->category, $aftercourse->sortorder), 
-                'sortorder ASC', 
-                'id, sortorder', 
-                0, 1);
-                
+            $nextcourse = $DB->get_records_select(
+                'course',
+                'category = ? AND sortorder > ? ORDER BY sortorder ASC',
+                array($aftercourse->category, $aftercourse->sortorder),
+                'sortorder ASC',
+                'id, sortorder',
+                0,
+                1
+            );
+
             if ($nextcourse) {
                 $nextcourse = reset($nextcourse);
                 if ($nextcourse->id == $course->id) {
                     return null;
                 }
             }
-            
+
             // Get all courses in the same category sorted by sortorder
-            $courses = $DB->get_records('course', 
-                array('category' => $course->category), 
-                'sortorder ASC', 
-                'id, sortorder');
-                
+            $courses = $DB->get_records(
+                'course',
+                array('category' => $course->category),
+                'sortorder ASC',
+                'id, sortorder'
+            );
+
             // Remove the course we're moving from the list
             unset($courses[$course->id]);
-            
+
             // Rebuild the sortorder
             $newsortorder = array();
             $position = 0;
-            
+
             foreach ($courses as $c) {
                 $newsortorder[$c->id] = ++$position;
-                
+
                 // Insert our course after the specified course
                 if ($c->id == $aftercourse->id) {
                     $newsortorder[$course->id] = ++$position;
                 }
             }
-            
+
             // If the aftercourse was not found (shouldn't happen), add the course at the end
             if (!isset($newsortorder[$course->id])) {
                 $newsortorder[$course->id] = ++$position;
             }
-            
+
             // Update all sortorders
             foreach ($newsortorder as $cid => $sortorder) {
                 $DB->set_field('course', 'sortorder', $sortorder, array('id' => $cid));
             }
         }
-        
+
         // Fix course sortorder
         fix_course_sortorder();
-        
+
         // Purge caches
         cache_helper::purge_by_event('changesincourse');
-        
+
         return null;
     }
 
@@ -10977,7 +11225,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_description
      */
-    public static function reorder_course_returns() {
+    public static function reorder_course_returns()
+    {
         return null;
     }
 
@@ -10986,7 +11235,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters
      */
-    public static function move_course_parameters() {
+    public static function move_course_parameters()
+    {
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'id of the course to move'),
@@ -11002,7 +11252,8 @@ class local_custom_service_external extends external_api
      * @param int $categoryid ID of the category to move the course to
      * @return null
      */
-    public static function move_course($courseid, $categoryid) {
+    public static function move_course($courseid, $categoryid)
+    {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
 
@@ -11014,7 +11265,7 @@ class local_custom_service_external extends external_api
 
         // Get the course
         $course = $DB->get_record('course', array('id' => $params['courseid']), '*', MUST_EXIST);
-        
+
         // Get the category
         $category = $DB->get_record('course_categories', array('id' => $params['categoryid']), '*', MUST_EXIST);
 
@@ -11037,7 +11288,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_description
      */
-    public static function move_course_returns() {
+    public static function move_course_returns()
+    {
         return null;
     }
 
@@ -11125,7 +11377,8 @@ class local_custom_service_external extends external_api
     }
 
     // 1️⃣ API lấy embed URL của H5P activity
-    public static function get_h5p_embed_url_parameters() {
+    public static function get_h5p_embed_url_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course Module ID (cmid) of the H5P activity'),
             'modtype' => new external_value(PARAM_TEXT, 'Type of H5P module: hvp or h5pactivity')
@@ -11133,7 +11386,8 @@ class local_custom_service_external extends external_api
     }
 
     // 2️⃣ Hàm xử lý
-    public static function get_h5p_embed_url($cmid, $modtype) {
+    public static function get_h5p_embed_url($cmid, $modtype)
+    {
         global $DB, $CFG;
 
         $params = self::validate_parameters(self::get_h5p_embed_url_parameters(), [
@@ -11189,7 +11443,8 @@ class local_custom_service_external extends external_api
     }
 
     // 3️⃣ Kiểu dữ liệu trả về
-    public static function get_h5p_embed_url_returns() {
+    public static function get_h5p_embed_url_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Status'),
             'embed_url' => new external_value(PARAM_URL, 'Embed URL'),
@@ -11198,7 +11453,8 @@ class local_custom_service_external extends external_api
     }
 
     // ⚙️ 1. Thêm tham số modtype
-    public static function get_h5p_result_parameters() {
+    public static function get_h5p_result_parameters()
+    {
         return new external_function_parameters([
             'email' => new external_value(PARAM_TEXT, 'User email'),
             'cmid' => new external_value(PARAM_INT, 'Course Module ID'),
@@ -11206,7 +11462,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function get_h5p_result($email, $cmid, $modtype) {
+    public static function get_h5p_result($email, $cmid, $modtype)
+    {
         global $DB;
 
         $params = self::validate_parameters(self::get_h5p_result_parameters(), [
@@ -11261,16 +11518,16 @@ class local_custom_service_external extends external_api
         } elseif ($modtype === 'hvp') {
             $cm = get_coursemodule_from_id('hvp', $cmid, 0, false, MUST_EXIST);
             $hvpinstanceid = $cm->instance;
-        
+
             $results = $DB->get_records('hvp_xapi_results', [
                 'content_id' => $hvpinstanceid,
                 'user_id' => $user->id
             ], 'id ASC');
-        
+
             if (!$results) {
                 return ['status' => false, 'message' => 'Người dùng chưa làm bài', 'attempts' => []];
             }
-        
+
             // Nhóm theo parent_id (attempts)
             $groupedAttempts = [];
             foreach ($results as $res) {
@@ -11287,27 +11544,27 @@ class local_custom_service_external extends external_api
                     $groupedAttempts[$res->parent_id]['children'][] = $res;
                 }
             }
-        
+
             $resultList = [];
             $attemptIndex = 1;
             foreach ($groupedAttempts as $group) {
                 $score = 0;
                 $maxscore = 0;
-        
+
                 foreach ($group['children'] as $child) {
-                    $score += isset($child->raw_score) ? (float)$child->raw_score : 0;
-                    $maxscore += isset($child->max_score) ? (float)$child->max_score : 0;
+                    $score += isset($child->raw_score) ? (float) $child->raw_score : 0;
+                    $maxscore += isset($child->max_score) ? (float) $child->max_score : 0;
                 }
-        
+
                 // Nếu có parent compound, ưu tiên lấy điểm từ đó
                 if ($group['parent']) {
                     $attemptid = $group['parent']->id;
-                    $score = isset($group['parent']->raw_score) ? (float)$group['parent']->raw_score : $score;
-                    $maxscore = isset($group['parent']->max_score) ? (float)$group['parent']->max_score : $maxscore;
+                    $score = isset($group['parent']->raw_score) ? (float) $group['parent']->raw_score : $score;
+                    $maxscore = isset($group['parent']->max_score) ? (float) $group['parent']->max_score : $maxscore;
                 } else {
                     $attemptid = $group['children'][0]->id; // fallback
                 }
-        
+
                 $resultList[] = [
                     'attemptid' => $attemptid,
                     'attempt' => $attemptIndex++,
@@ -11329,7 +11586,8 @@ class local_custom_service_external extends external_api
         }
     }
 
-    public static function get_h5p_result_returns() {
+    public static function get_h5p_result_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_BOOL, 'Trạng thái'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo'),
@@ -11347,19 +11605,21 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function submit_h5p_result_parameters() {
+    public static function submit_h5p_result_parameters()
+    {
         return new external_function_parameters([
-            'cmid'     => new external_value(PARAM_INT, 'Course module ID of H5P activity'),
-            'email'    => new external_value(PARAM_TEXT, 'Email of the user submitting'),
-            'score'    => new external_value(PARAM_FLOAT, 'Raw score'),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID of H5P activity'),
+            'email' => new external_value(PARAM_TEXT, 'Email of the user submitting'),
+            'score' => new external_value(PARAM_FLOAT, 'Raw score'),
             'maxscore' => new external_value(PARAM_FLOAT, 'Maximum score'),
             'duration' => new external_value(PARAM_INT, 'Duration in seconds'),
             'completion' => new external_value(PARAM_BOOL, 'Completed or not'),
-            'success'    => new external_value(PARAM_BOOL, 'Success or not')
+            'success' => new external_value(PARAM_BOOL, 'Success or not')
         ]);
     }
 
-    public static function submit_h5p_result($cmid, $email, $score, $maxscore, $duration, $completion, $success) {
+    public static function submit_h5p_result($cmid, $email, $score, $maxscore, $duration, $completion, $success)
+    {
         global $DB;
 
         $params = self::validate_parameters(self::submit_h5p_result_parameters(), compact('cmid', 'email', 'score', 'maxscore', 'duration', 'completion', 'success'));
@@ -11385,18 +11645,18 @@ class local_custom_service_external extends external_api
             'userid' => $user->id
         ]);
 
-        $newattempt = (object)[
+        $newattempt = (object) [
             'h5pactivityid' => $activity->id,
-            'userid'        => $user->id,
-            'timecreated'   => time(),
-            'timemodified'  => time(),
-            'attempt'       => $lastattempt ? $lastattempt->attempt + 1 : 1,
-            'rawscore'      => $params['score'],
-            'maxscore'      => $params['maxscore'],
-            'scaled'        => $scaled,
-            'duration'      => $params['duration'],
-            'completion'    => $params['completion'] ? 1 : 0,
-            'success'       => $params['success'] ? 1 : 0
+            'userid' => $user->id,
+            'timecreated' => time(),
+            'timemodified' => time(),
+            'attempt' => $lastattempt ? $lastattempt->attempt + 1 : 1,
+            'rawscore' => $params['score'],
+            'maxscore' => $params['maxscore'],
+            'scaled' => $scaled,
+            'duration' => $params['duration'],
+            'completion' => $params['completion'] ? 1 : 0,
+            'success' => $params['success'] ? 1 : 0
         ];
 
         $DB->insert_record('h5pactivity_attempts', $newattempt);
@@ -11407,22 +11667,24 @@ class local_custom_service_external extends external_api
         ];
     }
 
-    public static function submit_h5p_result_returns() {
+    public static function submit_h5p_result_returns()
+    {
         return new external_single_structure([
-            'status'  => new external_value(PARAM_BOOL, 'Trạng thái ghi thành công hay không'),
+            'status' => new external_value(PARAM_BOOL, 'Trạng thái ghi thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo')
         ]);
     }
 
-    public static function submit_hvp_result_parameters() {
+    public static function submit_hvp_result_parameters()
+    {
         return new external_function_parameters([
-            'cmid'     => new external_value(PARAM_INT, 'Course module ID of H5P activity'),
-            'email'    => new external_value(PARAM_TEXT, 'Email of the user submitting'),
-            'score'    => new external_value(PARAM_FLOAT, 'Raw score'),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID of H5P activity'),
+            'email' => new external_value(PARAM_TEXT, 'Email of the user submitting'),
+            'score' => new external_value(PARAM_FLOAT, 'Raw score'),
             'maxscore' => new external_value(PARAM_FLOAT, 'Maximum score'),
             'duration' => new external_value(PARAM_INT, 'Duration in seconds'),
             'completion' => new external_value(PARAM_BOOL, 'Completed or not'),
-            'success'    => new external_value(PARAM_BOOL, 'Success or not'),
+            'success' => new external_value(PARAM_BOOL, 'Success or not'),
             'interaction_type' => new external_value(PARAM_TEXT, 'Type of interaction', VALUE_OPTIONAL),
             'description' => new external_value(PARAM_RAW, 'Question or activity description', VALUE_OPTIONAL),
             'correct_responses_pattern' => new external_value(PARAM_RAW, 'Correct answer(s)', VALUE_OPTIONAL),
@@ -11431,7 +11693,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function submit_hvp_result($cmid, $email, $score, $maxscore, $duration, $completion, $success) {
+    public static function submit_hvp_result($cmid, $email, $score, $maxscore, $duration, $completion, $success)
+    {
         global $DB;
 
         $params = self::validate_parameters(self::submit_hvp_result_parameters(), compact('cmid', 'email', 'score', 'maxscore', 'duration', 'completion', 'success'));
@@ -11443,9 +11706,9 @@ class local_custom_service_external extends external_api
         $cm = get_coursemodule_from_id('hvp', $params['cmid'], 0, false, MUST_EXIST);
         $hvp = $DB->get_record('hvp', ['id' => $cm->instance], '*', MUST_EXIST);
 
-        $result = (object)[
+        $result = (object) [
             'content_id' => $cm->instance,
-            'user_id'    => $user->id,
+            'user_id' => $user->id,
             'interaction_type' => $params['interaction_type'] ?? '',
             'description' => $params['description'] ?? '',
             'correct_responses_pattern' => $params['correct_responses_pattern'] ?? '',
@@ -11454,7 +11717,7 @@ class local_custom_service_external extends external_api
             'raw_score' => $params['score'],
             'max_score' => $params['maxscore']
         ];
-    
+
         $DB->insert_record('hvp_xapi_results', $result);
 
         return [
@@ -11463,15 +11726,17 @@ class local_custom_service_external extends external_api
         ];
     }
 
-    public static function submit_hvp_result_returns() {
+    public static function submit_hvp_result_returns()
+    {
         return new external_single_structure([
-            'status'  => new external_value(PARAM_BOOL, 'Trạng thái ghi thành công hay không'),
+            'status' => new external_value(PARAM_BOOL, 'Trạng thái ghi thành công hay không'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo')
         ]);
     }
 
     //update_activity_cmsh5ptool
-    public static function update_activity_cmsh5ptool_parameters() {
+    public static function update_activity_cmsh5ptool_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của url cần cập nhật'),
             'fields' => new external_multiple_structure(
@@ -11507,31 +11772,32 @@ class local_custom_service_external extends external_api
             )
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function update_activity_cmsh5ptool($cmid, $fields) {
+    public static function update_activity_cmsh5ptool($cmid, $fields)
+    {
         global $DB;
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::update_activity_cmsh5ptool_parameters(), [
             'cmid' => $cmid,
             'fields' => $fields
         ]);
-        
+
         // Lấy cmsh5ptoolid từ cmid
         $cmsh5ptoolid = self::get_moduleid_from_cmid($cmid, 'cmsh5ptool');
-        
+
         // Kiểm tra cmsh5ptool có tồn tại không
         if (!$DB->record_exists('cmsh5ptool', ['id' => $cmsh5ptoolid])) {
             throw new moodle_exception('invalidcmsh5ptoolid', 'mdl_cmsh5ptool', '', $cmsh5ptoolid);
         }
-    
+
         // Lấy thông tin cmsh5ptool hiện tại
         $cmsh5ptool = $DB->get_record('cmsh5ptool', ['id' => $cmsh5ptoolid], '*', MUST_EXIST);
-    
+
         // Cập nhật các trường được cung cấp
         foreach ($params['fields'] as $field_data) {
             foreach ($field_data as $field => $value) {
@@ -11562,15 +11828,15 @@ class local_custom_service_external extends external_api
             // Cập nhật availability trong bảng course_modules
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = $availability_json;
-        
+
             // Cập nhật lại course_modules
             $DB->update_record('course_modules', $cm);
-        }else{
+        } else {
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = '';
             $DB->update_record('course_modules', $cm);
         }
-        
+
         // Xử lý section và visible nếu được truyền
         $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
 
@@ -11591,12 +11857,12 @@ class local_custom_service_external extends external_api
         $completionview = 0;
         $completionexpected = 0;
         if (!empty($params['fields'][0]['completion'])) {
-            if($params['fields'][0]['completion'] == 1){
+            if ($params['fields'][0]['completion'] == 1) {
                 $completion = $params['fields'][0]['completion'];
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
             }
 
-            if($params['fields'][0]['completion'] == 2){
+            if ($params['fields'][0]['completion'] == 2) {
                 $completion = $params['fields'][0]['completion'];
                 $completionview = $params['fields'][0]['completionview'] ?? 0;
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
@@ -11611,7 +11877,7 @@ class local_custom_service_external extends external_api
         $DB->update_record('course_modules', $cm1);
 
         rebuild_course_cache($cm1->course, true);
-    
+
         return [
             'status' => 'success',
             'message' => 'cmsh5ptool updated successfully',
@@ -11625,7 +11891,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function update_activity_cmsh5ptool_returns() {
+    public static function update_activity_cmsh5ptool_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -11636,7 +11903,8 @@ class local_custom_service_external extends external_api
 
 
     //update_activity_hvp
-    public static function update_activity_hvp_parameters() {
+    public static function update_activity_hvp_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của url cần cập nhật'),
             'fields' => new external_multiple_structure(
@@ -11670,27 +11938,28 @@ class local_custom_service_external extends external_api
             )
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function update_activity_hvp($cmid, $fields) {
+    public static function update_activity_hvp($cmid, $fields)
+    {
         global $DB;
-    
+
         $params = self::validate_parameters(self::update_activity_hvp_parameters(), [
             'cmid' => $cmid,
             'fields' => $fields
         ]);
-    
+
         $hvpid = self::get_moduleid_from_cmid($cmid, 'hvp');
-    
+
         if (!$DB->record_exists('hvp', ['id' => $hvpid])) {
             throw new moodle_exception('invalidhvpid', 'mdl_hvp', '', $hvpid);
         }
-    
+
         $hvp = $DB->get_record('hvp', ['id' => $hvpid], '*', MUST_EXIST);
-    
+
         foreach ($params['fields'] as $field_data) {
             foreach ($field_data as $field => $value) {
                 if (isset($value) && $field !== 'availability' && property_exists($hvp, $field)) {
@@ -11698,17 +11967,17 @@ class local_custom_service_external extends external_api
                 }
             }
         }
-    
+
         $result = $DB->update_record('hvp', $hvp);
-    
+
         if (!empty($params['fields'][0]['availability'])) {
             $availability_params = $params['fields'][0]['availability'];
             $completioncmids = $availability_params['completioncmid'] ?? [];
-    
+
             if (!is_array($completioncmids)) {
                 $completioncmids = [$completioncmids];
             }
-    
+
             $availability_json = self::generate_availability_conditions(
                 $availability_params['timeopen'] ?? null,
                 $availability_params['timeclose'] ?? null,
@@ -11717,27 +11986,27 @@ class local_custom_service_external extends external_api
                 $availability_params['max'] ?? null,
                 $completioncmids
             );
-    
+
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = $availability_json;
             $DB->update_record('course_modules', $cm);
-        }else{
+        } else {
             $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
             $cm->availability = '';
             $DB->update_record('course_modules', $cm);
         }
-    
+
         $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
         $section = $DB->get_record('course_sections', ['course' => $cm1->course, 'section' => $params['fields'][0]['section']]);
-    
+
         if (isset($params['fields'][0]['section']) && $section->id != $cm1->section) {
             self::move_activity_to_section($cm1->course, $cmid, $params['fields'][0]['section']);
         }
-    
+
         if (isset($params['fields'][0]['visible'])) {
             $cm1->visible = $params['fields'][0]['visible'];
         }
-    
+
         $completion = 0;
         $completionview = 0;
         $completionexpected = 0;
@@ -11746,22 +12015,22 @@ class local_custom_service_external extends external_api
                 $completion = $params['fields'][0]['completion'];
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
             }
-    
+
             if ($params['fields'][0]['completion'] == 2) {
                 $completion = $params['fields'][0]['completion'];
                 $completionview = $params['fields'][0]['completionview'] ?? 0;
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
             }
         }
-    
+
         $cm1->completion = $completion;
         $cm1->completionview = $completionview;
         $cm1->completionexpected = $completionexpected;
         $cm1->showdescription = $params['fields'][0]['showdescription'] ?? 0;
-    
+
         $DB->update_record('course_modules', $cm1);
         rebuild_course_cache($cm1->course, true);
-    
+
         return [
             'status' => 'success',
             'message' => 'hvp updated successfully',
@@ -11775,7 +12044,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function update_activity_hvp_returns() {
+    public static function update_activity_hvp_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -11784,7 +12054,8 @@ class local_custom_service_external extends external_api
         ]);
     }
 
-    public static function update_course_tags_parameters() {
+    public static function update_course_tags_parameters()
+    {
         return new external_function_parameters(
             array(
                 'filecontent' => new external_value(PARAM_RAW, 'Base64 encoded content of the Excel file'),
@@ -11799,7 +12070,8 @@ class local_custom_service_external extends external_api
      * @return array
      * @throws moodle_exception
      */
-    public static function update_course_tags($filecontent) {
+    public static function update_course_tags($filecontent)
+    {
         global $DB, $CFG;
         $updated_courses = 0;
         $failed_courses = [];
@@ -11869,7 +12141,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure
      */
-    public static function update_course_tags_returns() {
+    public static function update_course_tags_returns()
+    {
         return new external_function_parameters(
             array(
                 'updatedcount' => new external_value(PARAM_INT, 'Number of courses successfully updated'),
@@ -11881,18 +12154,20 @@ class local_custom_service_external extends external_api
         );
     }
 
-    public static function get_enrolled_courses_by_school_id_parameters() {
+    public static function get_enrolled_courses_by_school_id_parameters()
+    {
         return new external_function_parameters([
             'schoolId' => new external_value(PARAM_INT, 'School ID'),
             'courseid' => new external_value(PARAM_INT, 'Optional course ID to filter', VALUE_DEFAULT, null)
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function get_enrolled_courses_by_school_id($schoolId, $courseid) {
+    public static function get_enrolled_courses_by_school_id($schoolId, $courseid)
+    {
         global $DB;
 
         $user_emails_array = get_user_email_by_school_id($schoolId);
@@ -11938,7 +12213,7 @@ class local_custom_service_external extends external_api
             GROUP BY c.id, c.fullname
             ORDER BY c.id ASC
         ";
-        
+
         $enrolled_courses = $DB->get_records_sql($sql_courses, $params);
         if (!$enrolled_courses) {
             $enrolled_courses = [];
@@ -12177,7 +12452,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function get_enrolled_courses_by_school_id_returns() {
+    public static function get_enrolled_courses_by_school_id_returns()
+    {
         return new external_single_structure(
             array(
                 'enrolled_courses' => new external_multiple_structure(
@@ -12390,7 +12666,8 @@ class local_custom_service_external extends external_api
     /**
      * Handle common completion requirements for all modules
      */
-    private static function handle_common_completion_requirements($cm, $course, $params, &$warnings, $DB) {
+    private static function handle_common_completion_requirements($cm, $course, $params, &$warnings, $DB)
+    {
         // Handle grade requirements for any module that supports grading
         if ($cm->completiongradeitemnumber !== null || $cm->completionpassgrade) {
             self::handle_grade_completion($cm, $course, $params, $warnings, $DB);
@@ -12400,15 +12677,16 @@ class local_custom_service_external extends external_api
     /**
      * Handle quiz completion requirements
      */
-    private static function handle_quiz_completion($cm, $course, $params, &$warnings, $DB) {
+    private static function handle_quiz_completion($cm, $course, $params, &$warnings, $DB)
+    {
         // Handle grade completion first
         self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
-        
+
         // Handle minimum attempts requirement
         $quiz = $DB->get_record('quiz', array('id' => $cm->instance), 'id, completionminattempts');
         if ($quiz && $quiz->completionminattempts > 0) {
             $required_attempts = $quiz->completionminattempts;
-            
+
             // Get user's finished attempts
             $attempts = quiz_get_user_attempts($cm->instance, $params['userid'], 'finished', false);
             $current_attempts = count($attempts);
@@ -12417,7 +12695,7 @@ class local_custom_service_external extends external_api
                 if ($params['forcecompletion']) {
                     // Force completion by creating fake attempt records
                     $attempts_to_create = $required_attempts - $current_attempts;
-                    
+
                     for ($i = 0; $i < $attempts_to_create; $i++) {
                         $attempt = new stdClass();
                         $attempt->quiz = $cm->instance;
@@ -12433,10 +12711,10 @@ class local_custom_service_external extends external_api
                         $attempt->timemodified = time();
                         $attempt->timecheckstate = 0;
                         $attempt->sumgrades = 0;
-                        
+
                         $DB->insert_record('quiz_attempts', $attempt);
                     }
-                    
+
                     $warnings[] = "Created {$attempts_to_create} fake attempt(s) to satisfy minimum attempts requirement ({$required_attempts} attempts required).";
                 } else {
                     $warnings[] = "Quiz requires minimum {$required_attempts} attempts but user only has {$current_attempts}. Use forcecompletion=true.";
@@ -12448,10 +12726,11 @@ class local_custom_service_external extends external_api
     /**
      * Handle assignment completion requirements
      */
-    private static function handle_assignment_completion($cm, $course, $params, &$warnings, $DB) {
+    private static function handle_assignment_completion($cm, $course, $params, &$warnings, $DB)
+    {
         // Handle grade completion first
         self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
-        
+
         // Handle submission requirement - completionsubmit is stored in assign table, NOT course module
         $assign = $DB->get_record('assign', array('id' => $cm->instance));
 
@@ -12462,7 +12741,7 @@ class local_custom_service_external extends external_api
                 'userid' => $params['userid'],
                 'status' => 'submitted'
             ));
-            
+
             if (!$submission && $params['completionstate'] == COMPLETION_COMPLETE) {
                 if ($params['forcecompletion']) {
                     // Create a fake submission record
@@ -12475,7 +12754,7 @@ class local_custom_service_external extends external_api
                     $submission->groupid = 0;
                     $submission->attemptnumber = 0;
                     $submission->latest = 1;
-                    
+
                     $DB->insert_record('assign_submission', $submission);
                     $warnings[] = 'Submission record created to satisfy assignment completion criteria.';
                 } else {
@@ -12488,33 +12767,36 @@ class local_custom_service_external extends external_api
     /**
      * Handle resource completion requirements  
      */
-    private static function handle_resource_completion($cm, $course, $params, &$warnings, $DB) {
+    private static function handle_resource_completion($cm, $course, $params, &$warnings, $DB)
+    {
         // Handle grade completion (if applicable)
         self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
-        
+
         // Resource typically only requires view completion, which is handled in the main function
     }
 
     /**
      * Handle URL completion requirements
      */
-    private static function handle_url_completion($cm, $course, $params, &$warnings, $DB) {
+    private static function handle_url_completion($cm, $course, $params, &$warnings, $DB)
+    {
         // Handle grade completion (if applicable)
         self::handle_common_completion_requirements($cm, $course, $params, $warnings, $DB);
-        
+
         // URL typically only requires view completion, which is handled in the main function
     }
 
     /**
      * Handle grade completion requirements for modules that support grading
      */
-    private static function handle_grade_completion($cm, $course, $params, &$warnings, $DB) {
+    private static function handle_grade_completion($cm, $course, $params, &$warnings, $DB)
+    {
         if ($cm->completiongradeitemnumber !== null || $cm->completionpassgrade) {
             $grade_item = grade_item::fetch(array(
-                'courseid'    => $course->id,
-                'itemtype'    => 'mod',
-                'itemmodule'  => $cm->modname,
-                'iteminstance'=> $cm->instance
+                'courseid' => $course->id,
+                'itemtype' => 'mod',
+                'itemmodule' => $cm->modname,
+                'iteminstance' => $cm->instance
             ));
 
             if ($grade_item) {
@@ -12529,14 +12811,14 @@ class local_custom_service_external extends external_api
                     $module_record = $DB->get_record($cm->modname, array('id' => $cm->instance));
                     if ($module_record) {
                         $max_grade = 100; // Default
-                        
+
                         // Get max grade based on module type
                         if (isset($module_record->grade) && $module_record->grade > 0) {
                             $max_grade = $module_record->grade;
                         } elseif (isset($module_record->scale) && $module_record->scale > 0) {
                             $max_grade = $module_record->scale;
                         }
-                        
+
                         $pass_grade = $cm->completionpassgrade
                             ? ($max_grade * 0.6)  // 60% for passing grade
                             : ($max_grade * 0.1); // 10% for just receiving a grade
@@ -12558,7 +12840,7 @@ class local_custom_service_external extends external_api
                         }
 
                         $warnings[] = "Grade record created to satisfy {$cm->modname} completion criteria (grade: " .
-                                      round($pass_grade, 2) . ").";
+                            round($pass_grade, 2) . ").";
                     }
                 } elseif (!$grade || $grade->finalgrade === null) {
                     $requirements = array();
@@ -12590,19 +12872,20 @@ class local_custom_service_external extends external_api
      * @param bool $forcecompletion Force completion even without meeting criteria (creates fake records if needed)
      * @return array Result of the operation with success status, message, and completion details
      */
-    public static function update_activity_completion($userid, $cmid, $completionstate, $forcecompletion = false) {
+    public static function update_activity_completion($userid, $cmid, $completionstate, $forcecompletion = false)
+    {
         global $DB, $CFG;
-    
+
         require_once($CFG->libdir . '/completionlib.php');
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::update_activity_completion_parameters(), array(
-            'userid'          => $userid,
-            'cmid'            => $cmid,
+            'userid' => $userid,
+            'cmid' => $cmid,
             'completionstate' => $completionstate,
             'forcecompletion' => $forcecompletion
         ));
-    
+
         // Validate completion state values
         $valid_states = array(
             COMPLETION_INCOMPLETE,      // 0
@@ -12610,7 +12893,7 @@ class local_custom_service_external extends external_api
             COMPLETION_COMPLETE_PASS,   // 2
             COMPLETION_COMPLETE_FAIL    // 3
         );
-    
+
         if (!in_array($params['completionstate'], $valid_states)) {
             throw new moodle_exception(
                 'invalidcompletionstate',
@@ -12620,17 +12903,17 @@ class local_custom_service_external extends external_api
                 'Invalid completion state. Must be 0 (incomplete), 1 (complete), 2 (complete_pass), or 3 (complete_fail)'
             );
         }
-    
+
         try {
             // Get course module
             $cm = get_coursemodule_from_id('', $params['cmid'], 0, false, MUST_EXIST);
-        
+
             // Get course
             $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
-        
+
             // Check if user exists
             $user = $DB->get_record('user', array('id' => $params['userid']), '*', MUST_EXIST);
-        
+
             // Check if completion is enabled for this course
             $completion = new completion_info($course);
             if (!$completion->is_enabled()) {
@@ -12642,7 +12925,7 @@ class local_custom_service_external extends external_api
                     'Completion is not enabled for this course'
                 );
             }
-        
+
             // Check if completion is enabled for this activity
             if (!$completion->is_enabled($cm)) {
                 throw new moodle_exception(
@@ -12653,7 +12936,7 @@ class local_custom_service_external extends external_api
                     'Completion is not enabled for this activity'
                 );
             }
-        
+
             // Check if user is enrolled in the course
             $context = context_course::instance($course->id);
             if (!is_enrolled($context, $user)) {
@@ -12665,15 +12948,15 @@ class local_custom_service_external extends external_api
                     'User is not enrolled in this course'
                 );
             }
-        
+
             // Get current completion data
-            $current        = $completion->get_data($cm, false, $params['userid']);
+            $current = $completion->get_data($cm, false, $params['userid']);
             $previous_state = $current->completionstate ?? 0;
-        
+
             // Result messages
-            $warnings        = array();
+            $warnings = array();
             $success_message = 'Activity completion status updated successfully';
-        
+
             // Handle automatic completion
             if ($cm->completion == COMPLETION_TRACKING_AUTOMATIC) {
                 // Only process requirements if forcing completion or if not already completed
@@ -12699,31 +12982,31 @@ class local_custom_service_external extends external_api
                     }
                 }
             }
-        
+
             // ✅ Bỏ dấu `}` thừa ở đây
-        
+
             // Check completion view requirement
             if ($cm->completionview == COMPLETION_VIEW_REQUIRED) {
                 $viewed = $DB->get_record('course_modules_viewed', array(
                     'coursemoduleid' => $cm->id,
-                    'userid'         => $params['userid']
+                    'userid' => $params['userid']
                 ));
-        
+
                 if (!$viewed && $params['completionstate'] == COMPLETION_COMPLETE) {
-                    $view_record                 = new stdClass();
+                    $view_record = new stdClass();
                     $view_record->coursemoduleid = $cm->id;
-                    $view_record->userid         = $params['userid'];
-                    $view_record->timecreated    = time();
-        
+                    $view_record->userid = $params['userid'];
+                    $view_record->timecreated = time();
+
                     $DB->insert_record('course_modules_viewed', $view_record);
-        
+
                     $warnings[] = 'Activity marked as viewed to satisfy completion criteria.';
                 }
             }
-        
+
             // Check current completion state before updating
             $current_completion = $completion->get_data($cm, false, $params['userid']);
-        
+
             // Only update if the state is actually changing or if we're forcing completion
             if ($current_completion->completionstate != $params['completionstate'] || $params['forcecompletion']) {
                 // For automatic completion, manually set the completion data
@@ -12733,7 +13016,7 @@ class local_custom_service_external extends external_api
                         'coursemoduleid' => $cm->id,
                         'userid' => $params['userid']
                     ));
-        
+
                     if (!$completion_record) {
                         $completion_record = new stdClass();
                         $completion_record->coursemoduleid = $cm->id;
@@ -12741,12 +13024,12 @@ class local_custom_service_external extends external_api
                         $completion_record->completionstate = $params['completionstate'];
                         $completion_record->viewed = 1;
                         $completion_record->timemodified = time();
-        
+
                         $DB->insert_record('course_modules_completion', $completion_record);
                     } else {
                         $completion_record->completionstate = $params['completionstate'];
                         $completion_record->timemodified = time();
-        
+
                         $DB->update_record('course_modules_completion', $completion_record);
                     }
                 } else {
@@ -12756,34 +13039,34 @@ class local_custom_service_external extends external_api
             } else {
                 $warnings[] = 'Completion state already matches requested state - no update needed.';
             }
-        
+
             if (!empty($warnings)) {
                 $success_message .= ' Warnings: ' . implode(' ', $warnings);
             }
-        
+
             return array(
-                'success'        => true,
-                'message'        => $success_message,
-                'userid'         => $params['userid'],
-                'cmid'           => $params['cmid'],
-                'courseid'       => $cm->course,
+                'success' => true,
+                'message' => $success_message,
+                'userid' => $params['userid'],
+                'cmid' => $params['cmid'],
+                'courseid' => $cm->course,
                 'previous_state' => $previous_state,
-                'new_state'      => $params['completionstate'],
-                'timemodified'   => time(),
-                'forcecompletion'=> $params['forcecompletion']
+                'new_state' => $params['completionstate'],
+                'timemodified' => time(),
+                'forcecompletion' => $params['forcecompletion']
             );
-        
+
         } catch (Exception $e) {
             return array(
-                'success'        => false,
-                'message'        => $e->getMessage(),
-                'userid'         => $params['userid'],
-                'cmid'           => $params['cmid'],
-                'courseid'       => 0,
+                'success' => false,
+                'message' => $e->getMessage(),
+                'userid' => $params['userid'],
+                'cmid' => $params['cmid'],
+                'courseid' => 0,
                 'previous_state' => 0,
-                'new_state'      => $params['completionstate'],
-                'timemodified'   => time(),
-                'forcecompletion'=> $params['forcecompletion']
+                'new_state' => $params['completionstate'],
+                'timemodified' => time(),
+                'forcecompletion' => $params['forcecompletion']
             );
         }
     }
@@ -12810,17 +13093,19 @@ class local_custom_service_external extends external_api
         );
     }
 
-    public static function get_users_by_school_id_parameters() {
+    public static function get_users_by_school_id_parameters()
+    {
         return new external_function_parameters([
             'schoolId' => new external_value(PARAM_INT, 'School ID'),
         ]);
     }
-    
+
 
     /**
      * Function to create a quiz activity in a course.
      */
-    public static function get_users_by_school_id($schoolId) {
+    public static function get_users_by_school_id($schoolId)
+    {
         global $DB;
 
         $user_emails_array = get_user_email_by_school_id($schoolId);
@@ -12850,7 +13135,7 @@ class local_custom_service_external extends external_api
             AND u.deleted = 0
             ORDER BY u.id ASC
         ";
-        
+
         $users = $DB->get_records_sql($sql_users, $params);
 
         $result = [];
@@ -12877,7 +13162,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_multiple_structure.
      */
-    public static function get_users_by_school_id_returns() {
+    public static function get_users_by_school_id_returns()
+    {
         return new external_multiple_structure(
             new external_single_structure(
                 array(
@@ -12903,7 +13189,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters.
      */
-    public static function create_activity_cmsvideo_parameters() {
+    public static function create_activity_cmsvideo_parameters()
+    {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT, 'ID của khóa học'),
             'content' => new external_value(PARAM_RAW, 'Nội dung của activity'),
@@ -12928,9 +13215,10 @@ class local_custom_service_external extends external_api
      * @return array
      * @throws moodle_exception
      */
-    public static function create_activity_cmsvideo($courseid, $content, $name, $module, $section = 0, $display = 0, $visible = 1) {
+    public static function create_activity_cmsvideo($courseid, $content, $name, $module, $section = 0, $display = 0, $visible = 1)
+    {
         global $DB, $USER;
-    
+
         // Validate the parameters.
         $params = self::validate_parameters(self::create_activity_cmsvideo_parameters(), [
             'courseid' => $courseid,
@@ -12944,20 +13232,20 @@ class local_custom_service_external extends external_api
 
         // Get course info
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
-        
+
         // Get section info
         if ($section == 0) {
             $section = $DB->get_field_sql("SELECT MAX(section) FROM {course_sections} WHERE course = ?", [$courseid]);
         }
-        
+
         $sectionrecord = $DB->get_record('course_sections', ['course' => $courseid, 'section' => $section], '*', MUST_EXIST);
-        
+
         // Get module info
         $moduleid = $DB->get_field('modules', 'id', ['name' => 'cmsvideo']);
         if (!$moduleid) {
             throw new moodle_exception('Module cmsvideo not found. Please ensure the cmsvideo plugin is installed and enabled.');
         }
-        
+
         // Check if module is available
         $module = $DB->get_record('modules', ['id' => $moduleid]);
         if (!$module || !$module->visible) {
@@ -12973,7 +13261,7 @@ class local_custom_service_external extends external_api
         $cmsvideo->source_path = '';
         $cmsvideo->timecreated = time();
         $cmsvideo->timemodified = time();
-        
+
         $cmsvideoid = $DB->insert_record('cmsvideo', $cmsvideo);
 
         // Create course module
@@ -12996,7 +13284,7 @@ class local_custom_service_external extends external_api
         $cm->completionexpected = 0;
         $cm->showdescription = $display;
         $cm->availability = null;
-        
+
         $cmid = $DB->insert_record('course_modules', $cm);
 
         // Update section sequence
@@ -13009,13 +13297,13 @@ class local_custom_service_external extends external_api
 
         // Rebuild course cache
         rebuild_course_cache($courseid, true);
-        
+
         // Update course format
         course_modinfo::clear_instance_cache($courseid);
-        
+
         // Get course context
         $context = context_course::instance($courseid);
-        
+
         // Trigger event
         $event = course_module_created::create([
             'objectid' => $cmid,
@@ -13045,7 +13333,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function create_activity_cmsvideo_returns() {
+    public static function create_activity_cmsvideo_returns()
+    {
         return new external_single_structure([
             'modulename' => new external_value(PARAM_TEXT, 'Module name'),
             'cmid' => new external_value(PARAM_INT, 'Course module ID'),
@@ -13063,7 +13352,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_function_parameters.
      */
-    public static function update_activity_cmsvideo_parameters() {
+    public static function update_activity_cmsvideo_parameters()
+    {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'Course module ID của cmsvideo cần cập nhật'),
             'fields' => new external_multiple_structure(
@@ -13102,26 +13392,27 @@ class local_custom_service_external extends external_api
      * @return array
      * @throws moodle_exception
      */
-    public static function update_activity_cmsvideo($cmid, $fields) {
+    public static function update_activity_cmsvideo($cmid, $fields)
+    {
         global $DB;
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::update_activity_cmsvideo_parameters(), [
             'cmid' => $cmid,
             'fields' => $fields
         ]);
-        
+
         // Lấy cmsvideoid từ cmid
         $cmsvideoid = self::get_moduleid_from_cmid($cmid, 'cmsvideo');
-        
+
         // Kiểm tra cmsvideo có tồn tại không
         if (!$DB->record_exists('cmsvideo', ['id' => $cmsvideoid])) {
             throw new moodle_exception('invalidcmsvideoid', 'mdl_cmsvideo', '', $cmsvideoid);
         }
-    
+
         // Lấy thông tin cmsvideo hiện tại
         $cmsvideo = $DB->get_record('cmsvideo', ['id' => $cmsvideoid], '*', MUST_EXIST);
-    
+
         // Cập nhật các trường được cung cấp
         foreach ($params['fields'] as $field_data) {
             foreach ($field_data as $field => $value) {
@@ -13132,10 +13423,10 @@ class local_custom_service_external extends external_api
         }
         // Cập nhật cmsvideo
         $result = $DB->update_record('cmsvideo', $cmsvideo);
-        
+
         // Lấy course_modules record trước khi xử lý availability
         $cm = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
-        
+
         // Xử lý restrict access (availability)
         if (!empty($params['fields'][0]) && !empty($params['fields'][0]['availability'])) {
             $availability_params = $params['fields'][0]['availability'];
@@ -13157,16 +13448,16 @@ class local_custom_service_external extends external_api
         } else {
             $cm->availability = '';
         }
-        
+
         // Cập nhật lại course_modules
         $DB->update_record('course_modules', $cm);
-        
+
         // Xử lý section và visible nếu được truyền
         $cm1 = $DB->get_record('course_modules', ['id' => $cmid], '*', MUST_EXIST);
 
         if (!empty($params['fields'][0]) && isset($params['fields'][0]['section'])) {
             $section = $DB->get_record('course_sections', array('course' => $cm1->course, 'section' => $params['fields'][0]['section']));
-            
+
             if ($section && $section->id != $cm1->section) {
                 // Cập nhật section mới
                 self::move_activity_to_section($cm1->course, $cmid, $params['fields'][0]['section']);
@@ -13181,12 +13472,12 @@ class local_custom_service_external extends external_api
         $completionview = 0;
         $completionexpected = 0;
         if (!empty($params['fields'][0]) && !empty($params['fields'][0]['completion'])) {
-            if($params['fields'][0]['completion'] == 1){
+            if ($params['fields'][0]['completion'] == 1) {
                 $completion = $params['fields'][0]['completion'];
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
             }
 
-            if($params['fields'][0]['completion'] == 2){
+            if ($params['fields'][0]['completion'] == 2) {
                 $completion = $params['fields'][0]['completion'];
                 $completionview = $params['fields'][0]['completionview'] ?? 0;
                 $completionexpected = $params['fields'][0]['completionexpected'] ?? 0;
@@ -13197,11 +13488,11 @@ class local_custom_service_external extends external_api
         $cm1->completionexpected = $completionexpected;
 
         $cm1->showdescription = (!empty($params['fields'][0]) && isset($params['fields'][0]['showdescription'])) ? $params['fields'][0]['showdescription'] : 0;
-        
+
         $DB->update_record('course_modules', $cm1);
 
         rebuild_course_cache($cm1->course, true);
-    
+
         return [
             'status' => 'success',
             'message' => 'cmsvideo updated successfully',
@@ -13215,7 +13506,8 @@ class local_custom_service_external extends external_api
      *
      * @return external_single_structure.
      */
-    public static function update_activity_cmsvideo_returns() {
+    public static function update_activity_cmsvideo_returns()
+    {
         return new external_single_structure([
             'status' => new external_value(PARAM_TEXT, 'Kết quả của thao tác'),
             'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
@@ -13228,7 +13520,8 @@ class local_custom_service_external extends external_api
      * Get Student Incomplete Activities Timeline with Sorting
      * Parameters definition
      */
-    public static function get_student_incomplete_activities_timeline_parameters() {
+    public static function get_student_incomplete_activities_timeline_parameters()
+    {
         return new external_function_parameters([
             'userid' => new external_value(PARAM_INT, 'User ID (default: current user)', VALUE_DEFAULT, 0),
             'courseid' => new external_value(PARAM_INT, 'Course ID (default: all courses)', VALUE_DEFAULT, 0),
@@ -13273,7 +13566,7 @@ class local_custom_service_external extends external_api
                 'limit' => $limit,
                 'offset' => $offset,
             ]);
-            
+
             // Use current user if userid is 0
             if ($userid == 0) {
                 $userid = $USER->id;
@@ -13435,10 +13728,10 @@ class local_custom_service_external extends external_api
 
             // Execute query
             $allActivities = $DB->get_records_sql($sql, $queryParams);
-            
+
             // Calculate total available activities (before pagination)
             $totalAvailable = count($allActivities);
-            
+
             // Apply pagination manually
             $activities = array_slice($allActivities, $offset, $limit);
 
@@ -13498,11 +13791,11 @@ class local_custom_service_external extends external_api
                 $activityUrl = $CFG->wwwroot . '/mod/' . $activity->modulename . '/view.php?id=' . $activity->cmid;
 
                 $formattedActivities[] = [
-                    'id' => (string)$activity->cmid,
+                    'id' => (string) $activity->cmid,
                     'title' => $activity->activity_name,
                     'type' => $activity->modulename,
                     'course' => [
-                        'id' => (int)$activity->courseid,
+                        'id' => (int) $activity->courseid,
                         'fullname' => $activity->coursefullname,
                         'shortname' => $activity->courseshortname
                     ],
@@ -13513,8 +13806,8 @@ class local_custom_service_external extends external_api
                     'submissionStatus' => 'notsubmitted',
                     'timeRemaining' => $timeRemaining,
                     'isOverdue' => $isOverdue,
-                    'activityId' => (int)$activity->activity_id,
-                    'courseId' => (int)$activity->courseid
+                    'activityId' => (int) $activity->activity_id,
+                    'courseId' => (int) $activity->courseid
                 ];
             }
 
@@ -13576,7 +13869,8 @@ class local_custom_service_external extends external_api
      * Get Student Incomplete Activities Timeline with Sorting
      * Return structure definition
      */
-    public static function get_student_incomplete_activities_timeline_returns() {
+    public static function get_student_incomplete_activities_timeline_returns()
+    {
         return new external_single_structure([
             'success' => new external_value(PARAM_BOOL, 'Success status'),
             'message' => new external_value(PARAM_TEXT, 'Response message'),
@@ -13709,7 +14003,7 @@ class local_custom_service_external extends external_api
                          AND e.status = 0 
                          AND c.visible = 1
                          AND c.id > 1";
-            
+
             $count_params = array('userid' => $userid);
             if ($categoryid !== 'all' && is_numeric($categoryid)) {
                 $count_sql .= " AND c.category = :categoryid";
@@ -13768,7 +14062,7 @@ class local_custom_service_external extends external_api
 
                 // Get completion data
                 $completion_data = self::get_course_completion_data($course->id, $userid);
-                
+
                 // Get course tags
                 $tags = array();
                 $course_tags = $DB->get_records_sql(
@@ -13785,31 +14079,34 @@ class local_custom_service_external extends external_api
                 $course_status = self::determine_course_status($course, $completion_data);
 
                 // Get last access time
-                $last_access = $DB->get_field('user_lastaccess', 'timeaccess', 
-                    array('userid' => $userid, 'courseid' => $course->id));
+                $last_access = $DB->get_field(
+                    'user_lastaccess',
+                    'timeaccess',
+                    array('userid' => $userid, 'courseid' => $course->id)
+                );
 
                 $course_data = array(
-                    'id' => (int)$course->id,
-                    'coursename' => (string)$course->fullname,
-                    'summary' => (string)strip_tags($course->summary),
-                    'view_url' => (string)($CFG->wwwroot . '/course/view.php?id=' . $course->id),
-                    'course_image' => (string)$course_image,
-                    'last_access_time' => (string)($last_access ? date('Y-m-d H:i:s', $last_access) : ''),
-                    'total_activity' => (int)$completion_data['total_activities'],
-                    'total_activity_completion' => (int)$completion_data['completed_activities'],
-                    'completion_percentage' => (int)$completion_data['completion_percentage'],
-                    'category' => (string)($course->category_name ?: 'Uncategorized'),
-                    'categoryId' => (string)$course->category_id,
-                    'tags' => (array)$tags,
-                    'rating' => (float)$course_rating,
-                    'duration' => (string)'', // Duration not available as mentioned
-                    'status' => (string)$course_status,
-                    'is_enrolled' => (bool)true,
-                    'course_startdate' => (string)($course->startdate ? date('Y-m-d', $course->startdate) : ''),
-                    'course_enddate' => (string)($course->enddate ? date('Y-m-d', $course->enddate) : ''),
-                    'instructor' => (string)(trim($course->firstname . ' ' . $course->lastname) ?: 'Unknown'),
-                    'difficulty_level' => (string)'Beginner', // Default value
-                    'language' => (string)'English' // Default value
+                    'id' => (int) $course->id,
+                    'coursename' => (string) $course->fullname,
+                    'summary' => (string) strip_tags($course->summary),
+                    'view_url' => (string) ($CFG->wwwroot . '/course/view.php?id=' . $course->id),
+                    'course_image' => (string) $course_image,
+                    'last_access_time' => (string) ($last_access ? date('Y-m-d H:i:s', $last_access) : ''),
+                    'total_activity' => (int) $completion_data['total_activities'],
+                    'total_activity_completion' => (int) $completion_data['completed_activities'],
+                    'completion_percentage' => (int) $completion_data['completion_percentage'],
+                    'category' => (string) ($course->category_name ?: 'Uncategorized'),
+                    'categoryId' => (string) $course->category_id,
+                    'tags' => (array) $tags,
+                    'rating' => (float) $course_rating,
+                    'duration' => (string) '', // Duration not available as mentioned
+                    'status' => (string) $course_status,
+                    'is_enrolled' => (bool) true,
+                    'course_startdate' => (string) ($course->startdate ? date('Y-m-d', $course->startdate) : ''),
+                    'course_enddate' => (string) ($course->enddate ? date('Y-m-d', $course->enddate) : ''),
+                    'instructor' => (string) (trim($course->firstname . ' ' . $course->lastname) ?: 'Unknown'),
+                    'difficulty_level' => (string) 'Beginner', // Default value
+                    'language' => (string) 'English' // Default value
                 );
 
                 // Apply status filter
@@ -13825,7 +14122,7 @@ class local_custom_service_external extends external_api
                 }
 
                 // Apply rating filter
-                if ($rating !== '' && $course_rating < (float)$rating) {
+                if ($rating !== '' && $course_rating < (float) $rating) {
                     continue;
                 }
 
@@ -13839,7 +14136,7 @@ class local_custom_service_external extends external_api
             $categories_data = array();
             foreach ($categories as $cat) {
                 $categories_data[] = array(
-                    'id' => (string)$cat->id,
+                    'id' => (string) $cat->id,
                     'name' => $cat->name
                 );
             }
@@ -13848,38 +14145,38 @@ class local_custom_service_external extends external_api
             $total_pages = ceil($total_courses / $perpage);
 
             return array(
-                'status' => (string)'success',
+                'status' => (string) 'success',
                 'data' => array(
-                    'courses' => (array)$courses_data,
-                    'total_courses' => (int)$total_courses,
-                    'current_page' => (int)$page,
-                    'per_page' => (int)$perpage,
-                    'total_pages' => (int)$total_pages,
-                    'categories' => (array)$categories_data,
+                    'courses' => (array) $courses_data,
+                    'total_courses' => (int) $total_courses,
+                    'current_page' => (int) $page,
+                    'per_page' => (int) $perpage,
+                    'total_pages' => (int) $total_pages,
+                    'categories' => (array) $categories_data,
                     'filters' => array(
-                        'statuses' => (array)array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
-                        'durations' => (array)array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
-                        'ratings' => (array)array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
+                        'statuses' => (array) array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
+                        'durations' => (array) array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
+                        'ratings' => (array) array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
                     )
                 )
             );
 
         } catch (Exception $e) {
             return array(
-                'status' => (string)'error',
+                'status' => (string) 'error',
                 'data' => array(
-                    'courses' => (array)array(),
-                    'total_courses' => (int)0,
-                    'current_page' => (int)$page,
-                    'per_page' => (int)$perpage,
-                    'total_pages' => (int)0,
-                    'categories' => (array)array(),
+                    'courses' => (array) array(),
+                    'total_courses' => (int) 0,
+                    'current_page' => (int) $page,
+                    'per_page' => (int) $perpage,
+                    'total_pages' => (int) 0,
+                    'categories' => (array) array(),
                     'filters' => array(
-                        'statuses' => (array)array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
-                        'durations' => (array)array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
-                        'ratings' => (array)array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
+                        'statuses' => (array) array('all', 'in_progress', 'completed', 'recommended', 'not_enrolled'),
+                        'durations' => (array) array('Any Duration', 'Under 1 hour', '1-3 hours', '3-6 hours', '6+ hours'),
+                        'ratings' => (array) array('Any Rating', '4+ Stars', '3+ Stars', '2+ Stars', '1+ Stars')
                     ),
-                    'error_message' => (string)$e->getMessage()
+                    'error_message' => (string) $e->getMessage()
                 )
             );
         }
@@ -13972,7 +14269,7 @@ class local_custom_service_external extends external_api
             array('courseid' => $courseid, 'userid' => $userid)
         );
 
-        $completion_percentage = $total_activities > 0 ? 
+        $completion_percentage = $total_activities > 0 ?
             round(($completed_activities / $total_activities) * 100) : 0;
 
         return array(
@@ -13986,7 +14283,7 @@ class local_custom_service_external extends external_api
     private static function determine_course_status($course, $completion_data)
     {
         $completion_percentage = $completion_data['completion_percentage'];
-        
+
         if ($completion_percentage >= 100) {
             return 'completed';
         } else {
@@ -14033,11 +14330,12 @@ class local_custom_service_external extends external_api
      * @param array $activities Array of activities with cmid, completionstate, and forcecompletion
      * @return array Result of the operation with success status, message, and completion details for each activity
      */
-    public static function bulk_update_activity_completion($userid, $activities) {
+    public static function bulk_update_activity_completion($userid, $activities)
+    {
         global $DB, $CFG;
-    
+
         require_once($CFG->libdir . '/completionlib.php');
-    
+
         // Validate parameters
         $params = self::validate_parameters(self::bulk_update_activity_completion_parameters(), array(
             'userid' => $userid,
@@ -14084,7 +14382,7 @@ class local_custom_service_external extends external_api
         // Batch fetch all course modules (single query)
         list($in_sql, $in_params) = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
         $cms = $DB->get_records_select('course_modules', "id {$in_sql}", $in_params);
-        
+
         // Build cmid => cm mapping
         $cm_map = array();
         $course_ids = array();
@@ -14312,7 +14610,7 @@ class local_custom_service_external extends external_api
                             break;
                         }
                     }
-                    
+
                     if (!$already_queued) {
                         $insert_rec = new stdClass();
                         $insert_rec->coursemoduleid = $cmid;
@@ -14399,7 +14697,8 @@ class local_custom_service_external extends external_api
                             'courseid' => new external_value(PARAM_INT, 'Course ID'),
                             'warnings' => new external_multiple_structure(
                                 new external_value(PARAM_TEXT, 'Warning message'),
-                                'List of warnings', VALUE_OPTIONAL
+                                'List of warnings',
+                                VALUE_OPTIONAL
                             )
                         )
                     ),

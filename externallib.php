@@ -14707,4 +14707,891 @@ class local_custom_service_external extends external_api
             )
         );
     }
+
+
+    // Functionset for import_course_sections() ************************************************************************************.
+
+    /**
+     * Parameter description for import_course_sections().
+     *
+     * @return external_function_parameters
+     */
+    public static function import_course_sections_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'importfrom' => new external_value(PARAM_INT, 'Source course id'),
+                'importto' => new external_value(PARAM_INT, 'Destination course id'),
+                'sectionids' => new external_multiple_structure(
+                    new external_value(PARAM_INT, 'course_sections.id'),
+                    'Section IDs to import from source course',
+                    VALUE_DEFAULT,
+                    array()
+                ),
+                'sectionnumbers' => new external_multiple_structure(
+                    new external_value(PARAM_INT, 'Section number (0-based)'),
+                    'Alternative to sectionids: section numbers in source course',
+                    VALUE_DEFAULT,
+                    array()
+                ),
+                'deletecontent' => new external_value(
+                    PARAM_INT,
+                    'Delete destination course content before import (0=No, 1=Yes). Default 0.',
+                    VALUE_DEFAULT,
+                    0
+                ),
+                'options' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'name' => new external_value(
+                                PARAM_ALPHA,
+                                'Backup option name: activities, blocks, filters (1=yes, 0=no)'
+                            ),
+                            'value' => new external_value(PARAM_INT, '1 (yes) or 0 (no)')
+                        )
+                    ),
+                    'Import options. Defaults: activities=1, blocks=0, filters=0',
+                    VALUE_DEFAULT,
+                    array()
+                ),
+                'placement' => new external_value(
+                    PARAM_ALPHA,
+                    'Where to place imported sections: append (default, sequential after existing) or keep (source section numbers)',
+                    VALUE_DEFAULT,
+                    'append'
+                ),
+            )
+        );
+    }
+
+    /**
+     * Import selected sections (and their activities) from one course into another.
+     *
+     * Uses Moodle backup/restore MODE_IMPORT with section_included filtering.
+     * Activities in excluded sections are skipped automatically via setting dependencies.
+     *
+     * @param int $importfrom Source course id
+     * @param int $importto Destination course id
+     * @param array $sectionids Selected course_sections.id values
+     * @param array $sectionnumbers Selected section numbers (used if sectionids empty)
+     * @param int $deletecontent Whether to wipe destination content first
+     * @param array $options Backup/restore root options
+     * @param string $placement append|keep
+     * @return array
+     */
+    public static function import_course_sections(
+        $importfrom,
+        $importto,
+        $sectionids = array(),
+        $sectionnumbers = array(),
+        $deletecontent = 0,
+        $options = array(),
+        $placement = 'append'
+    ) {
+        global $CFG, $USER, $DB;
+
+        require_once($CFG->dirroot . '/backup/util/includes/backup_includes.php');
+        require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $params = self::validate_parameters(
+            self::import_course_sections_parameters(),
+            array(
+                'importfrom' => $importfrom,
+                'importto' => $importto,
+                'sectionids' => $sectionids,
+                'sectionnumbers' => $sectionnumbers,
+                'deletecontent' => $deletecontent,
+                'options' => $options,
+                'placement' => $placement
+            )
+        );
+
+        if ($params['deletecontent'] !== 0 && $params['deletecontent'] !== 1) {
+            throw new moodle_exception('invalidextparam', 'webservice', '', $params['deletecontent']);
+        }
+
+        $placement = core_text::strtolower(trim((string) $params['placement']));
+        if (!in_array($placement, array('append', 'keep'), true)) {
+            throw new moodle_exception('invalidparameter', 'error', '', 'placement must be append or keep');
+        }
+        $params['placement'] = $placement;
+
+        if ($params['importfrom'] === $params['importto']) {
+            throw new moodle_exception('invalidparameter', 'error', '', 'importfrom and importto must be different');
+        }
+
+        $fromcourse = $DB->get_record('course', array('id' => $params['importfrom']), '*', MUST_EXIST);
+        $tocourse = $DB->get_record('course', array('id' => $params['importto']), '*', MUST_EXIST);
+
+        $fromcontext = context_course::instance($fromcourse->id);
+        $tocontext = context_course::instance($tocourse->id);
+        self::validate_context($fromcontext);
+        self::validate_context($tocontext);
+
+        require_capability('moodle/backup:backuptargetimport', $fromcontext);
+        require_capability('moodle/restore:restoretargetimport', $tocontext);
+
+        // Resolve selected section IDs.
+        $selectedsectionids = array_values(array_unique(array_map('intval', $params['sectionids'])));
+        if (empty($selectedsectionids) && !empty($params['sectionnumbers'])) {
+            list($insql, $inparams) = $DB->get_in_or_equal($params['sectionnumbers'], SQL_PARAMS_NAMED);
+            $inparams['courseid'] = $fromcourse->id;
+            $selectedsectionids = $DB->get_fieldset_sql(
+                "SELECT id FROM {course_sections}
+                  WHERE course = :courseid AND section {$insql}
+                  ORDER BY section ASC",
+                $inparams
+            );
+            $selectedsectionids = array_map('intval', $selectedsectionids);
+        }
+
+        if (empty($selectedsectionids)) {
+            throw new moodle_exception('invalidparameter', 'error', '', 'sectionids or sectionnumbers is required');
+        }
+
+        // Validate all selected sections belong to source course.
+        // Avoid selecting "component" on older DBs that lack delegated-section columns.
+        $sectioncolumns = $DB->get_columns('course_sections');
+        $hascomponentcolumn = array_key_exists('component', $sectioncolumns);
+        $sectionfields = $hascomponentcolumn
+            ? 'id, section, name, course, component'
+            : 'id, section, name, course';
+
+        $sourcesections = $DB->get_records_list(
+            'course_sections',
+            'id',
+            $selectedsectionids,
+            'section ASC',
+            $sectionfields
+        );
+
+        if (count($sourcesections) !== count($selectedsectionids)) {
+            throw new moodle_exception(
+                'invalidparameter',
+                'error',
+                '',
+                'One or more sectionids do not belong to the source course'
+            );
+        }
+
+        foreach ($sourcesections as $section) {
+            if ((int) $section->course !== (int) $fromcourse->id) {
+                throw new moodle_exception(
+                    'invalidparameter',
+                    'error',
+                    '',
+                    'Section id ' . $section->id . ' does not belong to the source course'
+                );
+            }
+            if ($hascomponentcolumn && !empty($section->component)) {
+                throw new moodle_exception(
+                    'invalidparameter',
+                    'error',
+                    '',
+                    'Delegated section id ' . $section->id . ' cannot be imported directly'
+                );
+            }
+        }
+
+        // Keep caller selection order for append placement.
+        $orderedsections = array();
+        foreach ($selectedsectionids as $selectedid) {
+            if (isset($sourcesections[$selectedid])) {
+                $orderedsections[$selectedid] = $sourcesections[$selectedid];
+            }
+        }
+        $sourcesections = $orderedsections;
+
+        $backupdefaults = array(
+            'activities' => 1,
+            'blocks' => 0,
+            'filters' => 0,
+        );
+        $backupsettings = $backupdefaults;
+
+        if (!empty($params['options'])) {
+            foreach ($params['options'] as $option) {
+                $value = clean_param($option['value'], PARAM_INT);
+                if ($value !== 0 && $value !== 1) {
+                    throw new moodle_exception('invalidextparam', 'webservice', '', $option['name']);
+                }
+                if (!array_key_exists($option['name'], $backupdefaults)) {
+                    throw new moodle_exception('invalidextparam', 'webservice', '', $option['name']);
+                }
+                $backupsettings[$option['name']] = $value;
+            }
+        }
+
+        \core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_EXTRA);
+
+        $selectedlookup = array_flip($selectedsectionids);
+        $bc = null;
+        $rc = null;
+        $backupbasepath = null;
+        $restorecompleted = false;
+
+        try {
+            $bc = new backup_controller(
+                backup::TYPE_1COURSE,
+                $fromcourse->id,
+                backup::FORMAT_MOODLE,
+                backup::INTERACTIVE_NO,
+                backup::MODE_IMPORT,
+                $USER->id
+            );
+
+            foreach ($backupsettings as $name => $value) {
+                if ($bc->get_plan()->setting_exists($name)) {
+                    $bc->get_plan()->get_setting($name)->set_value($value);
+                }
+            }
+
+            // Include only selected sections; activities follow via section_*_included dependency.
+            foreach ($bc->get_plan()->get_tasks() as $task) {
+                if ($task instanceof backup_section_task) {
+                    $sectionid = (int) $task->get_sectionid();
+                    $include = isset($selectedlookup[$sectionid]) ? 1 : 0;
+                    $setting = $task->get_setting('included');
+                    if ((int) $setting->get_value() !== $include) {
+                        $setting->set_value($include);
+                    }
+                }
+            }
+
+            $backupid = $bc->get_backupid();
+            $backupbasepath = $bc->get_plan()->get_basepath();
+
+            $bc->execute_plan();
+            $bc->destroy();
+            $bc = null;
+
+            $restoretarget = $params['deletecontent']
+                ? backup::TARGET_EXISTING_DELETING
+                : backup::TARGET_EXISTING_ADDING;
+
+            // Snapshot destination sections before restore for safe mapping afterwards.
+            $preexistingsectionids = $DB->get_fieldset_select(
+                'course_sections',
+                'id',
+                'course = ?',
+                array($tocourse->id)
+            );
+            $preexistingsectionids = array_map('intval', $preexistingsectionids);
+            $premaxsection = (int) $DB->get_field_sql(
+                "SELECT COALESCE(MAX(section), 0) FROM {course_sections} WHERE course = ?",
+                array($tocourse->id)
+            );
+
+            $rc = new restore_controller(
+                $backupid,
+                $tocourse->id,
+                backup::INTERACTIVE_NO,
+                backup::MODE_IMPORT,
+                $USER->id,
+                $restoretarget
+            );
+
+            foreach ($backupsettings as $name => $value) {
+                if ($rc->get_plan()->setting_exists($name)) {
+                    $rc->get_plan()->get_setting($name)->set_value($value);
+                }
+            }
+
+            // Keep restore section filter aligned with backup selection.
+            foreach ($rc->get_plan()->get_tasks() as $task) {
+                if ($task instanceof restore_section_task) {
+                    $info = $task->get_info();
+                    if (!empty($info->sectionid)) {
+                        $sourcesectionid = (int) $info->sectionid;
+                        $include = isset($selectedlookup[$sourcesectionid]) ? 1 : 0;
+                        $setting = $task->get_setting('included');
+                        if ((int) $setting->get_value() !== $include) {
+                            $setting->set_value($include);
+                        }
+                    }
+                }
+            }
+
+            if (!$rc->execute_precheck()) {
+                $precheckresults = $rc->get_precheck_results();
+                if (is_array($precheckresults) && !empty($precheckresults['errors'])) {
+                    if (empty($CFG->keeptempdirectoriesonbackup) && $backupbasepath) {
+                        fulldelete($backupbasepath);
+                    }
+                    $errorinfo = '';
+                    foreach ($precheckresults['errors'] as $error) {
+                        $errorinfo .= $error;
+                    }
+                    if (!empty($precheckresults['warnings'])) {
+                        foreach ($precheckresults['warnings'] as $warning) {
+                            $errorinfo .= $warning;
+                        }
+                    }
+                    throw new moodle_exception('backupprecheckerrors', 'webservice', '', $errorinfo);
+                }
+            } else if ($restoretarget == backup::TARGET_EXISTING_DELETING) {
+                restore_dbops::delete_course_content($tocourse->id);
+                $preexistingsectionids = array();
+                $premaxsection = 0;
+            }
+
+            $rc->execute_plan();
+            $restorecompleted = true;
+
+            // Build section mapping. Moodle often REUSES existing destination sections
+            // by section number (UPDATE), so "new id only" diffs miss reused rows.
+            $sectionmappings = array();
+            $cmbackupidsmap = array();
+            try {
+                $alldestsections = $DB->get_records(
+                    'course_sections',
+                    array('course' => $tocourse->id),
+                    'section ASC',
+                    'id, section, name'
+                );
+                $destbysectionnumber = array();
+                $destbyname = array();
+                foreach ($alldestsections as $destsection) {
+                    $destbysectionnumber[(int) $destsection->section] = $destsection;
+                    $destname = trim((string) ($destsection->name ?? ''));
+                    if ($destname !== '') {
+                        // Keep first match for a given name.
+                        if (!isset($destbyname[$destname])) {
+                            $destbyname[$destname] = $destsection;
+                        }
+                    }
+                }
+
+                // Primary: direct SQL from backup_ids_temp (before destroy), avoid cache helper.
+                $backupidsmap = array();
+                try {
+                    $sourceids = array_map('intval', array_keys($sourcesections));
+                    if (!empty($sourceids)) {
+                        list($insql, $inparams) = $DB->get_in_or_equal($sourceids, SQL_PARAMS_NAMED, 'sid');
+                        $inparams['backupid'] = $backupid;
+                        $inparams['itemname'] = 'course_section';
+                        $maprows = $DB->get_records_sql(
+                            "SELECT itemid, newitemid
+                               FROM {backup_ids_temp}
+                              WHERE backupid = :backupid
+                                AND itemname = :itemname
+                                AND itemid {$insql}",
+                            $inparams
+                        );
+                        foreach ($maprows as $maprow) {
+                            $backupidsmap[(int) $maprow->itemid] = (int) $maprow->newitemid;
+                        }
+                    }
+
+                    // Course module id mappings (source cmid -> target cmid).
+                    $cmmaprows = $DB->get_records(
+                        'backup_ids_temp',
+                        array('backupid' => $backupid, 'itemname' => 'course_module'),
+                        '',
+                        'itemid, newitemid'
+                    );
+                    foreach ($cmmaprows as $cmmaprow) {
+                        $cmbackupidsmap[(int) $cmmaprow->itemid] = (int) $cmmaprow->newitemid;
+                    }
+                } catch (Exception $ignore) {
+                    // backup_ids_temp may be unavailable; fall back below.
+                }
+
+                foreach ($sourcesections as $sourcesection) {
+                    $targetsectionid = 0;
+                    $targetsectionnumber = -1;
+                    $sourcename = trim((string) ($sourcesection->name ?? ''));
+                    $sourcesectionnumber = (int) $sourcesection->section;
+
+                    // 1) backup_ids_temp mapping.
+                    if (!empty($backupidsmap[(int) $sourcesection->id])) {
+                        $mappedid = $backupidsmap[(int) $sourcesection->id];
+                        if (isset($alldestsections[$mappedid])) {
+                            $targetsectionid = $mappedid;
+                            $targetsectionnumber = (int) $alldestsections[$mappedid]->section;
+                        } else {
+                            $mappedsection = $DB->get_record(
+                                'course_sections',
+                                array('id' => $mappedid, 'course' => $tocourse->id),
+                                'id, section'
+                            );
+                            if ($mappedsection) {
+                                $targetsectionid = (int) $mappedsection->id;
+                                $targetsectionnumber = (int) $mappedsection->section;
+                            }
+                        }
+                    }
+
+                    // 2) Moodle reuse-by-section-number behavior.
+                    if (!$targetsectionid && isset($destbysectionnumber[$sourcesectionnumber])) {
+                        $targetsectionid = (int) $destbysectionnumber[$sourcesectionnumber]->id;
+                        $targetsectionnumber = (int) $destbysectionnumber[$sourcesectionnumber]->section;
+                    }
+
+                    // 3) Name fallback.
+                    if (!$targetsectionid && $sourcename !== '' && isset($destbyname[$sourcename])) {
+                        $targetsectionid = (int) $destbyname[$sourcename]->id;
+                        $targetsectionnumber = (int) $destbyname[$sourcename]->section;
+                    }
+
+                    $activities = self::import_course_sections_map_activities(
+                        $fromcourse->id,
+                        (int) $sourcesection->id,
+                        $tocourse->id,
+                        $targetsectionid,
+                        $cmbackupidsmap
+                    );
+
+                    $sectionmappings[] = array(
+                        'source_sectionid' => (int) $sourcesection->id,
+                        'source_sectionnumber' => $sourcesectionnumber,
+                        'source_name' => clean_param($sourcename, PARAM_TEXT),
+                        'target_sectionid' => $targetsectionid,
+                        'target_sectionnumber' => $targetsectionnumber,
+                        'activities' => $activities,
+                    );
+                }
+            } catch (Exception $mappingerror) {
+                // Import already succeeded; return minimal mapping.
+                foreach ($sourcesections as $sourcesection) {
+                    $sectionmappings[] = array(
+                        'source_sectionid' => (int) $sourcesection->id,
+                        'source_sectionnumber' => (int) $sourcesection->section,
+                        'source_name' => clean_param((string) ($sourcesection->name ?? ''), PARAM_TEXT),
+                        'target_sectionid' => 0,
+                        'target_sectionnumber' => -1,
+                        'activities' => array(),
+                    );
+                }
+            }
+
+            // Append imported sections after preexisting content (default).
+            if ($params['placement'] === 'append' && !empty($sectionmappings)) {
+                try {
+                    $sectionmappings = self::import_course_sections_append_placement(
+                        $tocourse,
+                        $sectionmappings,
+                        $preexistingsectionids,
+                        $premaxsection,
+                        $fromcourse->id,
+                        $cmbackupidsmap
+                    );
+                } catch (Exception $ignore) {
+                    // Keep Moodle restore positions if append post-process fails.
+                }
+            }
+
+            // Cleanup must not turn a successful import into an API error.
+            try {
+                if ($rc) {
+                    $rc->destroy();
+                    $rc = null;
+                }
+            } catch (Exception $ignore) {
+                $rc = null;
+            }
+
+            try {
+                if (empty($CFG->keeptempdirectoriesonbackup) && $backupbasepath) {
+                    fulldelete($backupbasepath);
+                }
+            } catch (Exception $ignore) {
+                // Ignore cleanup failures.
+            }
+
+            try {
+                rebuild_course_cache($tocourse->id, true);
+            } catch (Exception $ignore) {
+                // Cache rebuild is optional for API success.
+            }
+
+            return array(
+                'success' => true,
+                'message' => 'Imported ' . count($sourcesections) . ' section(s) from course '
+                    . $fromcourse->id . ' to course ' . $tocourse->id,
+                'importfrom' => (int) $fromcourse->id,
+                'importto' => (int) $tocourse->id,
+                'sections' => $sectionmappings,
+            );
+        } catch (Exception $e) {
+            if ($bc) {
+                try {
+                    $bc->destroy();
+                } catch (Exception $ignore) {
+                    // Ignore.
+                }
+            }
+            if ($rc) {
+                try {
+                    $rc->destroy();
+                } catch (Exception $ignore) {
+                    // Ignore.
+                }
+            }
+            if (empty($CFG->keeptempdirectoriesonbackup) && !empty($backupbasepath) && is_dir($backupbasepath)) {
+                try {
+                    fulldelete($backupbasepath);
+                } catch (Exception $ignore) {
+                    // Ignore.
+                }
+            }
+
+            // If restore already finished, do not fail the whole request.
+            if ($restorecompleted) {
+                $fallback = array();
+                foreach ($sourcesections as $sourcesection) {
+                    $fallback[] = array(
+                        'source_sectionid' => (int) $sourcesection->id,
+                        'source_sectionnumber' => (int) $sourcesection->section,
+                        'source_name' => clean_param((string) ($sourcesection->name ?? ''), PARAM_TEXT),
+                        'target_sectionid' => 0,
+                        'target_sectionnumber' => -1,
+                        'activities' => array(),
+                    );
+                }
+                return array(
+                    'success' => true,
+                    'message' => 'Imported sections successfully (post-processing warning: '
+                        . $e->getMessage() . ')',
+                    'importfrom' => (int) $fromcourse->id,
+                    'importto' => (int) $tocourse->id,
+                    'sections' => $fallback,
+                );
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Move restored sections to append after preexisting destination sections.
+     *
+     * Moodle restore keeps source section numbers (and may create empty gaps).
+     * This reorders imported sections sequentially and prunes empty gap sections.
+     *
+     * @param stdClass $tocourse Destination course
+     * @param array $sectionmappings Current section mapping rows
+     * @param array $preexistingsectionids Section ids that existed before restore
+     * @param int $premaxsection Max section number before restore
+     * @param int $sourcecourseid Source course id
+     * @param array $cmbackupidsmap Source cmid => target cmid
+     * @return array Updated section mappings
+     */
+    protected static function import_course_sections_append_placement(
+        $tocourse,
+        array $sectionmappings,
+        array $preexistingsectionids,
+        $premaxsection,
+        $sourcecourseid,
+        array $cmbackupidsmap
+    ) {
+        global $DB;
+
+        $preexistinglookup = array_flip(array_map('intval', $preexistingsectionids));
+        $importedids = array();
+        foreach ($sectionmappings as $map) {
+            if (!empty($map['target_sectionid'])) {
+                $importedids[(int) $map['target_sectionid']] = true;
+            }
+        }
+
+        $nextdest = max(1, ((int) $premaxsection) + 1);
+        foreach ($sectionmappings as $index => $map) {
+            $targetsectionid = (int) ($map['target_sectionid'] ?? 0);
+            if (!$targetsectionid) {
+                continue;
+            }
+
+            $currentnumber = $DB->get_field(
+                'course_sections',
+                'section',
+                array('id' => $targetsectionid, 'course' => $tocourse->id)
+            );
+            if ($currentnumber === false) {
+                continue;
+            }
+            $currentnumber = (int) $currentnumber;
+
+            if ($currentnumber !== $nextdest) {
+                // ignorenumsections=true allows moving past format numsections limit.
+                move_section_to($tocourse, $currentnumber, $nextdest, true);
+            }
+
+            $sectionmappings[$index]['target_sectionnumber'] = $nextdest;
+            $nextdest++;
+        }
+
+        // Delete empty gap sections created by restore (not preexisting, not imported).
+        $candidates = $DB->get_records(
+            'course_sections',
+            array('course' => $tocourse->id),
+            'section DESC',
+            'id, section, name, sequence'
+        );
+        foreach ($candidates as $candidate) {
+            $cid = (int) $candidate->id;
+            $cnum = (int) $candidate->section;
+            if ($cnum <= 0) {
+                continue;
+            }
+            if (isset($preexistinglookup[$cid]) || isset($importedids[$cid])) {
+                continue;
+            }
+
+            $hasmodules = $DB->record_exists_select(
+                'course_modules',
+                'section = ? AND deletioninprogress = 0',
+                array($cid)
+            );
+            if ($hasmodules) {
+                continue;
+            }
+
+            // Remove empty restore filler / gap sections.
+            try {
+                course_delete_section($tocourse, $candidate, false);
+            } catch (Exception $ignore) {
+                // Ignore prune failures.
+            }
+        }
+
+        // Refresh numbers + activities after moves/deletes.
+        foreach ($sectionmappings as $index => $map) {
+            $targetsectionid = (int) ($map['target_sectionid'] ?? 0);
+            if (!$targetsectionid) {
+                continue;
+            }
+            $freshnumber = $DB->get_field(
+                'course_sections',
+                'section',
+                array('id' => $targetsectionid, 'course' => $tocourse->id)
+            );
+            if ($freshnumber !== false) {
+                $sectionmappings[$index]['target_sectionnumber'] = (int) $freshnumber;
+            }
+            $sectionmappings[$index]['activities'] = self::import_course_sections_map_activities(
+                $sourcecourseid,
+                (int) $map['source_sectionid'],
+                $tocourse->id,
+                $targetsectionid,
+                $cmbackupidsmap
+            );
+        }
+
+        rebuild_course_cache($tocourse->id, true);
+        return $sectionmappings;
+    }
+
+    /**
+     * Map activities from a source section to a restored destination section.
+     *
+     * @param int $sourcecourseid Source course id
+     * @param int $sourcesectionid Source course_sections.id
+     * @param int $targetcourseid Destination course id
+     * @param int $targetsectionid Destination course_sections.id (0 if unknown)
+     * @param array $cmbackupidsmap Map of source cmid => target cmid from backup_ids_temp
+     * @return array
+     */
+    protected static function import_course_sections_map_activities(
+        $sourcecourseid,
+        $sourcesectionid,
+        $targetcourseid,
+        $targetsectionid,
+        array $cmbackupidsmap
+    ) {
+        global $DB;
+
+        $activities = array();
+
+        try {
+            $sourcesection = $DB->get_record(
+                'course_sections',
+                array('id' => $sourcesectionid, 'course' => $sourcecourseid),
+                'id, sequence',
+                MUST_EXIST
+            );
+
+            $sourcecms = $DB->get_records_sql(
+                "SELECT cm.id, cm.instance, cm.module, m.name AS modname
+                   FROM {course_modules} cm
+                   JOIN {modules} m ON m.id = cm.module
+                  WHERE cm.course = :courseid
+                    AND cm.section = :sectionid
+                    AND cm.deletioninprogress = 0",
+                array(
+                    'courseid' => $sourcecourseid,
+                    'sectionid' => $sourcesectionid,
+                )
+            );
+
+            // Preserve course section sequence order.
+            $orderedsourcecms = array();
+            if (!empty($sourcesection->sequence)) {
+                foreach (explode(',', $sourcesection->sequence) as $cmid) {
+                    $cmid = (int) $cmid;
+                    if ($cmid && isset($sourcecms[$cmid])) {
+                        $orderedsourcecms[] = $sourcecms[$cmid];
+                        unset($sourcecms[$cmid]);
+                    }
+                }
+            }
+            foreach ($sourcecms as $leftover) {
+                $orderedsourcecms[] = $leftover;
+            }
+
+            $targetcmsbyid = array();
+            $targetcmsbykey = array();
+            if ($targetsectionid) {
+                $targetsection = $DB->get_record(
+                    'course_sections',
+                    array('id' => $targetsectionid, 'course' => $targetcourseid),
+                    'id, sequence'
+                );
+                $targetcms = $DB->get_records_sql(
+                    "SELECT cm.id, cm.instance, cm.module, m.name AS modname
+                       FROM {course_modules} cm
+                       JOIN {modules} m ON m.id = cm.module
+                      WHERE cm.course = :courseid
+                        AND cm.section = :sectionid
+                        AND cm.deletioninprogress = 0",
+                    array(
+                        'courseid' => $targetcourseid,
+                        'sectionid' => $targetsectionid,
+                    )
+                );
+                foreach ($targetcms as $tcm) {
+                    $targetcmsbyid[(int) $tcm->id] = $tcm;
+                    $tname = '';
+                    try {
+                        $tname = (string) $DB->get_field($tcm->modname, 'name', array('id' => $tcm->instance));
+                    } catch (Exception $ignore) {
+                        $tname = '';
+                    }
+                    $key = $tcm->modname . '|' . core_text::strtolower(trim($tname));
+                    if (!isset($targetcmsbykey[$key])) {
+                        $targetcmsbykey[$key] = array();
+                    }
+                    $targetcmsbykey[$key][] = array(
+                        'cm' => $tcm,
+                        'name' => $tname,
+                    );
+                }
+            }
+
+            foreach ($orderedsourcecms as $scm) {
+                $sourcename = '';
+                try {
+                    $sourcename = (string) $DB->get_field($scm->modname, 'name', array('id' => $scm->instance));
+                } catch (Exception $ignore) {
+                    $sourcename = '';
+                }
+
+                $targetcmid = 0;
+                $targetinstance = 0;
+                $targetname = '';
+
+                if (!empty($cmbackupidsmap[(int) $scm->id])) {
+                    $mappedcmid = $cmbackupidsmap[(int) $scm->id];
+                    if (isset($targetcmsbyid[$mappedcmid])) {
+                        $tcm = $targetcmsbyid[$mappedcmid];
+                        $targetcmid = (int) $tcm->id;
+                        $targetinstance = (int) $tcm->instance;
+                        try {
+                            $targetname = (string) $DB->get_field($tcm->modname, 'name', array('id' => $tcm->instance));
+                        } catch (Exception $ignore) {
+                            $targetname = $sourcename;
+                        }
+                    } else {
+                        $mappedcm = $DB->get_record(
+                            'course_modules',
+                            array('id' => $mappedcmid, 'course' => $targetcourseid),
+                            'id, instance, module'
+                        );
+                        if ($mappedcm) {
+                            $targetcmid = (int) $mappedcm->id;
+                            $targetinstance = (int) $mappedcm->instance;
+                            $targetname = $sourcename;
+                        }
+                    }
+                }
+
+                // Fallback: match unused activity in target section by modname + name.
+                if (!$targetcmid && $sourcename !== '') {
+                    $key = $scm->modname . '|' . core_text::strtolower(trim($sourcename));
+                    if (!empty($targetcmsbykey[$key])) {
+                        $match = array_shift($targetcmsbykey[$key]);
+                        $tcm = $match['cm'];
+                        $targetcmid = (int) $tcm->id;
+                        $targetinstance = (int) $tcm->instance;
+                        $targetname = (string) $match['name'];
+                    }
+                }
+
+                $activities[] = array(
+                    'source_cmid' => (int) $scm->id,
+                    'source_instance' => (int) $scm->instance,
+                    'modname' => (string) $scm->modname,
+                    'name' => clean_param($sourcename, PARAM_TEXT),
+                    'target_cmid' => $targetcmid,
+                    'target_instance' => $targetinstance,
+                    'target_name' => clean_param($targetname, PARAM_TEXT),
+                );
+            }
+        } catch (Exception $ignore) {
+            return array();
+        }
+
+        return $activities;
+    }
+
+    /**
+     * Return description for import_course_sections().
+     *
+     * @return external_single_structure
+     */
+    public static function import_course_sections_returns()
+    {
+        $activitystructure = new external_single_structure(
+            array(
+                'source_cmid' => new external_value(PARAM_INT, 'Source course module id'),
+                'source_instance' => new external_value(PARAM_INT, 'Source activity instance id'),
+                'modname' => new external_value(PARAM_ALPHANUMEXT, 'Activity module name, e.g. quiz, resource'),
+                'name' => new external_value(PARAM_TEXT, 'Source activity name'),
+                'target_cmid' => new external_value(PARAM_INT, 'Destination course module id (0 if unknown)'),
+                'target_instance' => new external_value(PARAM_INT, 'Destination activity instance id (0 if unknown)'),
+                'target_name' => new external_value(PARAM_TEXT, 'Destination activity name'),
+            )
+        );
+
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Whether import succeeded'),
+                'message' => new external_value(PARAM_TEXT, 'Result message'),
+                'importfrom' => new external_value(PARAM_INT, 'Source course id'),
+                'importto' => new external_value(PARAM_INT, 'Destination course id'),
+                'sections' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'source_sectionid' => new external_value(PARAM_INT, 'Source section id'),
+                            'source_sectionnumber' => new external_value(PARAM_INT, 'Source section number'),
+                            'source_name' => new external_value(PARAM_TEXT, 'Source section name'),
+                            'target_sectionid' => new external_value(PARAM_INT, 'New section id in destination course'),
+                            'target_sectionnumber' => new external_value(
+                                PARAM_INT,
+                                'New section number in destination course (-1 if unknown)'
+                            ),
+                            'activities' => new external_multiple_structure(
+                                $activitystructure,
+                                'Activities imported inside this section'
+                            ),
+                        )
+                    ),
+                    'Mapping of imported sections'
+                ),
+            )
+        );
+    }
+
 }

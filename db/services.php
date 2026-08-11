@@ -635,6 +635,15 @@ $functions = array(
         'capabilities'=> 'moodle/course:view',
         'ajax'        => true,
     ),
+    'local_custom_service_import_course_sections' => array(
+        'classname'   => 'local_custom_service_external',
+        'methodname'  => 'import_course_sections',
+        'classpath'   => 'local/custom_service/externallib.php',
+        'description' => 'Import selected course sections (and activities) from one course into another',
+        'type'        => 'write',
+        'capabilities'=> 'moodle/backup:backuptargetimport',
+        'ajax'        => true,
+    ),
 );
 
 $services = array(
@@ -715,7 +724,8 @@ $services = array(
             'local_custom_service_update_activity_cmsvideo',
             'local_custom_service_get_student_incomplete_activities_timeline',
             'local_custom_service_get_learning_courses',
-            'local_custom_service_bulk_update_activity_completion'
+            'local_custom_service_bulk_update_activity_completion',
+            'local_custom_service_import_course_sections'
         ),
         'restrictedusers' => 0,
         'enabled' => 1,

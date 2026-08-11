@@ -1,3 +1,3 @@
 <?php
-$urlApiWp = 'http://localhost:8888/wordpress/wp-content/plugins/slide_editor/api/slide/getDataSlideByGroupCode.php';
+$urlApiWp = 'WORDPRESS_URL/wp-content/plugins/slide_editor/api/slide/getDataSlideByGroupCode.php';
 ?>

@@ -1,5 +1,5 @@
 <?php
-$urlApiWp = 'https://pythaverse.space/wp-content/plugins/slide_editor/api/slide/getDataSlideByGroupCode.php';
+$urlApiWp = 'WORDPRESS_URL/wp-content/plugins/slide_editor/api/slide/getDataSlideByGroupCode.php';
 
-$urlApiGetUserBySchoolId = 'https://pythaverse.space/wp-content/plugins/school_workspace_v3/api/courses/getUserBySchoolId.php';
+$urlApiGetUserBySchoolId = 'WORDPRESS_URL/wp-content/plugins/school_workspace_v3/api/courses/getUserBySchoolId.php';
 ?>

@@ -15037,6 +15037,30 @@ class local_custom_service_external extends external_api
                 $premaxsection = 0;
             }
 
+            // Append mode: free destination slots that match source section numbers
+            // so restore INSERTs new sections instead of merging into previously appended ones.
+            if ($params['placement'] === 'append') {
+                $sourcenumbers = array();
+                foreach ($sourcesections as $sourcesection) {
+                    $sourcenumbers[] = (int) $sourcesection->section;
+                }
+                self::import_course_sections_free_append_slots($tocourse, $sourcenumbers);
+
+                // Premax must reflect preexisting section positions AFTER freeing slots.
+                if (!empty($preexistingsectionids)) {
+                    list($insql, $inparams) = $DB->get_in_or_equal($preexistingsectionids, SQL_PARAMS_NAMED, 'pre');
+                    $inparams['courseid'] = $tocourse->id;
+                    $premaxsection = (int) $DB->get_field_sql(
+                        "SELECT COALESCE(MAX(section), 0)
+                           FROM {course_sections}
+                          WHERE course = :courseid AND id {$insql}",
+                        $inparams
+                    );
+                } else {
+                    $premaxsection = 0;
+                }
+            }
+
             $rc->execute_plan();
             $restorecompleted = true;
 
@@ -15263,6 +15287,81 @@ class local_custom_service_external extends external_api
 
             throw $e;
         }
+    }
+
+    /**
+     * Free destination section numbers before append-mode restore.
+     *
+     * Moodle restore reuses any existing section at the source section number.
+     * One move is not enough: when section N is moved away, a later section
+     * (e.g. Topic 4) can shift into N. Keep moving non-empty occupants out
+     * until slot N is missing or empty (safe to reuse/create on restore).
+     *
+     * @param stdClass $course Destination course
+     * @param array $sourcenumbers Source section numbers being imported
+     */
+    protected static function import_course_sections_free_append_slots($course, array $sourcenumbers)
+    {
+        global $DB;
+
+        $numbers = array();
+        foreach ($sourcenumbers as $num) {
+            $num = (int) $num;
+            if ($num > 0) {
+                $numbers[$num] = $num;
+            }
+        }
+        if (empty($numbers)) {
+            return;
+        }
+
+        // High → low reduces cascading refill while clearing multiple slots.
+        rsort($numbers, SORT_NUMERIC);
+
+        foreach ($numbers as $n) {
+            // Keep clearing until slot is free/empty (max safety iterations).
+            for ($i = 0; $i < 50; $i++) {
+                $occupant = $DB->get_record(
+                    'course_sections',
+                    array('course' => $course->id, 'section' => $n),
+                    'id, section, name, sequence'
+                );
+                if (!$occupant) {
+                    break;
+                }
+
+                $hasmodules = $DB->record_exists_select(
+                    'course_modules',
+                    'section = ? AND deletioninprogress = 0',
+                    array($occupant->id)
+                );
+                $name = trim((string) ($occupant->name ?? ''));
+                $sequence = trim((string) ($occupant->sequence ?? ''));
+                $isempty = !$hasmodules
+                    && $sequence === ''
+                    && ($name === '' || core_text::strtolower($name) === 'new section');
+
+                if ($isempty) {
+                    // Empty filler is safe for restore to reuse.
+                    break;
+                }
+
+                // Ensure a higher end position exists as move target.
+                course_create_section($course, 0);
+                $maxsection = (int) $DB->get_field_sql(
+                    "SELECT COALESCE(MAX(section), 0) FROM {course_sections} WHERE course = ?",
+                    array($course->id)
+                );
+                if ($maxsection <= $n) {
+                    break;
+                }
+
+                // Move current non-empty occupant away; another section may shift into N.
+                move_section_to($course, $n, $maxsection, true);
+            }
+        }
+
+        rebuild_course_cache($course->id, true);
     }
 
     /**

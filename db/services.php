@@ -443,6 +443,14 @@ $functions = array(
         'type' => 'write',
         'ajax' => true,
     ),
+    'local_custom_service_get_content_course_with_steps' => array(
+        'classname' => 'local_custom_service_external',
+        'methodname' => 'get_content_course_with_steps',
+        'classpath' => 'local/custom_service/externallib.php',
+        'description' => 'Get Content Course with stepbystep steps.',
+        'type' => 'write',
+        'ajax' => true,
+    ),
     'local_custom_service_create_content_block_html' => array(
         'classname'   => 'local_custom_service_external',
         'methodname'  => 'create_content_block_html',
@@ -706,6 +714,7 @@ $services = array(
             'local_custom_service_get_data_course_information',
             'local_custom_service_get_content_course_checkmate',
             'local_custom_service_get_content_course',
+            'local_custom_service_get_content_course_with_steps',
             'local_custom_service_create_content_block_html',
             'local_custom_service_create_activity_book',
             'local_custom_service_get_course_by_category_ids',

@@ -2133,54 +2133,9 @@ class local_custom_service_external extends external_api
                     // Handle stepbystep module
                     $stepbystep_content = $DB->get_record('stepbystep', ['id' => $record->instance_id]);
                     if ($stepbystep_content) {
-                        // Get all steps for this stepbystep activity
-                        $steps = $DB->get_records(
-                            'stepbystep_content',
-                            ['stepbystep_id' => $record->instance_id],
-                            'sortorder ASC'
-                        );
-
-                        // Process steps data
-                        $processed_steps = [];
-                        foreach ($steps as $step) {
-                            $step_data = [
-                                'id' => $step->id,
-                                'type' => $step->type,
-                                'main_title' => $step->main_title ?? '',
-                                'sub_heading' => $step->sub_heading ?? '',
-                                'content_paragraphs' => $step->content_paragraphs ?? '',
-                                'term' => $step->term ?? '',
-                                'phonetic' => $step->phonetic ?? '',
-                                'definition' => $step->definition ?? '',
-                                'example' => $step->example ?? '',
-                                'audio_file' => $step->audio_file ?? '',
-                                'response_text' => $step->response_text
-                                    ? html_entity_decode($step->response_text)
-                                    : 'Continue',
-                                'storage_path' => $step->storage_path ?? '',
-                                'sortorder' => $step->sortorder,
-                                'timecreated' => $step->timecreated,
-                                'paragraphs' => [] // Default empty array
-                            ];
-
-                            // Process content_paragraphs for text type
-                            if ($step->type === 'text' && !empty($step->content_paragraphs)) {
-                                $paragraphs = json_decode($step->content_paragraphs, true);
-                                if (is_array($paragraphs)) {
-                                    $step_data['paragraphs'] = $paragraphs;
-                                } else {
-                                    // Fallback: treat as plain text with line breaks
-                                    $paragraphs = explode("\n", $step->content_paragraphs);
-                                    $step_data['paragraphs'] = array_filter(array_map('trim', $paragraphs));
-                                }
-                            }
-
-                            $processed_steps[] = $step_data;
-                        }
-
-                        // Add steps data to module
-                        $module_data['steps'] = $processed_steps;
-                        $module_data['total_steps'] = count($processed_steps);
+                        $stepsinfo = self::build_stepbystep_steps((int) $record->instance_id);
+                        $module_data['steps'] = $stepsinfo['steps'];
+                        $module_data['total_steps'] = $stepsinfo['total_steps'];
                         $module_data['url_type'] = 'stepbystep';
                         $module_data['contents'] = []; // Add empty contents array
 
@@ -9998,6 +9953,326 @@ class local_custom_service_external extends external_api
         ]);
     }
 
+    public static function get_content_course_with_steps_parameters()
+    {
+        return self::get_content_course_parameters();
+    }
+
+    /**
+     * Same as get_content_course, plus stepbystep steps / url / url_type on each activity.
+     */
+    public static function get_content_course_with_steps($useremail, $courseid, $page = 0, $perpage = 0, $section_id = 0, $section_ids = array())
+    {
+        global $CFG;
+
+        $response = self::get_content_course($useremail, $courseid, $page, $perpage, $section_id, $section_ids);
+
+        if (empty($response['status'])) {
+            return $response;
+        }
+
+        $topics = $response['data']['topics'] ?? [];
+        $instanceids = [];
+        $cmidtoinstance = [];
+
+        foreach ($topics as $topic) {
+            foreach ($topic['activities'] ?? [] as $activity) {
+                if (($activity['modname'] ?? '') !== 'stepbystep') {
+                    continue;
+                }
+                $instanceid = 0;
+                if (!empty($activity['module_data'])) {
+                    $detail = json_decode($activity['module_data'], true);
+                    if (is_array($detail) && !empty($detail['id'])) {
+                        $instanceid = (int) $detail['id'];
+                    }
+                }
+                if ($instanceid > 0) {
+                    $instanceids[] = $instanceid;
+                    $cmidtoinstance[(int) $activity['id']] = $instanceid;
+                }
+            }
+        }
+
+        $stepsmap = self::load_stepbystep_steps_by_instanceids($instanceids);
+
+        foreach ($topics as &$topic) {
+            foreach ($topic['activities'] as &$activity) {
+                $cmid = (int) $activity['id'];
+                $modname = $activity['modname'] ?? '';
+
+                if ($modname === 'stepbystep' && isset($cmidtoinstance[$cmid])) {
+                    $info = $stepsmap[$cmidtoinstance[$cmid]] ?? ['steps' => [], 'total_steps' => 0];
+                    $activity['steps'] = $info['steps'];
+                    $activity['total_steps'] = $info['total_steps'];
+                    $activity['url'] = $CFG->wwwroot . '/mod/stepbystep/view.php?id=' . $cmid;
+                    $activity['url_type'] = 'stepbystep';
+                } else {
+                    $activity['steps'] = [];
+                    $activity['total_steps'] = 0;
+                    $activity['url'] = '';
+                    $activity['url_type'] = '';
+                }
+            }
+            unset($activity);
+        }
+        unset($topic);
+
+        $response['data']['topics'] = $topics;
+        $response['data']['next_section'] = self::get_next_section_after_filter(
+            (int) $courseid,
+            (int) $section_id,
+            is_array($section_ids) ? $section_ids : []
+        );
+        return $response;
+    }
+
+    /**
+     * Resolve the next course section after the filtered section(s),
+     * including the first activity in that section's sequence.
+     * Only applies when section_id or section_ids is provided; otherwise returns empty.
+     *
+     * @param int $courseid
+     * @param int $section_id
+     * @param int[] $section_ids
+     * @return array
+     */
+    private static function get_next_section_after_filter(int $courseid, int $section_id, array $section_ids): array
+    {
+        global $DB;
+
+        $emptyactivity = [
+            'id' => 0,
+            'name' => '',
+            'modname' => '',
+            'visible' => 0,
+            'instance' => 0,
+        ];
+        $empty = [
+            'id' => 0,
+            'name' => '',
+            'visible' => 0,
+            'section' => 0,
+            'first_activity' => $emptyactivity,
+        ];
+
+        if ($courseid <= 0) {
+            return $empty;
+        }
+
+        $anchorids = [];
+        if (!empty($section_id)) {
+            $anchorids[] = $section_id;
+        } elseif (!empty($section_ids)) {
+            $anchorids = array_values(array_unique(array_filter(array_map('intval', $section_ids))));
+        }
+
+        if (empty($anchorids)) {
+            return $empty;
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal($anchorids, SQL_PARAMS_NAMED);
+        $params['courseid'] = $courseid;
+        $anchors = $DB->get_records_sql(
+            "SELECT id, section
+               FROM {course_sections}
+              WHERE course = :courseid
+                AND id {$insql}",
+            $params
+        );
+
+        if (empty($anchors)) {
+            return $empty;
+        }
+
+        $maxsectionnum = 0;
+        foreach ($anchors as $anchor) {
+            $maxsectionnum = max($maxsectionnum, (int) $anchor->section);
+        }
+
+        $next = $DB->get_record_sql(
+            "SELECT id, section, name, visible, sequence
+               FROM {course_sections}
+              WHERE course = :courseid
+                AND section > :sectionnum
+                AND section <> 0
+           ORDER BY section ASC",
+            [
+                'courseid' => $courseid,
+                'sectionnum' => $maxsectionnum,
+            ],
+            IGNORE_MULTIPLE
+        );
+
+        if (!$next) {
+            return $empty;
+        }
+
+        $name = trim((string) ($next->name ?? ''));
+        if ($name === '') {
+            $name = 'Section ' . $next->section;
+        }
+
+        $firstactivity = $emptyactivity;
+        $sequence = trim((string) ($next->sequence ?? ''));
+        if ($sequence !== '') {
+            $cmids = array_filter(array_map('intval', explode(',', $sequence)));
+            foreach ($cmids as $cmid) {
+                $cm = $DB->get_record_sql(
+                    "SELECT cm.id, cm.instance, cm.visible, m.name AS modname
+                       FROM {course_modules} cm
+                       JOIN {modules} m ON m.id = cm.module
+                      WHERE cm.id = :cmid
+                        AND cm.course = :courseid
+                        AND cm.deletioninprogress = 0",
+                    [
+                        'cmid' => $cmid,
+                        'courseid' => $courseid,
+                    ]
+                );
+                if (!$cm) {
+                    continue;
+                }
+
+                $activityname = $cm->modname;
+                try {
+                    $detail = $DB->get_record($cm->modname, ['id' => $cm->instance], 'id, name');
+                    if ($detail && !empty($detail->name)) {
+                        $activityname = $detail->name;
+                    }
+                } catch (Exception $e) {
+                    // Keep modname as fallback if module table is unavailable.
+                }
+
+                $firstactivity = [
+                    'id' => (int) $cm->id,
+                    'name' => $activityname,
+                    'modname' => $cm->modname,
+                    'visible' => (int) ($cm->visible ?? 0),
+                    'instance' => (int) $cm->instance,
+                ];
+                break;
+            }
+        }
+
+        return [
+            'id' => (int) $next->id,
+            'name' => $name,
+            'visible' => (int) ($next->visible ?? 0),
+            'section' => (int) $next->section,
+            'first_activity' => $firstactivity,
+        ];
+    }
+
+    public static function get_content_course_with_steps_returns()
+    {
+        $stepstructure = new external_single_structure([
+            'id' => new external_value(PARAM_INT, 'Step ID'),
+            'type' => new external_value(PARAM_RAW, 'Step Type'),
+            'main_title' => new external_value(PARAM_RAW, 'Main Title'),
+            'sub_heading' => new external_value(PARAM_RAW, 'Sub Heading'),
+            'content_paragraphs' => new external_value(PARAM_RAW, 'Content Paragraphs'),
+            'paragraphs' => new external_multiple_structure(
+                new external_value(PARAM_RAW, 'Paragraph Text'),
+                'Paragraphs',
+                VALUE_OPTIONAL
+            ),
+            'term' => new external_value(PARAM_RAW, 'Term'),
+            'phonetic' => new external_value(PARAM_RAW, 'Phonetic'),
+            'definition' => new external_value(PARAM_RAW, 'Definition'),
+            'example' => new external_value(PARAM_RAW, 'Example'),
+            'audio_file' => new external_value(PARAM_RAW, 'Audio File'),
+            'response_text' => new external_value(PARAM_RAW, 'Response Text'),
+            'storage_path' => new external_value(PARAM_RAW, 'Storage Path'),
+            'sortorder' => new external_value(PARAM_INT, 'Sort Order'),
+            'timecreated' => new external_value(PARAM_INT, 'Time Created'),
+        ]);
+
+        return new external_single_structure([
+            'status' => new external_value(PARAM_BOOL, 'Trạng thái thành công hay không'),
+            'message' => new external_value(PARAM_TEXT, 'Thông báo kết quả'),
+            'data' => new external_single_structure([
+                'course' => new external_single_structure([
+                    'id' => new external_value(PARAM_TEXT, 'ID khóa học'),
+                    'coursename' => new external_value(PARAM_TEXT, 'Tên khóa học'),
+                    'summary' => new external_value(PARAM_RAW, 'Mô tả khóa học'),
+                    'course_image' => new external_value(PARAM_RAW, 'Ảnh khóa học'),
+                    'last_access_time' => new external_value(PARAM_TEXT, 'Thời gian truy cập cuối cùng'),
+                    'course_enddate' => new external_value(PARAM_TEXT, 'Thời gian kết thúc khóa học'),
+                    'categoryid' => new external_value(PARAM_TEXT, 'ID danh mục'),
+                    'categoryname' => new external_value(PARAM_TEXT, 'Tên danh mục'),
+                    'view_url' => new external_value(PARAM_TEXT, 'URL khóa học')
+                ], 'Thông tin khóa học', VALUE_OPTIONAL),
+                'pagination' => new external_single_structure([
+                    'totalpage' => new external_value(PARAM_INT, 'Tổng số trang'),
+                    'currentpage' => new external_value(PARAM_INT, 'Trang hiện tại'),
+                    'total_sections' => new external_value(PARAM_INT, 'Tổng số section')
+                ], 'Thông tin phân trang', VALUE_OPTIONAL),
+                'next_section' => new external_single_structure([
+                    'id' => new external_value(PARAM_INT, 'Next section ID (0 if none)'),
+                    'name' => new external_value(PARAM_RAW, 'Next section name'),
+                    'visible' => new external_value(PARAM_INT, 'Next section visibility'),
+                    'section' => new external_value(PARAM_INT, 'Next section number'),
+                    'first_activity' => new external_single_structure([
+                        'id' => new external_value(PARAM_INT, 'First activity course module ID'),
+                        'name' => new external_value(PARAM_RAW, 'First activity name'),
+                        'modname' => new external_value(PARAM_RAW, 'First activity module type'),
+                        'visible' => new external_value(PARAM_INT, 'First activity visibility'),
+                        'instance' => new external_value(PARAM_INT, 'First activity instance ID'),
+                    ], 'First activity in next section sequence'),
+                ], 'Next section after current filter', VALUE_OPTIONAL),
+                'topics' => new external_multiple_structure(
+                    new external_single_structure([
+                        'id' => new external_value(PARAM_INT, 'Section ID'),
+                        'name' => new external_value(PARAM_RAW, 'Section Name'),
+                        'visible' => new external_value(PARAM_BOOL, 'Trạng thái hiển thị của section', VALUE_OPTIONAL),
+                        'total_activity' => new external_value(PARAM_INT, 'Total activities in section'),
+                        'total_activity_completion' => new external_value(PARAM_INT, 'Total completed activities in section'),
+                        'completion_percentage' => new external_value(PARAM_FLOAT, 'Completion percentage'),
+                        'activities' => new external_multiple_structure(
+                            new external_single_structure([
+                                'id' => new external_value(PARAM_INT, 'Activity ID'),
+                                'name' => new external_value(PARAM_RAW, 'Activity Name'),
+                                'description' => new external_value(PARAM_RAW, 'Activity description'),
+                                'modname' => new external_value(PARAM_RAW, 'Activity Type'),
+                                'completed' => new external_value(PARAM_BOOL, 'Activity Completion Status'),
+                                'availability' => new external_multiple_structure(
+                                    new external_single_structure([
+                                        'id' => new external_value(PARAM_INT, 'Required Activity ID'),
+                                        'name' => new external_value(PARAM_RAW, 'Required Activity Name'),
+                                        'modname' => new external_value(PARAM_RAW, 'Required Activity Type'),
+                                        'topic_id' => new external_value(PARAM_INT, 'Required Activity Topic ID', VALUE_OPTIONAL),
+                                        'completed' => new external_value(PARAM_BOOL, 'Required Activity Completion Status')
+                                    ])
+                                ),
+                                'visible' => new external_value(PARAM_RAW, 'Trạng thái hiển thị của activity'),
+                                'completiongradeitemnumber' => new external_value(PARAM_RAW, 'Yêu cầu điểm số để hoàn thành', VALUE_OPTIONAL),
+                                'completionview' => new external_value(PARAM_RAW, 'Yêu cầu xem activity để hoàn thành', VALUE_OPTIONAL),
+                                'completionexpected' => new external_value(PARAM_RAW, 'Ngày mong đợi hoàn thành', VALUE_OPTIONAL),
+                                'completionpassgrade' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm đạt chuẩn để hoàn thành', VALUE_OPTIONAL),
+                                'completionminattempts' => new external_value(PARAM_RAW, 'Yêu cầu đạt điểm nộp bài để hoàn thành', VALUE_OPTIONAL),
+                                'grade' => new external_value(PARAM_RAW, 'Điểm của học viên', VALUE_OPTIONAL),
+                                'gradepass' => new external_value(PARAM_RAW, 'Điểm tối thiểu để qua', VALUE_OPTIONAL),
+                                'grademethod' => new external_value(PARAM_INT, 'Phương pháp chấm điểm (chỉ áp dụng cho quiz)', VALUE_OPTIONAL),
+                                'module_data' => new external_value(PARAM_RAW, 'Module detail data in JSON format (same as get_detail_module)', VALUE_OPTIONAL),
+                                'url' => new external_value(PARAM_RAW, 'Activity URL', VALUE_OPTIONAL),
+                                'url_type' => new external_value(PARAM_RAW, 'URL type (e.g. stepbystep)', VALUE_OPTIONAL),
+                                'total_steps' => new external_value(PARAM_INT, 'Total steps (stepbystep)', VALUE_OPTIONAL),
+                                'steps' => new external_multiple_structure(
+                                    $stepstructure,
+                                    'Stepbystep steps',
+                                    VALUE_OPTIONAL
+                                ),
+                            ])
+                        )
+                    ]),
+                    'Danh sách chủ đề',
+                    VALUE_OPTIONAL
+                )
+            ])
+        ]);
+    }
+
     private static function get_empty_course_structure()
     {
         return [
@@ -10011,6 +10286,103 @@ class local_custom_service_external extends external_api
             'categoryname' => '',
             'view_url' => ''
         ];
+    }
+
+    /**
+     * Process a single stepbystep_content DB record into API step shape.
+     *
+     * @param stdClass $step
+     * @return array
+     */
+    private static function process_stepbystep_step_record(stdClass $step): array
+    {
+        $step_data = [
+            'id' => $step->id,
+            'type' => $step->type,
+            'main_title' => $step->main_title ?? '',
+            'sub_heading' => $step->sub_heading ?? '',
+            'content_paragraphs' => $step->content_paragraphs ?? '',
+            'term' => $step->term ?? '',
+            'phonetic' => $step->phonetic ?? '',
+            'definition' => $step->definition ?? '',
+            'example' => $step->example ?? '',
+            'audio_file' => $step->audio_file ?? '',
+            'response_text' => $step->response_text
+                ? html_entity_decode($step->response_text)
+                : 'Continue',
+            'storage_path' => $step->storage_path ?? '',
+            'sortorder' => $step->sortorder,
+            'timecreated' => $step->timecreated,
+            'paragraphs' => []
+        ];
+
+        if ($step->type === 'text' && !empty($step->content_paragraphs)) {
+            $paragraphs = json_decode($step->content_paragraphs, true);
+            if (is_array($paragraphs)) {
+                $step_data['paragraphs'] = $paragraphs;
+            } else {
+                $paragraphs = explode("\n", $step->content_paragraphs);
+                $step_data['paragraphs'] = array_filter(array_map('trim', $paragraphs));
+            }
+        }
+
+        return $step_data;
+    }
+
+    /**
+     * Batch-load and process steps for multiple stepbystep instance IDs.
+     *
+     * @param int[] $instanceids
+     * @return array Map of instanceid => ['steps' => array, 'total_steps' => int]
+     */
+    private static function load_stepbystep_steps_by_instanceids(array $instanceids): array
+    {
+        global $DB;
+
+        $instanceids = array_values(array_unique(array_filter(array_map('intval', $instanceids))));
+        $result = [];
+        foreach ($instanceids as $instanceid) {
+            $result[$instanceid] = ['steps' => [], 'total_steps' => 0];
+        }
+
+        if (empty($instanceids)) {
+            return $result;
+        }
+
+        list($insql, $params) = $DB->get_in_or_equal($instanceids, SQL_PARAMS_NAMED);
+        $records = $DB->get_records_sql(
+            "SELECT *
+               FROM {stepbystep_content}
+              WHERE stepbystep_id {$insql}
+           ORDER BY sortorder ASC, id ASC",
+            $params
+        );
+
+        foreach ($records as $step) {
+            $instanceid = (int) $step->stepbystep_id;
+            if (!isset($result[$instanceid])) {
+                $result[$instanceid] = ['steps' => [], 'total_steps' => 0];
+            }
+            $result[$instanceid]['steps'][] = self::process_stepbystep_step_record($step);
+        }
+
+        foreach ($result as $instanceid => $info) {
+            $result[$instanceid]['total_steps'] = count($info['steps']);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Build steps payload for a single stepbystep instance.
+     *
+     * @param int $instanceid
+     * @return array{steps: array, total_steps: int}
+     */
+    private static function build_stepbystep_steps(int $instanceid): array
+    {
+        $map = self::load_stepbystep_steps_by_instanceids([$instanceid]);
+        return $map[$instanceid] ?? ['steps' => [], 'total_steps' => 0];
     }
 
     private static function build_course_summary(stdClass $course, int $userid): array

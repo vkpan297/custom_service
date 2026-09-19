@@ -9628,16 +9628,9 @@ class local_custom_service_external extends external_api
 
         $modulesbyid = [];
         $allmoduleids = [];
-        $instancesbymodname = [];
         foreach ($coursemoduleRecords as $cmrecord) {
             $modulesbyid[$cmrecord->id] = $cmrecord;
             $allmoduleids[$cmrecord->id] = $cmrecord->id;
-            if (!empty($cmrecord->instance)) {
-                if (!isset($instancesbymodname[$cmrecord->modname])) {
-                    $instancesbymodname[$cmrecord->modname] = [];
-                }
-                $instancesbymodname[$cmrecord->modname][] = (int) $cmrecord->instance;
-            }
         }
 
         $allmoduleids = array_values($allmoduleids);
@@ -9673,23 +9666,6 @@ class local_custom_service_external extends external_api
             }
         }
 
-
-        $moduledetails = [];
-        foreach ($instancesbymodname as $modname => $instanceids) {
-            $instanceids = array_values(array_unique($instanceids));
-            if (empty($instanceids)) {
-                continue;
-            }
-            list($insql, $params) = $DB->get_in_or_equal($instanceids, SQL_PARAMS_NAMED);
-            try {
-                $records = $DB->get_records_sql("SELECT * FROM {{$modname}} WHERE id {$insql}", $params);
-            } catch (Exception $e) {
-                debugging("Unable to fetch module data for {$modname}: " . $e->getMessage());
-                $records = [];
-            }
-            $moduledetails[$modname] = $records;
-        }
-
         // Initialize course totals (used for SQL filtering, not in response)
         $course_total_activity = 0;
         $course_total_activity_completion = 0;
@@ -9713,6 +9689,65 @@ class local_custom_service_external extends external_api
             $totalpage = ceil($total_sections / $perpage);
             $currentpage = $page;
             $paginated_sections = array_slice($filtered_sections, $offset, $perpage);
+        }
+
+        // Only SELECT * module rows needed for returned activities + availability deps.
+        // Response/logic unchanged; avoids full-course module-table scans when filtered/paginated.
+        $neededcmids = [];
+        foreach ($paginated_sections as $section) {
+            $sequencestr = trim($section->sequence ?? '');
+            if ($sequencestr === '') {
+                continue;
+            }
+            foreach (explode(',', $sequencestr) as $rawcmid) {
+                $cmid = (int) $rawcmid;
+                if ($cmid <= 0 || !isset($modulesbyid[$cmid])) {
+                    continue;
+                }
+                $neededcmids[$cmid] = $cmid;
+                $rawavailability = $modulesbyid[$cmid]->availability ?? '';
+                if ($rawavailability === '') {
+                    continue;
+                }
+                $availability_data = json_decode($rawavailability, true);
+                if (empty($availability_data['c']) || !is_array($availability_data['c'])) {
+                    continue;
+                }
+                foreach ($availability_data['c'] as $condition) {
+                    if (($condition['type'] ?? '') !== 'completion' || empty($condition['cm'])) {
+                        continue;
+                    }
+                    $requiredcmid = (int) $condition['cm'];
+                    if (isset($modulesbyid[$requiredcmid])) {
+                        $neededcmids[$requiredcmid] = $requiredcmid;
+                    }
+                }
+            }
+        }
+
+        $instancesbymodname = [];
+        foreach ($neededcmids as $cmid) {
+            $cmrecord = $modulesbyid[$cmid];
+            if (empty($cmrecord->instance)) {
+                continue;
+            }
+            $instancesbymodname[$cmrecord->modname][] = (int) $cmrecord->instance;
+        }
+
+        $moduledetails = [];
+        foreach ($instancesbymodname as $modname => $instanceids) {
+            $instanceids = array_values(array_unique($instanceids));
+            if (empty($instanceids)) {
+                continue;
+            }
+            list($insql, $params) = $DB->get_in_or_equal($instanceids, SQL_PARAMS_NAMED);
+            try {
+                $records = $DB->get_records_sql("SELECT * FROM {{$modname}} WHERE id {$insql}", $params);
+            } catch (Exception $e) {
+                debugging("Unable to fetch module data for {$modname}: " . $e->getMessage());
+                $records = [];
+            }
+            $moduledetails[$modname] = $records;
         }
 
         $result = [];
@@ -10116,42 +10151,45 @@ class local_custom_service_external extends external_api
         $firstactivity = $emptyactivity;
         $sequence = trim((string) ($next->sequence ?? ''));
         if ($sequence !== '') {
-            $cmids = array_filter(array_map('intval', explode(',', $sequence)));
-            foreach ($cmids as $cmid) {
-                $cm = $DB->get_record_sql(
+            $cmids = array_values(array_filter(array_map('intval', explode(',', $sequence))));
+            if (!empty($cmids)) {
+                list($insql, $cmparams) = $DB->get_in_or_equal($cmids, SQL_PARAMS_NAMED);
+                $cmparams['courseid'] = $courseid;
+                $cms = $DB->get_records_sql(
                     "SELECT cm.id, cm.instance, cm.visible, m.name AS modname
                        FROM {course_modules} cm
                        JOIN {modules} m ON m.id = cm.module
-                      WHERE cm.id = :cmid
+                      WHERE cm.id {$insql}
                         AND cm.course = :courseid
                         AND cm.deletioninprogress = 0",
-                    [
-                        'cmid' => $cmid,
-                        'courseid' => $courseid,
-                    ]
+                    $cmparams
                 );
-                if (!$cm) {
-                    continue;
-                }
 
-                $activityname = $cm->modname;
-                try {
-                    $detail = $DB->get_record($cm->modname, ['id' => $cm->instance], 'id, name');
-                    if ($detail && !empty($detail->name)) {
-                        $activityname = $detail->name;
+                foreach ($cmids as $cmid) {
+                    if (!isset($cms[$cmid])) {
+                        continue;
                     }
-                } catch (Exception $e) {
-                    // Keep modname as fallback if module table is unavailable.
-                }
 
-                $firstactivity = [
-                    'id' => (int) $cm->id,
-                    'name' => $activityname,
-                    'modname' => $cm->modname,
-                    'visible' => (int) ($cm->visible ?? 0),
-                    'instance' => (int) $cm->instance,
-                ];
-                break;
+                    $cm = $cms[$cmid];
+                    $activityname = $cm->modname;
+                    try {
+                        $detail = $DB->get_record($cm->modname, ['id' => $cm->instance], 'id, name');
+                        if ($detail && !empty($detail->name)) {
+                            $activityname = $detail->name;
+                        }
+                    } catch (Exception $e) {
+                        // Keep modname as fallback if module table is unavailable.
+                    }
+
+                    $firstactivity = [
+                        'id' => (int) $cm->id,
+                        'name' => $activityname,
+                        'modname' => $cm->modname,
+                        'visible' => (int) ($cm->visible ?? 0),
+                        'instance' => (int) $cm->instance,
+                    ];
+                    break;
+                }
             }
         }
 

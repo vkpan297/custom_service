@@ -5254,6 +5254,9 @@ class local_custom_service_external extends external_api
         // $myQuiz->completionexpected = time() + 7 * 24 * 60 * 60; // Thời gian mong đợi hoàn thành (ở đây là 7 ngày sau).
         // $myQuiz->completionusegrade = 1; // Được đánh dấu là hoàn thành khi đạt điểm yêu cầu.
 
+        // Bật cờ frontend để Moodle không chạy recalculate toàn bộ bảng điểm đồng bộ gây nghẽn/timeout 504
+        $myQuiz->frontend = true;
+
         // $myQuiz2 = create_module($myQuiz);
         if (plugin_supports('mod', 'quiz', FEATURE_MOD_INTRO, true)) {
             $editor = 'introeditor';
@@ -5266,11 +5269,16 @@ class local_custom_service_external extends external_api
         } else {
             $myQuiz->intro = $description;
         }
+        // Reset cờ needsupdate nếu khóa học đang bị kẹt để tránh Moodle chạy recalculate toàn bộ bảng điểm đồng bộ gây timeout 504
+        $DB->execute("UPDATE {grade_items} SET needsupdate = 0 WHERE courseid = ? AND needsupdate = 1", [$course->id]);
+
         try {
             $created_moduleinfo = add_moduleinfo($myQuiz, $course);
-        } catch (moodle_exception $e) {
+            // Đảm bảo cờ needsupdate vừa được set trong add_moduleinfo được hạ về 0 để các request API tạo tiếp theo không bị nghẽn
+            $DB->execute("UPDATE {grade_items} SET needsupdate = 0 WHERE courseid = ? AND needsupdate = 1", [$course->id]);
+        } catch (Exception $e) {
             debugging('Lỗi khi tạo activity: ' . $e->getMessage(), DEBUG_DEVELOPER);
-            throw new moodle_exception('errorcreatingactivity', 'local_yourplugin', '', $e->getMessage());
+            throw new moodle_exception('generalexceptionmessage', 'error', '', $e->getMessage());
         }
 
         return [
